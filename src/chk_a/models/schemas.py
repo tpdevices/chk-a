@@ -117,6 +117,18 @@ class LoggingConfig(BaseModel):
     backup_count: int = Field(default=10, ge=0)
 
 
+class MTRConfig(BaseModel):
+    """MTR configuration for continuous network path monitoring with statistical aggregation."""
+
+    enabled: bool = Field(default=False, description="Enable periodic MTR checks")
+    interval_sec: int = Field(default=3600, ge=60, description="Interval between MTR runs (seconds)")
+    max_hops: int = Field(default=30, ge=1, le=64, description="Maximum TTL/hops")
+    count: int = Field(default=10, ge=1, le=100, description="Number of pings per hop (MTR -c)")
+    interval_ms: int = Field(default=1000, ge=100, le=60000, description="Interval between pings in milliseconds (MTR -i)")
+    timeout_sec: int = Field(default=10, ge=1, le=60, description="Timeout per ping in seconds (MTR -W)")
+    resolvers: list[str] = Field(default_factory=list, description="Resolver names to trace (empty = all)")
+
+
 __all__ = [
     "ResolverConfig",
     "FQDNConfig",
@@ -127,4 +139,5 @@ __all__ = [
     "AlertConfig",
     "SchedulerConfig",
     "LoggingConfig",
+    "MTRConfig",
 ]

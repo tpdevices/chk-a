@@ -41,8 +41,20 @@ scheduler:
 
 logging:
   level: "INFO"
-  file: "/var/log/chk-a/checks.jsonl"
+  file: "/tmp/chk-a-logs/checks.jsonl"
   max_size_mb: 50
   backup_count: 10
+
+mtr:
+  enabled: false
+  interval_sec: 300
+  max_hops: 30
+  count: 10
+  interval_ms: 1000
+  timeout_sec: 10
+  resolvers:
+    - "google"
+    - "cloudflare"
+    - "quad9"
 
 baseline_store_path: "./data/baselines.json"

@@ -8,9 +8,9 @@
 
 ## Open Tasks
 
-- [ ] **Persistent dedup cache for AlertAgent** — survive service restarts (currently in-memory only)
+- [x] **Persistent dedup cache for AlertAgent** — survive service restarts (currently in-memory only)
 - [ ] **Server-side traceroute path visualization** — client→resolver education feature
-- [ ] **Commit the project** to version control (currently not a git repo)
+- [x] **Commit the project** to version control (currently not a git repo)
 - [ ] **Monitor production stability** on test-chk-a VM
 
 ## Completed (this session)

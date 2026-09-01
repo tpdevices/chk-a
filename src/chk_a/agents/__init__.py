@@ -4,6 +4,7 @@ from .alert_agent import AlertAgent
 from .consensus_agent import ConsensusAgent
 from .ml_agent import MLAgent
 from .resolver_agent import ResolverAgent, ResolverHealth
+from .mtr_agent import MTRAgent, MTRResult, MTRHop
 
 __all__ = [
     "ResolverAgent",
@@ -11,4 +12,7 @@ __all__ = [
     "ConsensusAgent",
     "MLAgent",
     "AlertAgent",
+    "MTRAgent",
+    "MTRResult",
+    "MTRHop",
 ]

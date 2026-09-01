@@ -20,6 +20,7 @@ from ..models.schemas import (
     FQDNConfig,
     LoggingConfig,
     MLConfig,
+    MTRConfig,
     ResolverConfig,
     SchedulerConfig,
 )
@@ -54,6 +55,7 @@ class AppConfig(BaseModel):
     alert: AlertConfig = Field(default_factory=AlertConfig)
     scheduler: SchedulerConfig = Field(default_factory=SchedulerConfig)
     logging: LoggingConfig = Field(default_factory=LoggingConfig)
+    mtr: MTRConfig = Field(default_factory=MTRConfig)
     baseline_store_path: str = Field(default="./data/baselines.json")
     hostname: str = Field(default_factory=lambda: __import__("socket").gethostname())
 

@@ -21,6 +21,7 @@ from .agents.alert_agent import AlertAgent
 from .agents.consensus_agent import ConsensusAgent
 from .agents.ml_agent import MLAgent
 from .agents.resolver_agent import ResolverAgent
+from .agents.mtr_agent import MTRAgent
 from .config.loader import AppConfig, load_config
 from .orchestrator import Orchestrator
 from .storage.baseline_store import BaselineStore
@@ -147,7 +148,7 @@ async def cmd_test_daily_image(config: AppConfig, logger: Any) -> int:
     
     # Add hostname to caption
     hostname = config.hostname
-    caption = f"{config.alert.daily_image_caption}\n🖥️ Host: <code>{hostname}</code>"
+    caption = f"{config.alert.daily_image_caption}\\n🖥️ Host: <code>{hostname}</code>"
     
     ok = await telegram.send_photo(
         chat_id=chat_id,
@@ -161,6 +162,33 @@ async def cmd_test_daily_image(config: AppConfig, logger: Any) -> int:
         return 0
     print("TELEGRAM ERROR: failed to send image (see logs)", file=sys.stderr)
     return 1
+
+
+async def cmd_mtr(config: AppConfig, logger: Any, args: argparse.Namespace) -> int:
+    """Run MTR to a target resolver and output results with statistical aggregation."""
+
+    target = args.target
+    max_hops = args.max_hops
+    count = args.count
+    interval_ms = args.interval
+    timeout_sec = args.timeout
+
+    # Create a dummy resolver config for the target
+    from .models.schemas import ResolverConfig
+    dummy_resolver = ResolverConfig(name="target", address=target)
+
+    agent = MTRAgent(
+        resolvers=[dummy_resolver],
+        logger_name="chk_a.mtr",
+        timeout_sec=timeout_sec,
+        max_hops=max_hops,
+        count=count,
+        interval_ms=interval_ms,
+    )
+    result = await agent.trace_resolver("target")
+
+    print(result.to_json())
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -178,6 +206,12 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("show-baseline", help="Print learned ML baselines")
     sub.add_parser("test-telegram", help="Send a Telegram test message")
     sub.add_parser("test-daily-image", help="Send the daily image via Telegram")
+    mtr_parser = sub.add_parser("mtr", help="Run MTR to a target resolver with statistical aggregation")
+    mtr_parser.add_argument("target", help="Target resolver IP or hostname")
+    mtr_parser.add_argument("--max-hops", type=int, default=30, help="Maximum hops (default: 30)")
+    mtr_parser.add_argument("--count", type=int, default=10, help="Number of pings per hop (default: 10)")
+    mtr_parser.add_argument("--interval", type=int, default=1000, help="Interval between pings in ms (default: 1000)")
+    mtr_parser.add_argument("--timeout", type=int, default=10, help="Timeout per ping in seconds (default: 10)")
 
     # Default (no subcommand) runs the daemon.
     return parser
@@ -201,6 +235,8 @@ def main() -> int:
         return cmd_show_baseline(config, logger)
     if args.command == "test-daily-image":
         return asyncio.run(cmd_test_daily_image(config, logger))
+    if args.command == "mtr":
+        return asyncio.run(cmd_mtr(config, logger, args))
     if args.command in ("check-once", "test-telegram"):
         try:
             if args.command == "check-once":
