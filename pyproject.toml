@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chk-a"
+version = "0.1.0"
+description = "Multi-agent DNS A-record anomaly detector with online ML and Telegram alerts"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "dnspython>=2.6",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "pyyaml>=6.0",
+    "aiohttp>=3.9",
+    "tenacity>=8.2",
+    # systemd-python is optional (only needed for sd_notify in Loop 6).
+    # Kept out of the hard dep set so the package installs on Python 3.14+.
+    # "systemd-python>=235",
+]
+
+# NOTE: Online ML uses a lightweight custom EMA + entropy implementation
+# (see src/chk_a/agents/ml_agent.py) instead of `river`, to avoid heavy deps
+# and keep compatibility with Python 3.14+.
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "black",
+    "flake8",
+]
+
+[project.scripts]
+chk-a = "chk_a.main:main"
+chk-a-validate = "chk_a.validate_config:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

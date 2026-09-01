@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.env
+.pytest_cache/
+.coverage
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Build / Distribution
+dist/
+build/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+backups/
+*.log
+*.jsonl
+/var/
+/etc/chk-a/
+/var/lib/chk-a/
+/var/log/chk-a/
+
+# Test artifacts
+.tmp/
+*.tmp
+
+# Environment
+*.env.local

@@ -1,0 +1,56 @@
+# chk-a Configuration (multi-agent DNS A-record anomaly monitor)
+# Production example for /etc/chk-a/config.yaml
+#
+# Secrets use ${ENV} substitution and are read from /etc/chk-a/env
+# (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID). Do NOT hard-code tokens here.
+
+fqdns:
+  - name: "example.com"
+    expected_ips: ["93.184.216.34"]   # optional allowlist
+    min_consensus: 0.6
+  - name: "api.github.com"
+    min_consensus: 0.5
+
+resolvers:
+  - name: "google"
+    address: "8.8.8.8:53"
+    weight: 1.0
+    timeout_ms: 2000
+  - name: "cloudflare"
+    address: "1.1.1.1:53"
+    weight: 1.0
+    timeout_ms: 2000
+  - name: "quad9"
+    address: "9.9.9.9:53"
+    weight: 1.0
+    timeout_ms: 2000
+
+ml:
+  baseline_decay: 0.05          # EMA decay applied to IP counters each cycle
+  anomaly_threshold: 0.7        # score above this raises a baseline_deviation alert
+  min_samples_before_alert: 10  # learn cycles before alerts are emitted
+  alert_text_log_path: "/var/log/chk-a/alerts.log"
+
+alert:
+  alert_text_log_path: "/var/log/chk-a/alerts.log"
+  telegram_bot_token: "${TELEGRAM_BOT_TOKEN}"
+  telegram_chat_id: "${TELEGRAM_CHAT_ID}"
+  dedup_window_minutes: 30      # same (fqdn,type,ips) suppressed within this window
+  rate_limit_per_hour: 20       # max alerts sent per hour (token bucket)
+  alert_log_path: "/var/log/chk-a/alerts.jsonl"
+  # Persistent dedup cache (survives restarts, empty = in-memory only)
+  dedup_cache_path: "/var/lib/chk-a/dedup_cache.json"
+
+scheduler:
+  min_interval_sec: 30          # random delay lower bound between cycles
+  max_interval_sec: 180         # random delay upper bound (<= 3 minutes)
+  jitter: true
+
+logging:
+  level: "INFO"
+  file: "/var/log/chk-a/checks.jsonl"
+  max_size_mb: 50
+  backup_count: 10
+
+# Persisted ML baseline (must live on a ReadWritePath of the service).
+baseline_store_path: "/var/lib/chk-a/baselines.json"

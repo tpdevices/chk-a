@@ -1,0 +1,28 @@
+[Unit]
+Description=chk-a DNS Anomaly Monitor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=chk-a
+Group=chk-a
+WorkingDirectory=/opt/chk-a
+ExecStartPre=/opt/chk-a/.venv/bin/python -m chk_a.validate_config
+ExecStart=/opt/chk-a/.venv/bin/python -m chk_a.main
+Restart=on-failure
+RestartSec=10
+WatchdogSec=60
+StandardOutput=journal
+StandardError=journal
+EnvironmentFile=/etc/chk-a/env
+# Hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/chk-a /var/lib/chk-a
+CapabilityBoundingSet=
+
+[Install]
+WantedBy=multi-user.target

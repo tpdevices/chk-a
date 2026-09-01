@@ -1,0 +1,48 @@
+# chk-a Configuration (multi-agent DNS A-record anomaly monitor)
+# Copy to /etc/chk-a/config.yaml and edit. Secrets use ${ENV} substitution.
+
+fqdns:
+  - name: "example.com"
+    expected_ips: ["93.184.216.34"]   # optional allowlist
+    min_consensus: 0.6
+  - name: "api.github.com"
+    min_consensus: 0.5
+
+resolvers:
+  - name: "google"
+    address: "8.8.8.8:53"
+    weight: 1.0
+    timeout_ms: 2000
+  - name: "cloudflare"
+    address: "1.1.1.1:53"
+    weight: 1.0
+    timeout_ms: 2000
+  - name: "quad9"
+    address: "9.9.9.9:53"
+    weight: 1.0
+    timeout_ms: 2000
+
+ml:
+  baseline_decay: 0.05
+  anomaly_threshold: 0.7
+  min_samples_before_alert: 10
+
+alert:
+  telegram_bot_token: "${TELEGRAM_BOT_TOKEN}"
+  telegram_chat_id: "${TELEGRAM_CHAT_ID}"
+  dedup_window_minutes: 30
+  rate_limit_per_hour: 20
+  alert_log_path: "/var/log/chk-a/alerts.jsonl"
+
+scheduler:
+  min_interval_sec: 30
+  max_interval_sec: 180
+  jitter: true
+
+logging:
+  level: "INFO"
+  file: "/var/log/chk-a/checks.jsonl"
+  max_size_mb: 50
+  backup_count: 10
+
+baseline_store_path: "./data/baselines.json"
