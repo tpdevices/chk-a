@@ -22,6 +22,7 @@ dependencies = [
     "scikit-learn>=1.3",
     "numpy>=1.24",
     "pillow>=10.0",
+    "pandas>=2.0",
     # systemd-python is optional (only needed for sd_notify in Loop 6).
     # Kept out of the hard dep set so the package installs on Python 3.14+.
     # "systemd-python>=235",
