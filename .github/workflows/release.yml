@@ -34,7 +34,8 @@ jobs:
 
       - name: Build wheel
         run: |
-          python -m build --wheel 2>&1
+          python -m build --wheel -v 2>&1
+          echo "=== BUILD COMPLETED ==="
           ls -la dist/
 
       - name: Verify wheel
@@ -43,6 +44,12 @@ jobs:
           python -m pip install dist/*.whl
           chk-a --version
           chk-a-validate --help
+
+      - name: Debug - show wheel contents
+        if: always()
+        run: |
+          echo "=== WHEEL CONTENTS ==="
+          unzip -l dist/*.whl | head -30
 
       - name: Upload wheel artifact
         uses: actions/upload-artifact@v4
