@@ -11,14 +11,19 @@ agents (Consensus, ML, Alert) can weight or distrust flaky resolvers.
 from __future__ import annotations
 
 import asyncio
+import socket
 import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-import dns.asyncresolver
+import aiohttp
+import dns.asyncbackend
 import dns.asyncquery
+import dns.asyncresolver
 import dns.exception
+import dns.message
 import dns.nameserver
+import dns.rdatatype
 import dns.resolver
 
 from ..models.schemas import CheckResult, ResolverConfig
@@ -125,12 +130,16 @@ class ResolverAgent:
         host, port_str = host_port.rsplit(":", 1)
         port = int(port_str)
         # Resolve hostname to IP address (DoTNameserver requires IP in address field)
-        import socket
         try:
-            # Get IPv4 address first
+            # Try IPv4 first
             ip = socket.gethostbyname(host)
-        except socket.gaierror as e:
-            raise ValueError(f"Cannot resolve DoT hostname {host}: {e}")
+        except socket.gaierror:
+            try:
+                # Try IPv6
+                ipv6_result = socket.getaddrinfo(host, None, socket.AF_INET6)
+                ip = ipv6_result[0][4][0]  # Extract IP from (family, type, proto, canonname, sockaddr)
+            except socket.gaierror as e:
+                raise ValueError(f"Cannot resolve DoT hostname {host}: {e}")
         # Use resolver-specific timeout if set, otherwise use default
         timeout = (cfg.timeout_ms or self.default_timeout_ms) / 1000.0
         # hostname verification uses the host for SNI
@@ -144,32 +153,28 @@ class ResolverAgent:
     async def _get_doh_session(self, resolver_name: str) -> "aiohttp.ClientSession":
         """Get or create aiohttp ClientSession for DoH resolver."""
         if resolver_name not in self._doh_sessions or self._doh_sessions[resolver_name].closed:
-            import aiohttp
             timeout = aiohttp.ClientTimeout(total=self.default_timeout_ms / 1000.0)
             self._doh_sessions[resolver_name] = aiohttp.ClientSession(timeout=timeout)
         return self._doh_sessions[resolver_name]
 
     async def _query_doh(self, fqdn: str, resolver_name: str) -> CheckResult:
         """Query a DoH resolver via HTTPS using DNS wireformat (RFC 8484)."""
-        import dns.message
-        import dns.rdatatype
-        
         cfg = self.resolvers[resolver_name]
         url = cfg.address
         # Ensure URL has proper path
         if not url.endswith("/dns-query"):
             url = url.rstrip("/") + "/dns-query"
-        
+
         # Build DNS query message in wireformat
         query = dns.message.make_query(fqdn, dns.rdatatype.A)
         wire = query.to_wire()
-        
+
         # Use wireformat (application/dns-message) for broad compatibility
         headers = {
             "Accept": "application/dns-message",
             "Content-Type": "application/dns-message",
         }
-        
+
         session = await self._get_doh_session(resolver_name)
         start = time.perf_counter()
         try:
@@ -180,20 +185,20 @@ class ResolverAgent:
             latency_ms = (time.perf_counter() - start) * 1000.0
         except Exception as exc:  # noqa: BLE001
             return self._failure(fqdn, resolver_name, start, f"DOH_ERROR: {exc}")
-        
+
         # Parse DNS wireformat response
         try:
             response = dns.message.from_wire(response_wire)
         except Exception as exc:
             return self._failure(fqdn, resolver_name, start, f"DOH_PARSE_ERROR: {exc}")
-        
+
         # Extract A records from answer section
         ips = []
         for rrset in response.answer:
             for rdata in rrset:
                 if rdata.rdtype == dns.rdatatype.A:
                     ips.append(str(rdata))
-        
+
         success = len(ips) > 0
         self.health[resolver_name].record(latency_ms, success)
         return CheckResult(
@@ -207,19 +212,15 @@ class ResolverAgent:
 
     async def _query_dot(self, fqdn: str, resolver_name: str) -> CheckResult:
         """Query a DoT resolver via DNS-over-TLS."""
-        import dns.message
-        import dns.rdatatype
-        
         nameserver = self._dot_nameservers[resolver_name]
         start = time.perf_counter()
         try:
             # Build DNS query message
             query = dns.message.make_query(fqdn, dns.rdatatype.A)
             # Use the async backend
-            import dns.asyncbackend
             backend = dns.asyncbackend.get_default_backend()
             timeout = (self.resolvers[resolver_name].timeout_ms or self.default_timeout_ms) / 1000.0
-            
+
             async with self._semaphore:
                 response = await nameserver.async_query(
                     query,
@@ -232,14 +233,14 @@ class ResolverAgent:
                     ignore_trailing=False,
                 )
             latency_ms = (time.perf_counter() - start) * 1000.0
-            
+
             # Parse response
             ips = []
             for rrset in response.answer:
                 for rdata in rrset:
                     if rdata.rdtype == dns.rdatatype.A:
                         ips.append(str(rdata))
-            
+
             success = len(ips) > 0
             self.health[resolver_name].record(latency_ms, success)
             return CheckResult(

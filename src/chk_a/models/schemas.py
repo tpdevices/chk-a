@@ -12,6 +12,15 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator, SecretStr
 
 
+class LogPermissionsConfig(BaseModel):
+    """Shared log file and directory permissions configuration."""
+    
+    # File permissions (octal, e.g., 0o640 = rw-r-----)
+    file_mode: int = Field(default=0o640, ge=0o000, le=0o777, description="Log file permissions (octal)")
+    # Directory permissions
+    dir_mode: int = Field(default=0o750, ge=0o000, le=0o777, description="Log directory permissions (octal)")
+
+
 class ResolverConfig(BaseModel):
     """A DNS resolver endpoint used to query A records."""
 
@@ -202,7 +211,7 @@ class MLConfig(BaseModel):
     min_samples_before_alert: int = Field(default=10, ge=1)
 
 
-class AlertConfig(BaseModel):
+class AlertConfig(LogPermissionsConfig):
     """Telegram alerting configuration."""
 
     telegram_bot_token: SecretStr = Field(default=SecretStr(""))
@@ -223,9 +232,6 @@ class AlertConfig(BaseModel):
     dedup_cache_path: str = ""  # empty = in-memory only
     # Max dedup cache size (prevents unbounded memory growth)
     dedup_max_size: int = Field(default=10000, ge=100, le=1000000)
-    # Log file permissions
-    file_mode: int = Field(default=0o640, ge=0o000, le=0o777, description="Log file permissions (octal)")
-    dir_mode: int = Field(default=0o750, ge=0o000, le=0o777, description="Log directory permissions (octal)")
     # Baseline encryption at rest (SEC-015)
     baseline_encryption_enabled: bool = Field(default=False, description="Enable baseline file encryption with age")
     baseline_age_public_key: str = Field(default="", description="age public key for encryption (age1...)")
@@ -320,17 +326,13 @@ class SchedulerConfig(BaseModel):
         )
 
 
-class LoggingConfig(BaseModel):
+class LoggingConfig(LogPermissionsConfig):
     """Logging configuration."""
 
     level: str = "INFO"
     file: str = "/var/log/chk-a/checks.jsonl"
     max_size_mb: int = Field(default=50, ge=1)
     backup_count: int = Field(default=10, ge=0)
-    # File permissions (octal, e.g., 0o640 = rw-r-----)
-    file_mode: int = Field(default=0o640, ge=0o000, le=0o777, description="Log file permissions (octal)")
-    # Directory permissions
-    dir_mode: int = Field(default=0o750, ge=0o000, le=0o777, description="Log directory permissions (octal)")
 
 
 class MTRConfig(BaseModel):
@@ -363,6 +365,13 @@ class MTRConfig(BaseModel):
     log_path: str = Field(
         default="/var/log/chk-a/mtr.jsonl",
         description="Path to store MTR results in JSONL format",
+    )
+    # SEC-012: Hard concurrency ceiling for MTR runs
+    max_concurrent: int = Field(
+        default=4,
+        ge=1,
+        le=10,
+        description="Maximum concurrent MTR runs (hard ceiling 10)",
     )
 
     @field_validator("port", mode="after")

@@ -81,8 +81,14 @@ class ActiveAnomaly:
     def duration_seconds(self, now: datetime | None = None) -> float:
         """Return duration in seconds since anomaly started."""
         if now is None:
-            now = datetime.now()
-        return (now - self.start_time).total_seconds()
+            now = datetime.now(TZ)
+        # Handle both naive and timezone-aware start_time
+        if self.start_time.tzinfo is None:
+            # Assume naive datetime is in local timezone (TZ)
+            start_time = self.start_time.replace(tzinfo=TZ)
+        else:
+            start_time = self.start_time
+        return (now - start_time).total_seconds()
 
     def duration_human(self, now: datetime | None = None) -> str:
         """Return human-readable duration string."""
@@ -591,7 +597,7 @@ class Orchestrator:
             anomaly = ActiveAnomaly(
                 fqdn=fqdn,
                 anomaly_type=anomaly_type,
-                start_time=datetime.now(),
+                start_time=datetime.now(TZ),
                 details={
                     "observed_ips": list(consensus.majority_ips),
                     "consensus_score": consensus.consensus_score,
@@ -637,7 +643,7 @@ class Orchestrator:
         baseline_ips = list(anomaly.baseline_at_start)
 
         # Calculate duration
-        end_time = datetime.now()
+        end_time = datetime.now(TZ)
         duration_seconds = anomaly.duration_seconds(end_time)
         duration_human = anomaly.duration_human(end_time)
 

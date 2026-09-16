@@ -53,11 +53,23 @@ def build_agents(config: AppConfig, logger: Any) -> dict[str, Any]:
         alert_text_log_path=config.alert.alert_text_log_path,
         hostname=hostname,
     )
+    mtr = MTRAgent(
+        config.resolvers,
+        logger_name="chk_a.mtr",
+        timeout_sec=config.mtr.timeout_sec,
+        max_hops=config.mtr.max_hops,
+        count=config.mtr.count,
+        interval_ms=config.mtr.interval_ms,
+        mode=config.mtr.mode,
+        port=config.mtr.port,
+        max_concurrent=config.mtr.max_concurrent,
+    )
     return {
         "resolver": resolver,
         "consensus": consensus,
         "ml": ml,
         "alert": alert,
+        "mtr": mtr,
     }
 
 

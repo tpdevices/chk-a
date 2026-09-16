@@ -164,33 +164,6 @@ def _format_html(event: AnomalyEvent) -> str:
         ])
         return "\n".join(lines)
 
-        reminder_label = "ครั้งแรก" if is_first else f"ครั้งที่ {reminder_count}"
-        lines.append(f"<b>🔄 Original Anomaly:</b> {original_type}")
-        lines.append(f"<b>⏰ Reminder:</b> {reminder_label} (ทุก 1 ชม.)")
-        lines.append(f"<b>⏱️ Duration:</b> {duration_human} ({duration_seconds:.1f} วินาที)")
-        lines.append(f"<b>🕐 Started:</b> <code>{start_time}</code>")
-        lines.append(f"<b>🕐 Reminder Sent:</b> <code>{reminder_time}</code>")
-
-        if config_changed and baseline_changes:
-            lines.append(f"<b>⚙️ Config Changed:</b> {'; '.join(baseline_changes)}")
-
-        # Current observed IPs
-        observed = d.get("observed_ips", [])
-        if observed:
-            lines.append(f"<b>📍 Current Observed IPs:</b> {', '.join(f'<code>{ip}</code>' for ip in observed)}")
-
-        # Baseline comparison
-        baseline = d.get("baseline_ips", [])
-        if baseline:
-            lines.append(f"<b>📋 Current Baseline IPs:</b> {', '.join(f'<code>{ip}</code>' for ip in baseline)}")
-
-        lines.extend([
-            f"<b>Consensus:</b> {consensus:.2%}",
-            f"<b>Resolvers:</b> {resolver_count} checked",
-            f"<b>Time:</b> {event.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
-        ])
-        return "\n".join(lines)
-
     # Successful resolvers grouped by IP set
     successful = [r for r in all_results if r.get("success") and r.get("ips")]
     if successful:

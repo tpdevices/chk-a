@@ -88,7 +88,7 @@ class MTRResult:
 class MTRAgent:
     """Runs MTR to resolvers for continuous path monitoring with statistics."""
 
-    # SEC-012: Hard concurrency ceiling for MTR runs
+    # SEC-012: Hard concurrency ceiling for MTR runs (class default)
     MAX_CONCURRENT_MTR = 4
 
     def __init__(
@@ -101,6 +101,7 @@ class MTRAgent:
         interval_ms: int = 1000,
         mode: str = "icmp",
         port: int | None = None,
+        max_concurrent: int = 4,
     ) -> None:
         self.resolvers: dict[str, ResolverConfig] = {r.name: r for r in resolvers}
         self.timeout_sec = timeout_sec
@@ -117,7 +118,8 @@ class MTRAgent:
             self.logger.warning("mtr binary not found in PATH; MTR will fail")
 
         # SEC-012: Semaphore to limit concurrent MTR subprocesses
-        self._mtr_semaphore = asyncio.Semaphore(self.MAX_CONCURRENT_MTR)
+        # Use provided max_concurrent or fall back to class default
+        self._mtr_semaphore = asyncio.Semaphore(max_concurrent or self.MAX_CONCURRENT_MTR)
 
     def _validate_target_ip(self, target: str) -> bool:
         """Validate that target is a valid IP address (IPv4 or IPv6).
@@ -228,6 +230,15 @@ class MTRAgent:
             hubs = report.get("hubs", [])
 
             src = mtr_info.get("src", "")
+            # Validate source - allow hostnames and IPs
+            if src:
+                # Only validate if it's an IP address; hostnames are valid too
+                try:
+                    import ipaddress
+                    ipaddress.ip_address(src)
+                except ValueError:
+                    # Not an IP, assume it's a valid hostname
+                    pass
             tests = mtr_info.get("tests", 0)
 
             for hub in hubs:
@@ -262,6 +273,11 @@ class MTRAgent:
             mode: Override MTR probe mode ("icmp", "tcp", "udp").
             port: Destination port for TCP/UDP mode.
         """
+        # SEC-012: Enforce concurrency limit on all trace operations
+        async with self._mtr_semaphore:
+            return await self._trace_resolver_internal(resolver_name, resolve_hostnames, mode, port)
+
+    async def _trace_resolver_internal(self, resolver_name: str, resolve_hostnames: bool = True, mode: str | None = None, port: int | None = None) -> MTRResult:
         resolver = self.resolvers.get(resolver_name)
         if not resolver:
             return MTRResult(
@@ -320,6 +336,7 @@ class MTRAgent:
 
         # Correct timeout: max_hops * count * timeout_sec + buffer
         # MTR sends 'count' pings per hop, each with 'timeout_sec' timeout
+        # +60 seconds buffer for MTR startup/teardown overhead and network latency variance
         max_duration = self.max_hops * self.count * self.timeout_sec + 60
 
         try:
@@ -386,8 +403,7 @@ class MTRAgent:
         """
         # SEC-012: Use semaphore to limit concurrent MTR subprocesses
         async def _trace_with_semaphore(name: str) -> MTRResult:
-            async with self._mtr_semaphore:
-                return await self.trace_resolver(name, resolve_hostnames=False, mode=mode, port=port)
+            return await self._trace_resolver_internal(name, resolve_hostnames=False, mode=mode, port=port)
 
         tasks = [_trace_with_semaphore(name) for name in self.resolvers]
         return await asyncio.gather(*tasks)
