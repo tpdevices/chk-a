@@ -214,7 +214,7 @@ async def cmd_mtr(config: AppConfig, logger: Any, args: argparse.Namespace) -> i
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="chk-a", description="chk-a DNS anomaly monitor")
+    parser = argparse.ArgumentParser(prog="chk-a", description="chk-a DNS anomaly monitor", add_help=True)
     parser.add_argument(
         "-c",
         "--config",
@@ -224,6 +224,12 @@ def build_parser() -> argparse.ArgumentParser:
             "Path to config YAML (default: auto-detect /etc/chk-a/config.yaml, "
             "config/settings.yaml, CHK_A_CONFIG)"
         ),
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s 0.1.0",
+        help="Show version and exit"
     )
     sub = parser.add_subparsers(dest="command")
 
