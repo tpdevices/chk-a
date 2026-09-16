@@ -118,20 +118,18 @@ mkdir -p "${LIB_DIR}/matplotlib"
 # 3. Download wheel
 log "Downloading wheel from GitHub Releases..."
 cd /tmp
-WHEEL_FILE=$(basename $(curl -sL -w "%{url_effective}" -o /dev/null "${WHEEL_URL}") 2>/dev/null || true)
+
+# Try to get the exact wheel filename from GitHub API first
+WHEEL_FILE=$(curl -sL "https://api.github.com/repos/${REPO}/releases/tags/${VERSION}" | grep -o '"name": "chk_a-[^"]*\.whl"' | head -1 | cut -d'"' -f4)
+
 if [[ -z "${WHEEL_FILE}" ]]; then
-    # Try to find the actual wheel filename by listing release assets
-    err "Could not determine wheel filename. Trying alternative method..."
-    # Fallback: use GitHub API to get asset name
-    ASSET_NAME=$(curl -sL "https://api.github.com/repos/${REPO}/releases/tags/${VERSION}" | grep -o '"name": "chk_a-[^"]*\.whl"' | head -1 | cut -d'"' -f4)
-    if [[ -n "${ASSET_NAME}" ]]; then
-        WHEEL_FILE="${ASSET_NAME}"
-        WHEEL_URL="${DOWNLOAD_BASE}/${WHEEL_FILE}"
-    else
-        err "Failed to find wheel asset. Check if release exists: https://github.com/${REPO}/releases/tag/${VERSION}"
-        exit 1
-    fi
+    # Fallback: try to construct filename from version
+    VERSION_NUM=$(echo "${VERSION}" | sed 's/^v//')
+    WHEEL_FILE="chk_a-${VERSION_NUM}-py3-none-any.whl"
+    log "Using constructed wheel filename: ${WHEEL_FILE}"
 fi
+
+WHEEL_URL="${DOWNLOAD_BASE}/${WHEEL_FILE}"
 
 log "Downloading: ${WHEEL_FILE}"
 curl -L -o "${WHEEL_FILE}" "${WHEEL_URL}" || {
@@ -157,7 +155,13 @@ if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
         warn "python3.14 not found, falling back to python3"
     fi
     "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+    # Ensure pip is installed (some distributions don't include it by default)
     "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>/dev/null || true
+    # Verify pip works
+    if ! "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
+        warn "pip not available, installing via get-pip.py"
+        curl -sL https://bootstrap.pypa.io/get-pip.py | "${VENV_DIR}/bin/python" -
+    fi
 fi
 
 log "Installing wheel..."
