@@ -32,6 +32,7 @@ alert:
   rate_limit_per_hour: 20
   alert_log_path: "./logs/alerts.jsonl"
   alert_text_log_path: "./logs/alerts.log"
+  dedup_cache_path: "./data/dedup_cache.json"
   # Daily image config
   daily_image_path: "img/sleepy.jpg"
   daily_image_chat_id: ""

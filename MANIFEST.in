@@ -1,0 +1,2 @@
+include src/chk_a/fonts/*.otf
+include src/chk_a/fonts/*.ttf

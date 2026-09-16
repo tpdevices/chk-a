@@ -10,6 +10,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **2026-09-16 09:45:00** — `src/chk_a/agents/resolver_agent.py` — Added: DoT (DNS-over-TLS) support via `dns.nameserver.DoTNameserver`. Implemented `_build_dot_nameserver()` with hostname-to-IP resolution for SNI verification, `_query_dot()` using `dns.asyncquery.tls()`. DoH (DNS-over-HTTPS) rewritten to use DNS wireformat (`application/dns-message`) per RFC 8484 for broad provider compatibility.
+- **2026-09-16 09:45:00** — `src/chk_a/models/schemas.py` — Added: DoT URL validation in `ResolverConfig._validate_address()` — accepts `tls://host:port` format with RFC 1123 hostname/IP validation and port range check.
+- **2026-09-16 09:45:00** — `config/config.yaml` — Added: Documented DoH and DoT resolver examples in config (commented).
+- **2026-09-16 09:45:00** — `tests/test_config_loader.py` — Added: `test_resolver_address_valid_dot_url()` and invalid DoT URL test cases.
+- **2026-09-16 09:45:00** — `tests/test_resolver_agent.py` — Added: `test_dot_resolver_is_marker()` and `test_dot_resolver_resolves()` unit tests.
+
+### Fixed
+- **2026-09-16 09:45:00** — `src/chk_a/agents/resolver_agent.py` — Fixed: DoH now uses wireformat (`application/dns-message`) with POST method instead of JSON API. Works with Google, Cloudflare, and other DoH providers.
+- **2026-09-16 09:45:00** — `src/chk_a/agents/resolver_agent.py` — Fixed: DoT `_build_dot_nameserver()` resolves hostname to IP address before creating `DoTNameserver` (dnspython requires IP in address field, hostname for SNI).
+
+### Security
+- **2026-09-16 09:45:00** — SEC-010: DoH/DoT support in ResolverAgent — enables encrypted DNS queries for privacy and integrity. All 3 protocols supported: Standard DNS (UDP/TCP 53), DoH (HTTPS 443), DoT (TLS 853).
+- **2026-09-16 10:15:00** — `systemd/chk-a.service` — Fixed: Added `CapabilityBoundingSet=CAP_NET_RAW` and `AmbientCapabilities=CAP_NET_RAW` for MTR ICMP mode raw socket access.
+- **2026-09-16 10:15:00** — `scripts/systemd_wrapper.py` — Fixed: Changed state file path from `/opt/chk-a/last_state.txt` to `/var/lib/chk-a/last_state.txt` to work with `ProtectSystem=strict` (read-only /opt/chk-a).
+- **2026-09-16 11:30:00** — SEC-013: Log file permissions hardening — added configurable `file_mode` (default 0o640) and `dir_mode` (default 0o750) to `LoggingConfig` and `AlertConfig`. Updated `setup_logger()` and `AlertAgent._setup_alert_log_handlers()` to apply permissions on file/directory creation and rotation. Verified on test VM: files 640 (rw-r-----), dirs 750 (rwxr-x---), owned by chk-a:chk-a.
+
+### Added
 - **2026-09-15 09:45:00** — `src/chk_a/reporting/ml_insights.py` — Added: Baseline-based integrity scoring using `MLAgent.score()` (total-variation distance against learned baseline) replacing Isolation Forest. New `_compute_integrity_baseline_based()` function computes per-resolver integrity by comparing observed IPs against per-FQDN baselines. Avoids false anomalies when multiple resolvers fail simultaneously (e.g., network outage).
 - **2026-09-15 09:45:00** — `src/chk_a/reporting/ml_insights.py` — Added: `ml_agent` parameter to `generate_ml_insights()` and `compute_integrity()` for baseline-based integrity. Falls back to Isolation Forest when `ml_agent` is None (backward compatibility).
 - **2026-09-15 09:45:00** — `src/chk_a/reporting/monthly_report.py` — Added: Creates `MLAgent` with `BaselineStore` for both monthly and daily report generation. Passes `ml_agent` to `generate_ml_insights()` for baseline-based integrity scoring.
@@ -27,7 +44,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **2026-09-15 12:25:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` now reads rotated log files (date-stamped `.bz2` and numbered `.gz` backups) automatically. Collects all rotated files from the same directory, opens them with appropriate decompressors (bz2/gzip), filters by date range from filenames, and merges with current log. Enables daily report (1-day lookback) and monthly report (30-day lookback) to read historical data spanning multiple rotated files.
 - **2026-09-15 12:25:00** — `src/chk_a/reporting/monthly_report.py` — Confirmed: `generate_ml_insights()` already supports `reference_date` parameter for accurate yesterday/month-end targeting. Daily report function uses `datetime.now() - timedelta(days=1)` as reference to correctly target yesterday's rotated logs.
-- **2026-09-15 09:45:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `ml_agent.score(fqdn, observed_ips)` type issue — added `str(fqdn)` to satisfy type checker (Hashable → str).
+- **2026-09-15 14:15:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_compute_integrity_baseline_based()` now computes and includes `unique_ip_count` and `ip_stability` in `raw_features` for baseline-based integrity. These metrics were previously only computed in Isolation Forest fallback, enabling IP Stability & Diversity chart for baseline method.
+- **2026-09-15 14:15:00** — `src/chk_a/orchestrator.py` — Added: `_send_missing_daily_report()` method to check and generate yesterday's daily report on service startup if missing. Called in `run()` after task initialization. Checks `output_dir` for yesterday's report directory; if absent, generates report using `reference_date=yesterday 23:59:59` and sends to Telegram with same format as scheduled 06:00 report.
 
 ### Security
 - **2026-09-15 09:45:00** — Baseline-based integrity prevents false positive anomalies during mass resolver failures. Isolation Forest flagged the only working resolver as "anomaly" when 6/7 resolvers failed identically. Baseline scoring evaluates each resolver independently against its learned IP baseline.

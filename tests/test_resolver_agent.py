@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import asyncio
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import dns.exception
 import dns.resolver
@@ -36,8 +36,8 @@ def _make_agent(resolvers, **kwargs) -> ResolverAgent:
 @pytest.fixture
 def two_resolvers() -> list[ResolverConfig]:
     return [
-        ResolverConfig(name="r1", address="8.8.8.8"),
-        ResolverConfig(name="r2", address="1.1.1.1"),
+        ResolverConfig(name="r1", address="8.8.8.8:53"),
+        ResolverConfig(name="r2", address="1.1.1.1:53"),
     ]
 
 
@@ -95,6 +95,12 @@ def test_doh_resolver_is_marker():
     cfg = ResolverConfig(name="doh", address="https://dns.google/dns-query")
     agent = _make_agent([cfg])
     assert "doh" in agent._doh_names
+
+
+def test_dot_resolver_is_marker():
+    cfg = ResolverConfig(name="dot", address="tls://dns.google:853")
+    agent = _make_agent([cfg])
+    assert "dot" in agent._dot_names
 
 
 # --------------------------------------------------------------------------- #
@@ -213,14 +219,46 @@ async def test_check_fqdn_unexpected_exception(two_resolvers):
         assert r.error.startswith("UNEXPECTED:")
 
 
-@pytest.mark.asyncio
-async def test_doh_returns_not_supported():
-    cfg = [ResolverConfig(name="doh", address="https://dns.google/dns-query")]
+@ pytest.mark.asyncio
+async def test_dot_resolver_resolves():
+    """DoT resolvers query via dnspython DoTNameserver and return results."""
+    cfg = [ResolverConfig(name="dot", address="tls://dns.google:853")]
     agent = _make_agent(cfg)
+
+    # Build a mock response
+    class MockRData:
+        def __init__(self, ip: str) -> None:
+            self._ip = ip
+            self.rdtype = 1  # dns.rdatatype.A = 1
+        def __str__(self) -> str:
+            return self._ip
+
+    class MockRRset:
+        def __init__(self, ip: str):
+            self._data = [MockRData(ip)]
+        def __iter__(self):
+            return iter(self._data)
+
+    class MockResponse:
+        def __init__(self):
+            self.answer = [MockRRset("1.2.3.4")]
+
+    mock_resp = MockResponse()
+
+    # Mock the async_query method
+    from unittest.mock import MagicMock
+    mock_nameserver = MagicMock()
+    mock_nameserver.async_query = AsyncMock(return_value=mock_resp)
+
+    # Replace the nameserver directly (patching _build_dot_nameserver doesn't work
+    # because it's called during __init__ before we can patch it)
+    agent._dot_nameservers["dot"] = mock_nameserver
+
     results = await agent.check_fqdn("example.com")
+
     assert len(results) == 1
-    assert results[0].success is False
-    assert results[0].error == "DOH_NOT_SUPPORTED"
+    assert results[0].success is True
+    assert results[0].ips == ["1.2.3.4"]
 
 
 # --------------------------------------------------------------------------- #
@@ -228,7 +266,7 @@ async def test_doh_returns_not_supported():
 # --------------------------------------------------------------------------- #
 @pytest.mark.asyncio
 async def test_concurrency_limited_by_semaphore():
-    resolvers = [ResolverConfig(name=f"r{i}", address=f"10.0.0.{i}") for i in range(6)]
+    resolvers = [ResolverConfig(name=f"r{i}", address=f"10.0.0.{i}:53") for i in range(6)]
     current = 0
     max_seen = 0
     lock = asyncio.Lock()
@@ -257,12 +295,12 @@ async def test_concurrency_limited_by_semaphore():
 @pytest.mark.asyncio
 async def test_one_failing_resolver_does_not_block_others():
     resolvers = [
-        ResolverConfig(name="good", address="8.8.8.8"),
-        ResolverConfig(name="bad", address="1.1.1.1"),
+        ResolverConfig(name="good", address="8.8.8.8:53"),
+        ResolverConfig(name="bad", address="1.1.1.1:53"),
     ]
     answer = [FakeRData("9.9.9.9")]
 
-    def fake_build_resolver(self, cfg):
+    def fake_build_resolver(self, cfg, default_timeout_ms=2000):
         inst = AsyncMock()
         if cfg.name == "good":
             inst.resolve.return_value = answer

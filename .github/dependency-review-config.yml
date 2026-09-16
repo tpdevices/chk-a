@@ -1,0 +1,22 @@
+# Dependency Review Configuration
+# https://github.com/actions/dependency-review-action
+
+# Fail on vulnerabilities of this severity or higher
+# Options: low, moderate, high, critical
+fail-on-severity: moderate
+
+# Allow specific vulnerabilities (e.g., false positives, accepted risks)
+# allow-ghsas:
+#   - GHSA-xxxx-xxxx-xxxx
+
+# License policies (optional)
+# licenses:
+#   allow:
+#     - MIT
+#     - Apache-2.0
+#     - BSD-3-Clause
+#   deny:
+#     - GPL-3.0
+
+# Scope (optional): check only production dependencies
+# scope: "production"

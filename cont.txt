@@ -1,0 +1,1 @@
+Resume the live session with: hermes --resume 20260911_093110_e5a1c7

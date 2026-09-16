@@ -32,19 +32,25 @@ def validate(config: AppConfig) -> list[str]:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="chk-a validate-config", description="Validate chk-a config")
+    parser = argparse.ArgumentParser(
+        prog="chk-a validate-config", description="Validate chk-a config"
+    )
     parser.add_argument(
-        "-c", "--config",
+        "-c",
+        "--config",
         dest="config_path",
         metavar="PATH",
-        help="Path to config YAML (default: auto-detect /etc/chk-a/config.yaml, config/settings.yaml, CHK_A_CONFIG)"
+        help=(
+            "Path to config YAML (default: auto-detect /etc/chk-a/config.yaml, "
+            "config/settings.yaml, CHK_A_CONFIG)"
+        ),
     )
     return parser
 
 
 def main(args: list[str] | None = None) -> int:
     """Load and validate configuration; return a process exit code.
-    
+
     Args:
         args: Optional list of command-line arguments (for testing).
               If None, uses sys.argv.

@@ -38,9 +38,15 @@ if ! id "${APP_USER}" >/dev/null 2>&1; then
         --gid "${APP_GROUP}" --comment "chk-a DNS monitor" "${APP_USER}"
 fi
 
+# 1b. Create home directory for matplotlib config (fixes MPLCONFIGDIR warning).
+echo "==> Creating home directory for ${APP_USER}"
+mkdir -p "/home/${APP_USER}/.config/matplotlib"
+chown -R "${APP_USER}:${APP_GROUP}" "/home/${APP_USER}"
+
 # 2. Directories.
 echo "==> Creating directories"
 mkdir -p "${INSTALL_DIR}" "${ETC_DIR}" "${LOG_DIR}" "${LIB_DIR}"
+mkdir -p "${LIB_DIR}/matplotlib"
 
 # 3. Copy project into the install dir (preserve provenance for -e install).
 echo "==> Copying project files to ${INSTALL_DIR}"
@@ -81,7 +87,10 @@ cp -f "${LOGROTATE_SRC}" "${LOGROTATE_DST}"
 echo "==> Fixing ownership"
 chown -R "${APP_USER}:${APP_GROUP}" "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
 chmod 0750 "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
-chmod 0640 "${ETC_DIR}/env" "${ETC_DIR}/config.yaml" 2>/dev/null || true
+# SEC-017: Config file permissions - root owner, chk-a group, 600 for secrets
+chown root:"${APP_GROUP}" "${ETC_DIR}/config.yaml" "${ETC_DIR}/env" 2>/dev/null || true
+chmod 0640 "${ETC_DIR}/config.yaml" 2>/dev/null || true
+chmod 0600 "${ETC_DIR}/env" 2>/dev/null || true
 
 # 8. Enable + start.
 echo "==> Reloading systemd and enabling service"

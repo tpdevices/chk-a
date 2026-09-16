@@ -70,6 +70,8 @@ def setup_logger(
     log_file: str | None = None,
     max_size_mb: int = 50,
     backup_count: int = 10,
+    file_mode: int = 0o640,
+    dir_mode: int = 0o750,
 ) -> logging.Logger:
     """Configure and return the named logger.
 
@@ -90,12 +92,14 @@ def setup_logger(
     if log_file:
         log_path = Path(log_file)
         log_dir = log_path.parent
-        log_dir.mkdir(parents=True, exist_ok=True)
-        
+        log_dir.mkdir(parents=True, exist_ok=True, mode=dir_mode)
+
         # If running as root and log dir is /var/log/chk-a, fix ownership
         if os.geteuid() == 0 and log_dir == Path("/var/log/chk-a"):
             try:
-                import pwd, grp
+                import pwd
+                import grp
+
                 uid = pwd.getpwnam("chk-a").pw_uid
                 gid = grp.getgrnam("chk-a").gr_gid
                 os.chown(log_dir, uid, gid)
@@ -103,7 +107,13 @@ def setup_logger(
                     os.chown(log_path, uid, gid)
             except (KeyError, PermissionError):
                 pass  # User/group doesn't exist or no permission
-        
+        else:
+            # Set directory permissions
+            try:
+                os.chmod(log_dir, dir_mode)
+            except (OSError, PermissionError):
+                pass
+
         fh = RotatingFileHandler(
             log_file,
             maxBytes=max_size_mb * 1024 * 1024,
@@ -113,6 +123,12 @@ def setup_logger(
         fh.setFormatter(formatter)
         logger.addHandler(fh)
 
+        # Set file permissions
+        try:
+            os.chmod(log_file, file_mode)
+        except (OSError, PermissionError):
+            pass
+
     return logger
 
 
@@ -121,10 +137,10 @@ __all__ = ["JSONFormatter", "setup_logger", "write_day_separator"]
 
 def write_day_separator(log_file: str) -> bool:
     """Write a day separator line to a log file.
-    
+
     Args:
         log_file: Path to the log file.
-        
+
     Returns:
         True if written successfully, False otherwise.
     """

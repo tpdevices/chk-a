@@ -32,13 +32,18 @@ from .validate_config import validate
 
 def build_agents(config: AppConfig, logger: Any) -> dict[str, Any]:
     """Construct and wire the four agents plus their dependencies."""
-    resolver = ResolverAgent(config.resolvers)
+    resolver = ResolverAgent(
+        config.resolvers,
+        max_concurrent=config.resolver_agent.max_concurrent,
+        default_timeout_ms=config.resolver_agent.default_timeout_ms,
+    )
     # Consensus reuses the resolver health EMA so flaky resolvers are down-weighted.
     consensus = ConsensusAgent(config.resolvers, health=resolver.health)
     store = BaselineStore(config.baseline_store_path)
     ml = MLAgent(config.ml, store)
     telegram = TelegramClient(config.alert.telegram_bot_token)
     import platform
+
     hostname = platform.node()
     alert = AlertAgent(
         config.alert,
@@ -131,7 +136,7 @@ async def cmd_test_daily_image(config: AppConfig, logger: Any) -> int:
         )
         await telegram.close()
         return 1
-    
+
     # Resolve image path
     img_path = Path(config.alert.daily_image_path)
     if not img_path.is_absolute():
@@ -140,16 +145,16 @@ async def cmd_test_daily_image(config: AppConfig, logger: Any) -> int:
             if candidate.is_file():
                 img_path = candidate
                 break
-    
+
     if not img_path.is_file():
         print(f"TELEGRAM ERROR: image not found at {img_path}", file=sys.stderr)
         await telegram.close()
         return 1
-    
+
     # Add hostname to caption
     hostname = config.hostname
     caption = f"{config.alert.daily_image_caption}\\n🖥️ Host: <code>{hostname}</code>"
-    
+
     ok = await telegram.send_photo(
         chat_id=chat_id,
         photo_path=img_path,
@@ -172,9 +177,12 @@ async def cmd_mtr(config: AppConfig, logger: Any, args: argparse.Namespace) -> i
     count = args.count
     interval_ms = args.interval
     timeout_sec = args.timeout
+    mode = args.mode
+    port = args.port
 
     # Create a dummy resolver config for the target
     from .models.schemas import ResolverConfig
+
     dummy_resolver = ResolverConfig(name="target", address=target)
 
     agent = MTRAgent(
@@ -184,6 +192,8 @@ async def cmd_mtr(config: AppConfig, logger: Any, args: argparse.Namespace) -> i
         max_hops=max_hops,
         count=count,
         interval_ms=interval_ms,
+        mode=mode,
+        port=port,
     )
     result = await agent.trace_resolver("target")
 
@@ -194,10 +204,14 @@ async def cmd_mtr(config: AppConfig, logger: Any, args: argparse.Namespace) -> i
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="chk-a", description="chk-a DNS anomaly monitor")
     parser.add_argument(
-        "-c", "--config",
+        "-c",
+        "--config",
         dest="config_path",
         metavar="PATH",
-        help="Path to config YAML (default: auto-detect /etc/chk-a/config.yaml, config/settings.yaml, CHK_A_CONFIG)"
+        help=(
+            "Path to config YAML (default: auto-detect /etc/chk-a/config.yaml, "
+            "config/settings.yaml, CHK_A_CONFIG)"
+        ),
     )
     sub = parser.add_subparsers(dest="command")
 
@@ -206,12 +220,26 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("show-baseline", help="Print learned ML baselines")
     sub.add_parser("test-telegram", help="Send a Telegram test message")
     sub.add_parser("test-daily-image", help="Send the daily image via Telegram")
-    mtr_parser = sub.add_parser("mtr", help="Run MTR to a target resolver with statistical aggregation")
+    mtr_parser = sub.add_parser(
+        "mtr", help="Run MTR to a target resolver with statistical aggregation"
+    )
     mtr_parser.add_argument("target", help="Target resolver IP or hostname")
     mtr_parser.add_argument("--max-hops", type=int, default=30, help="Maximum hops (default: 30)")
-    mtr_parser.add_argument("--count", type=int, default=10, help="Number of pings per hop (default: 10)")
-    mtr_parser.add_argument("--interval", type=int, default=1000, help="Interval between pings in ms (default: 1000)")
-    mtr_parser.add_argument("--timeout", type=int, default=10, help="Timeout per ping in seconds (default: 10)")
+    mtr_parser.add_argument(
+        "--count", type=int, default=10, help="Number of pings per hop (default: 10)"
+    )
+    mtr_parser.add_argument(
+        "--interval", type=int, default=1000, help="Interval between pings in ms (default: 1000)"
+    )
+    mtr_parser.add_argument(
+        "--timeout", type=int, default=10, help="Timeout per ping in seconds (default: 10)"
+    )
+    mtr_parser.add_argument(
+        "--mode", choices=["icmp", "tcp", "udp"], default="icmp", help="MTR probe mode (default: icmp)"
+    )
+    mtr_parser.add_argument(
+        "--port", type=int, help="Destination port for TCP/UDP mode (required for tcp/udp)"
+    )
 
     # Default (no subcommand) runs the daemon.
     return parser
@@ -227,6 +255,8 @@ def main() -> int:
         "chk_a",
         level=config.logging.level,
         log_file=config.logging.file,
+        file_mode=config.logging.file_mode,
+        dir_mode=config.logging.dir_mode,
     )
 
     if args.command == "validate-config":

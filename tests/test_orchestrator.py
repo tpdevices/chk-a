@@ -8,6 +8,7 @@ triggering, outlier triggering, and graceful shutdown.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -19,7 +20,7 @@ from chk_a.models.schemas import (
     FQDNConfig,
     ResolverConfig,
 )
-from chk_a.orchestrator import Orchestrator
+from chk_a.orchestrator import Orchestrator, ActiveAnomaly
 
 
 def _make_config() -> AppConfig:
@@ -148,3 +149,68 @@ async def test_resolve_all_returns_per_fqdn_results():
     out = await orch._resolve_all(["example.com"])
     assert set(out.keys()) == {"example.com"}
     assert isinstance(out["example.com"], list)
+
+
+@pytest.mark.asyncio
+async def test_recovery_alert_sent_when_anomaly_resolves():
+    """When a tracked baseline_deviation anomaly resolves, a recovery alert should be sent."""
+    orch = _make_orch(score=0.9)  # Start with anomaly
+    await orch.run_cycle()
+    # An anomaly alert should have been sent and tracked
+    assert orch.alert.maybe_alert.await_count == 1
+    assert "example.com|baseline_deviation" in orch._active_anomalies
+
+    # Now change score to below threshold (recovered)
+    orch.ml.score.return_value = 0.1
+    await orch.run_cycle()
+    # A recovery alert should now have been sent (2nd maybe_alert call)
+    assert orch.alert.maybe_alert.await_count == 2
+    recovery_event = orch.alert.maybe_alert.call_args.args[0]
+    assert recovery_event.type == "recovery"
+    assert recovery_event.details["original_anomaly_type"] == "baseline_deviation"
+    assert "duration_seconds" in recovery_event.details
+    assert "duration_human" in recovery_event.details
+    assert recovery_event.details["ml_baseline_stability"] >= 0.0
+
+
+@pytest.mark.asyncio
+async def test_recovery_alert_not_sent_when_anomaly_persists():
+    """When anomaly persists, no recovery alert should be sent."""
+    orch = _make_orch(score=0.9)
+    await orch.run_cycle()
+    assert orch.alert.maybe_alert.await_count == 1
+    assert "example.com|baseline_deviation" in orch._active_anomalies
+
+    # Anomaly still above threshold
+    orch.ml.score.return_value = 0.85
+    await orch.run_cycle()
+    assert orch.alert.maybe_alert.await_count == 2  # baseline_deviation alert, not recovery
+    # Still tracking the anomaly
+    assert "example.com|baseline_deviation" in orch._active_anomalies
+
+
+@pytest.mark.asyncio
+async def test_active_anomaly_key_format():
+    """Test the anomaly key generation format."""
+    orch = _make_orch()
+    key = orch._anomaly_key("test.com", "baseline_deviation")
+    assert key == "test.com|baseline_deviation"
+
+
+@pytest.mark.asyncio
+async def test_duration_human_format() -> None:
+    """Test the ActiveAnomaly duration formatting."""
+    orch = _make_orch()
+    start_time = datetime.now() - timedelta(hours=2, minutes=30, seconds=15)
+    anomaly = ActiveAnomaly(
+        fqdn="test.com",
+        anomaly_type="baseline_deviation",
+        start_time=start_time,
+        details={},
+        resolver_name="test",
+        event_id="testhost-20260909-143022",
+    )
+    duration = anomaly.duration_human()
+    assert "ชม." in duration or "นาที" in duration or "วินาที" in duration
+    duration_sec = anomaly.duration_seconds()
+    assert duration_sec >= 9000.0  # 2h30m = 9000s

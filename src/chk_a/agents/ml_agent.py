@@ -9,7 +9,8 @@ the normalized baseline using a total-variation style distance.
 from __future__ import annotations
 
 from collections import Counter
-from typing import Iterable
+from datetime import datetime
+from typing import Any, Iterable
 
 from ..models.schemas import ConsensusResult, MLConfig
 from ..storage.baseline_store import BaselineStore
@@ -18,6 +19,9 @@ from ..utils.logger import setup_logger
 
 class MLAgent:
     """Incremental baseline learner and anomaly scorer for one or more FQDNs."""
+
+    # Use a prefix that cannot collide with real FQDNs (DNS labels cannot contain ':')
+    _PATH_PREFIX = "chk-a:path:"
 
     def __init__(
         self,
@@ -128,6 +132,82 @@ class MLAgent:
         if total <= 0.0:
             return {}
         return {ip: v / total for ip, v in counter.items()}
+
+    # -- path learning -------------------------------------------------------
+    def learn_path_pattern(self, fqdn: str, resolver_name: str, mtr_data: dict[str, Any]) -> None:
+        """Learn path pattern from MTR trace for anomaly correlation.
+
+        Stores hop loss/latency patterns keyed by (fqdn, resolver, last_hop_ip)
+        to build a path behavior baseline for anomaly attribution.
+        """
+        if not mtr_data.get("success") or not mtr_data.get("hops"):
+            return
+
+        last_hop_ip = mtr_data.get("last_hop_ip")
+        if not last_hop_ip:
+            return
+
+        # Build path signature
+        path_key = f"{fqdn}|{resolver_name}|{last_hop_ip}"
+
+        # Extract path features
+        features = {
+            "hop_count": mtr_data.get("hop_count", 0),
+            "last_hop_ip": last_hop_ip,
+            "last_hop_loss_pct": mtr_data.get("last_hop_loss_pct", 0),
+            "problem_hop_count": len(mtr_data.get("problem_hops", [])),
+            "max_loss_pct": max((h.get("loss_pct", 0) for h in mtr_data.get("hops", [])), default=0),
+            "max_avg_ms": max((h.get("avg_ms", 0) for h in mtr_data.get("hops", [])), default=0),
+            "anomaly_type": mtr_data.get("anomaly_type", "unknown"),
+            "timestamp": datetime.now().isoformat(),
+        }
+
+        # Store in baseline store as path pattern
+        # We reuse the baseline store with a special prefix
+        path_fqdn = f"{self._PATH_PREFIX}{path_key}"
+        counter = self._counters.setdefault(path_fqdn, Counter())
+
+        # Decay old path data
+        decay = self.config.baseline_decay
+        if decay > 0.0:
+            for ip in list(counter.keys()):
+                counter[ip] *= 1.0 - decay
+                if counter[ip] <= 1e-9:
+                    del counter[ip]
+
+        # Reinforce the path pattern (using last_hop_ip as the "IP")
+        counter[last_hop_ip] += 1.0
+        self._samples[path_fqdn] = self._samples.get(path_fqdn, 0) + 1
+
+        # Persist
+        self.storage.set_raw(path_fqdn, dict(counter), self._samples[path_fqdn])
+        self.storage.save()
+
+        self.logger.debug("Learned path pattern for %s: last_hop=%s, problems=%d",
+                         path_key, last_hop_ip, features["problem_hop_count"])
+
+    def score_path_anomaly(self, fqdn: str, resolver_name: str, last_hop_ip: str) -> float:
+        """Score how anomalous a path is based on learned patterns.
+
+        Returns 0-1 anomaly score for the given path signature.
+        """
+        path_key = f"{fqdn}|{resolver_name}|{last_hop_ip}"
+        path_fqdn = f"{self._PATH_PREFIX}{path_key}"
+
+        n = self._samples.get(path_fqdn, 0)
+        if n < self.config.min_samples_before_alert:
+            return 0.0
+
+        baseline = self._normalize(self._counters.get(path_fqdn, Counter()))
+        if not baseline:
+            return 0.0
+
+        # Check if this last_hop_ip is in the baseline
+        observed = {last_hop_ip}
+        observed_probs = {ip: 1.0 for ip in observed}
+        union = set(baseline) | observed
+        overlap = sum(min(baseline.get(ip, 0.0), observed_probs.get(ip, 0.0)) for ip in union)
+        return 1.0 - overlap
 
 
 __all__ = ["MLAgent"]

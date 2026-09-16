@@ -66,6 +66,7 @@ if [ "${ASSUME_YES}" -ne 1 ]; then
     echo "  - config dir   : ${CONFIG_DIR}"
     echo "  - state dir    : ${STATE_DIR}"
     echo "  - log dir      : ${LOG_DIR}"
+    echo "  - home dir     : /home/${APP_USER}"
     [ "${KEEP_USER}" -ne 1 ] && echo "  - service user : ${APP_USER} (system account)"
     echo
     read -r -p "Continue? [y/N] " reply
@@ -110,6 +111,15 @@ for d in "${INSTALL_DIR}" "${CONFIG_DIR}" "${STATE_DIR}" "${LOG_DIR}"; do
         log_info "Already absent: ${d}"
     fi
 done
+
+# ---- 3b. remove home directory for matplotlib config ----
+HOME_DIR="/home/${APP_USER}"
+if [ -e "${HOME_DIR}" ]; then
+    log_info "Removing home directory ${HOME_DIR}"
+    rm -rf "${HOME_DIR}"
+else
+    log_info "Already absent: ${HOME_DIR}"
+fi
 
 # ---- 4. remove the service account (created by install.sh) ----
 if [ "${KEEP_USER}" -ne 1 ]; then

@@ -189,9 +189,9 @@ If user says "ย้อนกลับ" or "ไม่ชอบ" or "wrong":
 
 | Item | Value |
 |------|-------|
-| Project folder | `/home/ipds/Hermes-Prj/doh-benchmark` |
+| Project folder | `/home/ipds/Hermes-Prj/chk-a` |
 | Dev machine | Ubuntu on WSL, IP `172.20.14.199` |
-| Test machine | Ubuntu on WSL, IP `172.20.14.199` |
+| Test machine | Ubuntu on Virtual Box, IP `192.168.56.122` |
 | All project files | MUST live under `/home/ipds/Hermes-Prj/chk-a` |
 
 > Any file outside this project folder is OUT OF SCOPE.
@@ -392,4 +392,43 @@ rsync -av html/ /var/www/chk-a/
 - "It's just one test" → ROLLBACK
 - "The test was wrong anyway" → FIX THE TEST FIRST, then re-apply fix
 - "We'll fix it later" → ROLLBACK NOW
+
+---
+
+## 📋 CHANGELOG MANDATORY UPDATE RULE
+**Every file modification MUST be recorded in `CHANGELOG.md` immediately after the change.**
+
+### Required Information for Each Entry:
+- **Date and Time** — Local timezone (Asia/Bangkok +07), format: `YYYY-MM-DD HH:MM:SS`
+- **File Path** — Relative to project root (e.g., `src/agents/resolver_agent.py`)
+- **Change Type** — One of: `Added`, `Changed`, `Fixed`, `Removed`, `Security`
+- **Description** — Brief summary of what changed and why
+
+### Entry Format:
+```markdown
+- **YYYY-MM-DD HH:MM:SS** — `path/to/file.ext` — Type: Description
+```
+
+### When to Log:
+- ✅ Creating a new file
+- ✅ Modifying an existing file (code, config, docs, tests, scripts)
+- ✅ Deleting a file
+- ✅ Moving/renaming a file (log as Removed + Added)
+- ✅ Any change to `HERMES_RULES.md` itself
+
+### Where to Add:
+- Under the `[Unreleased]` section at the top of `CHANGELOG.md`
+- If `[Unreleased]` doesn't exist, create it
+
+### Example:
+```markdown
+## [Unreleased]
+
+### Changed
+- **2026-09-07 10:30:45** — `src/agents/resolver_agent.py` — Fixed: DNS timeout handling for IPv6 addresses
+- **2026-09-07 10:31:12** — `config/config.yaml` — Changed: Increased resolver timeout from 5s to 10s
+```
+
+### Rule:
+> "No commit without CHANGELOG entry — every change must be traceable."
 

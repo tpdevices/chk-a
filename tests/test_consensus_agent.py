@@ -183,8 +183,10 @@ def test_failed_results_excluded_from_vote():
     ]
     res = a.aggregate("example.com", results)
     assert res.majority_ips == ["1.1.1.1"]
-    # r2 failed -> not in reputation agreement
-    assert res.resolver_reputation["r2"] == pytest.approx(1.0 - 0.05)
+    # r2 failed -> should NOT affect reputation (no change)
+    assert res.resolver_reputation["r2"] == 1.0
+    assert res.resolver_reputation["r1"] == 1.0
+    assert res.resolver_reputation["r3"] == 1.0
 
 
 def test_all_failed_yields_empty_consensus():

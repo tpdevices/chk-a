@@ -13,11 +13,15 @@ Scenarios required by the spec: gradual drift, sudden change, new IP, cold start
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from chk_a.agents.ml_agent import MLAgent
 from chk_a.models.schemas import ConsensusResult, MLConfig
 from chk_a.storage.baseline_store import BaselineStore
+
+# Allow tests to use temporary directories (set before BaselineStore import)
+os.environ["CHK_A_BASELINE_DIR"] = "/tmp"
 
 
 def _consensus(fqdn: str, ips: list[str]) -> ConsensusResult:

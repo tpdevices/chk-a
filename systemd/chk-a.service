@@ -9,20 +9,26 @@ User=chk-a
 Group=chk-a
 WorkingDirectory=/opt/chk-a
 ExecStartPre=/opt/chk-a/.venv/bin/python -m chk_a.validate_config
+ExecStartPre=/opt/chk-a/.venv/bin/python /opt/chk-a/scripts/systemd_wrapper.py start
 ExecStart=/opt/chk-a/.venv/bin/python -m chk_a.main
+ExecStop=/opt/chk-a/.venv/bin/python /opt/chk-a/scripts/systemd_wrapper.py stop
 Restart=on-failure
 RestartSec=10
 WatchdogSec=60
 StandardOutput=journal
 StandardError=journal
 EnvironmentFile=/etc/chk-a/env
+Environment=HOME=/var/lib/chk-a
+Environment=MPLCONFIGDIR=/var/lib/chk-a/matplotlib
 # Hardening
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=strict
 ProtectHome=yes
 ReadWritePaths=/var/log/chk-a /var/lib/chk-a
-CapabilityBoundingSet=
+# MTR ICMP mode requires CAP_NET_RAW for raw socket access
+CapabilityBoundingSet=CAP_NET_RAW
+AmbientCapabilities=CAP_NET_RAW
 
 [Install]
 WantedBy=multi-user.target

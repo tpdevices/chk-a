@@ -123,11 +123,14 @@ class ConsensusAgent:
                     outliers.append(r)
 
         # Reputation EMA: agreement = 1 if any returned IP is in the majority.
+        # Only update reputation for SUCCESSFUL results; failed/empty results
+        # should not affect reputation (they are not "disagreeing", they just failed).
         majority_set = set(majority_ips)
         for r in results:
-            agreement = 0.0
-            if r.success and r.ips and (set(r.ips) & majority_set):
-                agreement = 1.0
+            if not r.success or not r.ips:
+                # Skip failed/empty results - no reputation change
+                continue
+            agreement = 1.0 if (set(r.ips) & majority_set) else 0.0
             name = r.resolver
             if name in self.reputation:
                 prev = self.reputation[name]

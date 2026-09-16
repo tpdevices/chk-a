@@ -1,128 +1,276 @@
-# chk-a — รายงานสถานะ
+# สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-08-31T15:40:00+07:00 (2026-08-31 08:40:00 UTC)
-**โครงการ:** chk-a — ตัวเฝ้าระวังการเปลี่ยนแปลง DNS A-record แบบอัตโนมัติ
-**ตำแหน่ง:** /home/ipds/Hermes-Prj/chk-a
+**อัปเดตล่าสุด:** 2026-09-15 14:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
-## 1. ภาพรวมโครงการ (Project Overview)
+## 1. ภาพรวมโครงการ
 
-chk-a คือตัวเฝ้าระวังการเปลี่ยนแปลง DNS A-record แบบอัตโนมัติ ติดตามชุด FQDN ที่กำหนด
-แก้ไข A-record ผ่าน DNS resolver หลายตัวที่ตั้งค่าได้ สร้าง baseline ด้วย machine learning
-(ชุด IP ปกติ) ตรวจจับความผิดปกติ (IP เปลี่ยนจากที่เรียนรู้ หรือต่างจาก consensus ของ resolver
-กลุ่มใหญ่) และแจ้งเตือนทาง Telegram ทำงานเป็น systemd service บน Ubuntu 24.04 LTS ขึ้นไป
-รอบการตรวจสอบสุ่มไม่เกิน 3 นาที
+**chk-a** เป็นระบบตรวจสอบความผิดปกติของ DNS A-record แบบ Multi-Agent เขียนด้วย Python ระบบจะสอบถาม DNS resolver หลายตัวพร้อมกันสำหรับ FQDN ที่กำหนด สร้างคะแนนเสียงถ่วงน้ำหนัก (Weighted Consensus) เรียนรู้ Baseline แบบ Online Exponential Decay ตรวจจับ Anomaly และส่ง Alert ผ่าน Telegram พร้อมรายงานรายวัน/รายเดือน (ภาษาไทย/อังกฤษ + กราฟ + PDF)
 
-ข้อจำกัดสำคัญจากผู้ใช้:
-- สถาปัตยกรรมแบบ multi-agent (Resolver → Consensus → ML → Alert → Orchestrator)
-- **ห้ามใช้ Prometheus หรือโปรแกรม monitor อื่นใด** (ลบออกทั้งหมดอย่างเข้มงวด)
-- ไม่ใช้ ML dependency หนัก (ใช้ custom EMA + entropy; ไม่มี torch/sklearn/river/redis/prometheus_client)
-- ใช้ค่า hash ตรวจสอบว่าเป็นไฟล์เดียวกัน
-- สื่อสารภาษาไทย; บุคลิก "น้องน้ำฟ้า"
-- Model provider: nvidia
-- เครื่อง dev: Ubuntu บน WSL เครือข่าย 172.20.14.199/20
+**ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)
+**พัฒนา:** WSL Ubuntu (172.20.14.199/20)
+**เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)
+**Service User:** `chk-a` (uid=999)
+**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)
+**Timestamp ทั้งหมด:** เวลาท้องถิ่น Asia/Bangkok (+07), รูปแบบ `YYYY-MM-DD HH:MM:SS`
 
-## 2. สถาปัตยกรรม (Architecture)
+---
+
+## 2. สถาปัตยกรรม
 
 ```
-Orchestrator (loop หลัก, jitter 30–180 วินาที, /healthz, sd_notify watchdog)
-   │
-   ├─ ResolverAgent   check_fqdn(fqdn) -> list[CheckResult]   (ต่อ resolver)
-   ├─ ConsensusAgent  aggregate(fqdn, results, min_consensus) -> ConsensusResult
-   ├─ MLAgent         learn(consensus) / score(ips, fqdn) -> float / get_baseline
-   │                   (BaselineStore: JSON แบบ atomic; คง sample_count / all_fqdns ไว้)
-   ├─ AlertAgent      maybe_alert(event) -> bool  (async)
-   │     └─ TelegramClient  send_message(chat_id, text)  (aiohttp + tenacity 3 รอบ)
-   └─ structured JSON log พร้อม correlation_id (uuid4 ต่อรอบ)
+ResolverAgent → ConsensusAgent → MLAgent → AlertAgent → Telegram
+     │              │               │            │
+     ▼              ▼               ▼            ▼
+CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
+               (entropy score)   (EMA decay)   (dedup+ratelimit)
+                    │               │            │
+                    └───────────────┴────────────┘
+                                    │
+                                    ▼
+                           Orchestrator (scheduler, healthz, shutdown)
+                                    │
+                    ┌───────────────┼───────────────┐
+                    ▼               ▼               ▼
+               MTRAgent       Reporting         BaselineStore
+               (MTR paths)    (graphs/PDF/      (atomic JSON)
+                              Telegram/email)
 ```
 
-โครงสร้าง source (`src/chk_a/`):
-- `orchestrator.py` — loop, jitter, `/healthz`, watchdog (ไม่มี `/metrics`)
-- `agents/resolver_agent.py` — แก้ไข DNS ต่อ resolver
-- `agents/consensus_agent.py` — รวมเสียงข้างมาก/consensus
-- `agents/ml_agent.py` — EMA baseline + entropy scoring
-- `agents/alert_agent.py` — ตัดสินใจเมื่อใดควรแจ้งเตือน
-- `storage/baseline_store.py` — JSON baseline store แบบ atomic
-- `utils/telegram_client.py` — ส่งข้อความผ่าน Telegram Bot API
-- `utils/systemd_notify.py` — sd_notify (ปลอดภัยเมื่อไม่อยู่ใต้ systemd)
-- `utils/context.py` — correlation_id
-- `utils/logger.py` — structured JSON logger
-- `config/loader.py` — AppConfig (fqdns, resolvers, ml, alert, scheduler, logging, baseline_store_path, hostname)
-- `models/schemas.py` — Pydantic v2 models (ลบ MetricsConfig แล้ว)
-- `main.py` — CLI: `validate-config | check-once | show-baseline | test-telegram | test-daily-image`
+**Systemd Services (4 ตัว):**
+- `chk-a-resolver` — ResolverAgent
+- `chk-a-consensus` — ConsensusAgent + MLAgent
+- `chk-a-alert` — AlertAgent + Orchestrator
+- `chk-a-mtr` — MTRAgent
+
+**การแจ้งสถานะ Service (2026-09-12):**
+- `scripts/systemd_wrapper.py` — Wrapper สคริปต์ที่เรียกผ่าน ExecStartPre (start) และ ExecStop (stop)
+- `scripts/systemd_notify.py` — Notifier ตรงสำหรับ start/stop/restart/fail/error
+- ติดตามสถานะผ่าน `/opt/chk-a/last_state.txt` (แยกแยะ restart กับการเริ่มต้นใหม่)
+- Telegram emojis: 🟢 start, 🔄 restart, 🔴 stop, ❌ fail, ⚠️ error
+- บูรณาการใน `systemd/chk-a.service` ผ่าน ExecStartPre และ ExecStop
+
+---
 
 ## 3. สิ่งที่ทำเสร็จแล้ว
 
-- **Loop 0–7**: ระบบ multi-agent ครบ + ชุดเทสต์ (79 passed)
-- **ลบระบบ metrics/Prometheus ทั้งหมด** อย่างเข้มงวดตาม "ไม่ใช้ prometheus หรือ program monitor อื่น ๆ":
-  - ลบ `src/chk_a/utils/metrics.py` (custom Prometheus renderer)
-  - ลบ `MetricsConfig` จาก `schemas.py`, `loader.py`, และ config 3 ไฟล์
-  - ลบ `/metrics` endpoint จาก `orchestrator.py` (เหลือเฉพาะ `/healthz`)
-  - ลบเทสต์ metrics จาก `test_loop7.py`
-  - อัปเดต README/ARCHITECTURE/RUNBOOK/CONTRIBUTING/`md/loop_engineering_prompt.md`
-  - คง `sample_count()`/`all_fqdns()` ไว้ (ผู้เรียกจริง: CLI `show-baseline` + `_load_state`)
-- **แก้ lint/build**: สร้าง `.flake8` (max-line-length=100), ลบ `[tool.flake8]` ออกจาก `pyproject.toml`
-- **ทดสอบจริงบนเครื่อง — ส่วน A (ไม่ต้อง sudo)**:
-  - `validate-config` OK; `check-once` รันรอบจริงเทียบ DNS จริง; `show-baseline` แสดง baseline ที่เรียนรู้
-  - daemon loop: `/healthz` → `{"status":"ok","shutdown":false}`; รอบรันด้วย correlation_id; เรียนรู้ baseline; SIGTERM → ปิดสะอาด ("Shutdown requested"); baseline บันทึกเป็น JSON ถูกต้อง
-  - `pip install -e .` สำเร็จ; ติดตั้ง console script `chk-a`
-  - `test-telegram` แบบไม่มี token จัดการอย่างสวยงาม (return 1, แจ้งเตือน, ไม่ crash)
-  - `systemd-analyze verify chk-a.service` → ไม่มี error ไวยากรณ์
-  - `pytest` → **79 passed** (เขียว)
-- **สร้าง `uninstall.sh`** + ทดสอบ sandbox (ลบตรงกับที่ `install.sh` สร้าง; ไม่แตะ source)
-- **ยืนยันรองรับ Telegram Channel** (ไม่ต้องแก้โค้ด; ใช้ `chat_id`)
-- **ติดตั้ง systemd จริงบนเครื่องปลายทาง (test-chk-a VM)**: `sudo ./install.sh` + `sudo systemctl start chk-a` — **เสร็จแล้ว**
-- **ตั้งค่า Telegram credentials จริง** — `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` ใน `/etc/chk-a/env` — **เสร็จแล้ว**
-- **ปรับปรุงรูปแบบแจ้งเตือน Telegram (Majority vs Outliers view)**:
-  - เพิ่ม emoji ความรุนแรง: 🔴 CRITICAL / 🟡 WARNING / 🔵 INFO
-  - เพิ่มป้ายประเภท: 📊 Baseline Deviation / 🗳️ Consensus Deviation / 🆕 New IP Detected / 🚫 NXDOMAIN
-  - เพิ่มการจัดกลุ่ม Majority vs Outliers ในข้อความแจ้งเตือน
-  - Hostname แสดงชื่อเครื่อง monitor (เช่น `test-chk-a`) ไใช่ FQDN
-  - แสดงชื่อ resolver ที่ตรวจพบ
-  - Observed IPs แสดง "timeout (no response)" เมื่อว่างเปล่า
-- **Plain text alert log**: `YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: FQDN`
-- **ส่งภาพ Telegram ทุกเที่ยงคืน** พร้อม hostname ใน caption: `🖥️ Host: test-chk-a`
-- **Day separators** ในไฟล์ log ทุกเที่ยงคืน: `=== DAY SEPARATOR: YYYY-MM-DD ===`
-- **Config schema**: เพิ่มฟิลด์ `hostname` ใน `AppConfig` ค่าเริ่มต้น `socket.gethostname()`
+### ระบบหลัก (Core System)
+- ✅ Agent ทั้ง 5 ตัวทำงานและเชื่อมผ่าน `Orchestrator` แล้ว
+- ✅ ระบบ Config: YAML + `${ENV}` substitution, Pydantic validation, auto-tuned `max_concurrent`
+- ✅ Baseline Store ทำงานแบบ Atomic persistence (`os.replace` + `fsync`)
+- ✅ Structured JSONL Logging พร้อม Correlation ID
+- ✅ Systemd Integration (Type=notify, WatchdogSec, ReadWritePaths สำหรับ dedup cache)
+- ✅ Graceful Shutdown (SIGTERM/SIGINT) พร้อมการคงค่า baseline
+
+### รายงาน (Loop 7 — Reporting)
+- ✅ รายงานรายเดือน (วันที่ 1 ทุกเดือน, 06:00 น.)
+- ✅ รายงานรายวัน (06:00 น., lookback 1 วัน) — **แก้แล้ว: Telegram 404 error**
+- ✅ กราฟ 7 ประเภท × 2 ภาษา (EN/TH) = 14 กราฟ + 2 Dashboards = 16 ไฟล์
+  - Availability Bar, Availability Heatmap, Integrity Score, Latency Boxplot, IP Stability, MTR Path, Path Availability
+- ✅ รองรับภาษาไทยผ่าน `_apply_thai_fonts()` พร้อม translation map ครอบคลุมทุกประเภทกราฟ
+- ✅ รายงาน PDF (EN/TH) ผ่าน fpdf2
+- ✅ Telegram batch sending (ปรับ batch size, delay, exponential backoff retry ได้)
+- ✅ ส่งอีเมล (SMTP พร้อม TLS)
+
+### การเชื่อมต่อ Telegram
+- ✅ รูปภาพรายวันตอนเที่ยงคืน พร้อม hostname ใน caption
+- ✅ Day separators ในทุกไฟล์ log ที่เที่ยงคืน
+- ✅ Plain text alert log format: `date time hostname resolver ip event`
+- ✅ Alert Deduplication (หน้าต่าง 30 นาที, cache JSON persistent)
+- ✅ Token Bucket Rate Limiting (ค่าเริ่มต้น 20/ชม.)
+- ✅ Alert แบบ HTML-formatted: มุมมอง Majority vs Outliers, emojis (🔴/🟡/🔵), type labels (📊/🗳️/🆕/🚫)
+
+### การแจ้งเตือน Anomaly/Recovery (2026-09-09)
+- ✅ Event ID format: `{hostname}-YYYYMMDD-HHmmss` สำหรับทั้ง anomaly และ recovery
+- ✅ Anomaly: `img/priority.jpg` + สาเหตุ, last unreachable IP จาก MTR, consensus score
+- ✅ Recovery: `img/ok.jpg` + ระยะเวลาความผิดปกติ (ชม./นาที/วินาที), ML baseline stability, recovery confidence
+- ✅ Event ID ในทั้งคู่เพื่อ correlation
+- ✅ ML logging ลงไฟล์พร้อม start time, end time, duration
+- ✅ **ส่งข้อความ Telegram จริงและยืนยันบน test VM แล้ว**
+
+### การแจ้งสถานะ Service (2026-09-12)
+- ✅ สร้าง `scripts/systemd_wrapper.py` — Wrapper ที่ตรวจจับการ restart ผ่าน state file
+- ✅ สร้าง `scripts/systemd_notify.py` — Notifier ตรงสำหรับเหตุการณ์เริ่มต้น/หยุด/รีสตาร์ท/ล้มเหลว/ข้อผิดพลาด
+- ✅ ปรับปรุง `systemd/chk-a.service` — ExecStartPre (start) และ ExecStop (stop) ใช้ wrapper
+- ✅ State file ที่ `/opt/chk-a/last_state.txt` ติดตามสถานะล่าสุดเพื่อแยกแยะ restart กับการเริ่มต้นใหม่
+- ✅ ยืนยันการแจ้งเตือน Telegram: start, restart, stop ส่งข้อความที่ถูกต้อง
+- ✅ ตรวจจับการรีสตาร์ท: สถานะก่อนหน้าเป็น "running" + การเริ่มต้นใหม่ → ข้อความ "Service Restart"
+- ✅ แก้ไข: ปัญหาสิทธิ์ state file แก้โดย `sudo chown ipds:ipds /opt/chk-a/last_state.txt`
+
+### การตรวจสอบข้อตกลงเวลาท้องถิ่น (2026-09-12)
+- ✅ `ml_insights.py`: `datetime.utcnow()` → `datetime.now()` 4 จุด (cutoff calc + generated_at)
+- ✅ `pdf_generator.py`: ลบคำว่า " UTC" ออกจาก timestamp หัว/ท้าย PDF
+- ✅ `email_sender.py`: ลบคำว่า " UTC" ออกจาก timestamp เนื้อหาอีเมล
+- ✅ ยืนยัน `datetime.now()` ทุกจุดในโปรเจกต์ใช้เวลาท้องถิ่นแล้ว
+- ✅ ทุก timestamp ในโปรเจกต์ใช้เวลาท้องถิ่น Asia/Bangkok (+07) อย่างสม่ำเสมอ
+
+### การทดสอบและการดำเนินงาน
+- ✅ **251/251 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
+- ✅ CLI subcommands: `validate-config`, `check-once`, `show-baseline`, `test-telegram`, `test-daily-image`, `mtr`
+- ✅ Dev↔Test VM sync ผ่าน `rsync -c` (checksum) พร้อม sync กลับทันทีของการแก้ไขบน VM
+- ✅ Test VM: Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds), service รันเป็น `chk-a` (uid=999)
+- ✅ **Dev→Test sync ด้วย path ที่ถูกต้อง** `/home/ipds/Hermes-Prj/chk-a/` บนทั้งสองเครื่องเสร็จสิ้น
+
+### Security Review และการแก้ไข (เสร็จสมบูรณ์ — 2026-09-13)
+- ✅ Security Code Review ครบถ้วน (23 findings: 2 Critical, 5 High, 8 Medium, 5 Low, 3 Info)
+- ✅ **C-01 แก้แล้ว**: AlertAgent token bucket race condition — ป้องกันด้วย `asyncio.Lock`
+- ✅ **C-02 แก้แล้ว**: AlertAgent dedup cache race condition — ป้องกันด้วย `asyncio.Lock`
+- ✅ **H-01 แก้แล้ว**: Orchestrator timezone-naive scheduler — ใช้ `ZoneInfo("Asia/Bangkok")` ทั่วทั้งโค้ด
+- ✅ **H-02 แก้แล้ว**: MTR agent timeout calculation — แก้สูตรให้ถูกต้อง
+- ✅ **H-03 แก้แล้ว**: BaselineStore age key caching — lazy load พร้อม cache
+- ✅ **H-04 แก้แล้ว**: TelegramClient `send_photo` memory — สตรีมแทน `read_bytes()`
+- ✅ **H-05 แก้แล้ว**: Orchestrator batch writes — ใช้ `write()` เดียวต่อรอบ
+- ✅ **M-01 แก้แล้ว**: ResolverAgent DoH support — ทำงานได้แล้ว (เดิมเป็น `NotImplementedError`)
+- ✅ **M-02 แก้แล้ว**: ConsensusAgent reputation สำหรับผลลัพธ์ที่ล้มเหลว — ข้าม failed/empty results
+- ✅ **M-03 แก้แล้ว**: MLAgent path learning key collision — prefix `chk-a:path:` (ไม่ชน DNS)
+- ✅ **M-04 แก้แล้ว**: Parallel MTR สำหรับ outliers — `asyncio.gather`
+- ✅ **M-05 แก้แล้ว**: CircuitBreaker thread-safety + concurrent sending
+- ✅ **M-06 แก้แล้ว**: Health server port/address consistency — ทั้งคู่มาจาก config
+- ✅ **M-07 แก้แล้ว**: Graph generator Thai font loading — การจัดการ path ที่มั่นคง
+- ✅ **M-08 แก้แล้ว**: AlertAgent log rotation — `RotatingFileHandler` สำหรับ JSONL และ plain text
+- ✅ SEC-001 แก้แล้ว: MTR Command Injection — IP validation ผ่าน `ipaddress.ip_address()`
+- ✅ SEC-002 แก้แล้ว: BaselineStore Path Traversal — path validation พร้อม allowed base dir แบบ dynamic
+- ✅ SEC-003 แก้แล้ว: Secrets handling — parse `/etc/chk-a/env` ตรงเข้า config model, redact tokens ใน logs, ใช้ token ใน URL path
+- ✅ SEC-004 แก้แล้ว: Health endpoint — bind ไป loopback เท่านั้น
+- ✅ SEC-005 แก้แล้ว: บังคับ TLS สำหรับ SMTP — port 465/587 เท่านั้น
+- ✅ SEC-006 แก้แล้ว: Input validation บน config fields สำคัญ — Pydantic v2 validators
+- ✅ SEC-007 แก้แล้ว: Telegram token ใน URL — token ใน URL path (Telegram Bot API), masked ใน logs
+- ✅ SEC-008 แก้แล้ว: LRU dedup cache พร้อม TTL และ max-size
+- ✅ SEC-009 แก้แล้ว: Log injection prevention
+- ✅ SEC-012 แก้แล้ว: Hard ceilings on concurrency
+- ✅ SEC-015 แก้แล้ว: Baseline encryption at rest (age/pyrage)
+- ✅ SEC-016 แก้แล้ว: Dependency pinning พร้อม SHA-256 hashes (39 packages)
+- ✅ SEC-017 แก้แล้ว: Config file permissions (chmod 640/600, chown root:chk-a)
+- ✅ SEC-018 แก้แล้ว: Telegram circuit breaker (CLOSED/OPEN/HALF_OPEN)
+- ✅ SEC-019 แก้แล้ว: Daily report scheduler drift fix (absolute time scheduling)
+- ✅ SEC-020 แก้แล้ว: MTR/Resolver config sync validation
+
+### การแก้ไข Telegram Reporter (2026-09-13)
+- ✅ **แก้แล้ว: รายงานรายวัน 06:00 น. ส่ง Telegram ล้มเหลว 404** — สาเหตุหลัก: `TelegramReporter` ใช้ `Authorization: Bearer *** header แต่ Telegram Bot API กำหนดให้ใช้ token ใน URL path (`/bot<token>/method`)
+- ✅ อัปเดต `TelegramReporter` ให้ใช้ token ใน URL path (เหมือนกับ `TelegramClient`)
+- ✅ อัปเดต security regression tests ให้ตรวจสอบ token-in-URL behavior
+- ✅ Circuit breaker รีคัฟเวอร์อัตโนมัติหลัง 60 วินาที (HALF_OPEN → CLOSED)
+
+### โครงสร้างพื้นฐานการ Deploy (2026-09-14)
+- ✅ สร้าง `scripts/deploy.sh` — Deploy script มาตรฐานติดตั้ง source ที่ sync มาจาก `/home/ipds/Hermes-Prj/chk-a/` ไปยัง FHS runtime `/opt/chk-a/` บนเครื่องเป้าหมาย (test/prod)
+- ✅ ใช้ `rsync -c` checksum verification และ restart systemd service
+- ✅ รันด้วย `sudo` หลัง dev→test sync
+- ✅ ยืนยัน hash ตรงกัน: Dev source `/home/ipds/Hermes-Prj/chk-a/` ↔ Runtime `/opt/chk-a/` (MD5: `b7717b974eab7b7d163300430e2fdf08`)
+- ✅ แก้ config test VM `/etc/chk-a/config.yaml` — เพิ่ม `daily_report_*` settings ที่หายไป
+- ✅ Service ทำงานด้วยโค้ดและ config ที่อัปเดตแล้ว
+
+### **ใหม่: รองรับ Rotated Logs และ Baseline Integrity Metrics (2026-09-15)**
+- ✅ **`_load_recent_checks()` อ่าน rotated logs อัตโนมัติ** — ไฟล์ date-stamped `.bz2` และ numbered `.gz` backups จาก log directory
+- ✅ **แก้ไขการ parse timestamp mixed timezone** — รองรับทั้ง naive (real log) และ timezone-aware (mock data) ISO8601 ผ่าน `pd.to_datetime(format="mixed", utc=True).dt.tz_localize(None)`
+- ✅ **Baseline-based integrity scoring** — ใช้ `MLAgent.score()` (total-variation distance ต่อ learned baseline) แทน Isolation Forest
+- ✅ **เพิ่ม IP stability & diversity metrics** — คำนวณ `unique_ip_count` และ `ip_stability` สำหรับ baseline method (เดิมขาด เฉพาะ Isolation Forest เท่านั้น)
+- ✅ **รายงานรายวัน (เมื่อวาน)** — 10,374 records จาก rotated log `checks.jsonl-20260914.bz2` → ส่ง Telegram สำเร็จ
+- ✅ **รายงานรายเดือน (30 วัน)** — 53,588 records จากหลาย rotated files → สร้างกราฟสำเร็จ
+- ✅ **Day 1 sample report (ข้อมูลเต็มที่มี)** — 53,588 records → ส่ง Telegram พร้อม 10 กราฟ
+- ✅ **ตัวอย่างรายงาน 06:00 น. (ข้อมูลเมื่อวาน)** — ใช้ `reference_date=yesterday 23:59` → โหลดข้อมูลเมื่อวานถูกต้อง
+- ✅ **Real-time daily report (เที่ยงคืนถึงตอนนี้)** — สร้าง script manual run, filter ข้อมูลวันนี้จาก current log
+
+### **ใหม่: ตรวจสอบรายงานวันที่วานขาดหายตอน Startup (2026-09-15)**
+- ✅ **Orchestrator ตรวจสอบรายงานวันที่วานขาดหายตอนเริ่ม service** — เรียก `_send_missing_daily_report()` หลัง init tasks
+- ✅ ตรวจสอบ `output_dir` หาโฟลเดอร์รายงานวันที่วาน; ถ้าไม่มี สร้างและส่งอัตโนมัติ
+- ✅ ใช้ `reference_date=yesterday 23:59:59` เพื่อ target ข้อมูล rotated log ของเมื่อวานได้ถูกต้อง
+- ✅ ส่ง Telegram ด้วยรูปแบบเหมือนรายงาน 06:00 น. ที่กำหนด (ภาษาไทย, emoji, protected palette, hostname, timestamp)
+
+---
 
 ## 4. สิ่งที่กำลังทำอยู่
 
-- ไม่มี — ฟีเจอร์ที่วางแผนเสร็จสิ้นและทดสอบแล้ว
+- 🔄 **P2 Security Remediation** (Medium findings — sprint ถัดไป):
+  - SEC-010: Implement DoH/DoT support ใน ResolverAgent
+  - SEC-011: Verify MTR `CAP_NET_RAW` ใน systemd unit
+  - SEC-013: Log file permissions
+  - SEC-014: HTML escape ในข้อความ Telegram
+
+---
 
 ## 5. ปัญหาที่พบ
 
-- **sudo ต้องรหัสผ่านโต้ตอบ**: agent พิมพ์ให้ไม่ได้ → การติดตั้ง/ถอนการติดตั้งบนเครื่องจริงค้างอยู่; จึงเตรียมบล็อกคำสั่ง copy-paste แทน
-- **Telegram เป็น placeholder**: แจ้งเตือน/`test-telegram` ส่งไม่ได้จนกว่าจะได้ token + channel chat_id จริง (แก้แล้วบน test-chk-a)
-- **flake8 7.3.0**: ไม่โหลด `[tool.flake8]` จาก `pyproject.toml` หากไม่มี `tomli` ติดตั้ง → ต้องใช้ `.flake8` แยกต่างหาก
-- **reference models ให้ข้อมูลผิด (บทเรียน)**: ในเซสชันนี้ nemotron/laguna เดาว่า "WSL ไม่มี systemd" (ผิด — `systemctl is-system-running` = `running`, systemd เป็น PID 1); gpt-oss อธิบายว่าติดตั้งสร้าง symlink `/usr/local/bin` (ผิด — ใช้ `pip install -e` เข้า `/opt/chk-a/.venv`) ต้องยืนยันกับ terminal จริงและเนื้อหาไฟล์จริงเสมอ ไม่เชื่อคำเดาของโมเดล
-- **Dev vs Test VM sync**: การแก้ไขบน test VM ต้อง sync กลับ dev (WSL) — เกือบสูญเสียการเปลี่ยนแปลงเพราะสับสน
+### ปัญหาที่แก้แล้ว
+- ✅ ติดตั้ง seaborn บน test VM
+- ✅ แก้ไข mock `send_photo` signature ใน test_alert_agent.py
+- ✅ แก้ไขปัญหาสิทธิ์ state file: `sudo chown ipds:ipds /opt/chk-a/last_state.txt`
+- ✅ `sudo: A terminal is required to authenticate` — ผู้ใช้รัน sudo commands โดยตรงบน test VM
+- ✅ **รายงานรายวัน Telegram 404 error** — แก้โดยใช้ token ใน URL path (ข้อกำหนดของ Telegram Bot API)
+- ✅ **Test VM ขาด daily_report_* config** — เพิ่มใน `/etc/chk-a/config.yaml`
+- ✅ **Runtime code mismatch** — แก้โดยรัน `scripts/deploy.sh` บน test VM
+- ✅ **รายงานวันที่วานขาดหายตอน startup** — ตรวจสอบและสร้างอัตโนมัติตอน service เริ่มทำงาน
+
+---
 
 ## 6. งานที่ต้องทำต่อ
 
-- ติดตามความเสถียรของ service บน test-chk-a
-- พิจารณาเพิ่ม persistent dedup cache (อยู่รอด restart) สำหรับ AlertAgent
-- ทางเลือก: การแสดงเส้นทาง traceroute ฝั่ง server สำหรับการศึกษา client→resolver
+### สัปดาห์นี้ (P1)
+- เอกสาร systemd unit files ใน repo (เป็นข้อมูลอ้างอิง)
+- เพิ่ม deployment checklist (config perms, systemd caps, log dirs)
+- สร้าง runbook สำหรับการดำเนินงานทั่วไป
+
+---
 
 ## 7. รายการไฟล์ที่เกี่ยวข้อง
 
-| ไฟล์ | หน้าที่ |
-|------|---------|
-| `src/chk_a/orchestrator.py` | loop หลัก, `/healthz`, watchdog, daily tasks |
-| `src/chk_a/agents/*.py` | Resolver, Consensus, ML, Alert agents |
-| `src/chk_a/storage/baseline_store.py` | JSON baseline store แบบ atomic |
-| `src/chk_a/utils/telegram_client.py` | ตัวส่ง Telegram |
-| `src/chk_a/utils/systemd_notify.py` | ตัวช่วย sd_notify |
-| `src/chk_a/utils/context.py`, `logger.py` | correlation_id + structured log |
-| `src/chk_a/config/loader.py`, `models/schemas.py` | Config + Pydantic models |
-| `src/chk_a/main.py` | จุดเริ่ม CLI |
-| `config/settings.yaml`, `*.example` | ตัวอย่าง config (ลบ metrics แล้ว) |
-| `install.sh` / `uninstall.sh` | ติดตั้ง / ถอนการติดตั้งบนเครื่องปลายทาง |
-| `systemd/chk-a.service`, `logrotate.d/chk-a` | systemd unit + logrotate |
-| `Makefile`, `pyproject.toml`, `.flake8` | ตั้งค่า build/lint/test |
-| `md/loop_engineering_prompt.md` | สเปก loop-engineering **ที่เป็นบรรทัดฐาน** |
-| `tests/test_loop7.py` | เทสต์ correlation_id + CLI |
+### Core Agents
+| ไฟล์ | บรรทัด | วัตถุประสงค์ |
+|------|-------|-------------|
+| `src/chk_a/agents/resolver_agent.py` | ~280 | Parallel DNS query, health EMA |
+| `src/chk_a/agents/consensus_agent.py` | ~220 | Weighted vote, entropy, outliers, reputation |
+| `src/chk_a/agents/ml_agent.py` | ~180 | Exponential decay baseline, anomaly scoring |
+| `src/chk_a/agents/alert_agent.py` | ~350 | Dedup, rate-limit, Telegram, dual audit logs |
+| `src/chk_a/agents/mtr_agent.py` | ~400 | MTR subprocess, JSON parsing, hop stats |
+
+### Orchestration & Config
+| ไฟล์ | บรรทัด | วัตถุประสงค์ |
+|------|-------|-------------|
+| `src/chk_a/orchestrator.py` | ~550 | Cycle coordination, scheduler, healthz, daily/monthly tasks |
+| `src/chk_a/config/loader.py` | ~200 | YAML + env substitution, Pydantic, auto-tune |
+| `src/chk_a/models/schemas.py` | ~250 | Pydantic contracts ทั้งหมด |
+| `src/chk_a/storage/baseline_store.py` | ~120 | Atomic JSON baseline persistence |
+
+### Reporting
+| ไฟล์ | บรรทัด | วัตถุประสงค์ |
+|------|-------|-------------|
+| `src/chk_a/reporting/graph_generator.py` | ~850 | 7 chart types × EN/TH, Thai fonts, translation map |
+| `src/chk_a/reporting/monthly_report.py` | ~350 | Report pipeline: insights → graphs → PDF → Telegram/email |
+| `src/chk_a/reporting/telegram_reporter.py` | ~400 | Batched photo sending, exponential backoff, HTML summary |
+| `src/chk_a/reporting/pdf_generator.py` | ~200 | fpdf2 EN/TH templates |
+| `src/chk_a/reporting/ml_insights.py` | ~250 | Availability, integrity, path health, anomaly detection |
+
+### Entry Point & Config
+| ไฟล์ | วัตถุประสงค์ |
+|------|-------------|
+| `src/chk_a/main.py` | CLI + daemon entry, subcommands |
+| `systemd/chk-a.service` | ปรับปรุง: ExecStartPre/ExecStop ใช้ systemd_wrapper.py สำหรับการแจ้งสถานะ |
+| `/etc/chk-a/config.yaml` | การตั้งค่าผลิต (test VM) |
+| `/opt/chk-a/config.example.yaml` | Config reference |
+| `/etc/chk-a/env` | **Telegram credentials** (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) |
+
+### Scripts
+| ไฟล์ | วัตถุประสงค์ |
+|------|-------------|
+| `scripts/systemd_wrapper.py` | Systemd service wrapper — ตรวจจับการ restart, ส่งการแจ้ง start/restart/stop/fail |
+| `scripts/systemd_notify.py` | Notifier สถานะ systemd — start/stop/restart/fail/error |
+| `scripts/send_test_telegram.py` | ส่งข้อความ Telegram ทดสอบ anomaly/recovery พร้อมรูปภาพ |
+| `scripts/deploy.sh` | **ใหม่ (2026-09-14)** Deploy source ที่ sync มาไปยัง FHS runtime `/opt/chk-a/` |
+
+### Test & Scripts
+| ไฟล์ | วัตถุประสงค์ |
+|------|-------------|
+| `tests/test_alert_agent.py` | Alert agent tests (อัปเดตแล้วสำหรับ `send_photo` signature) |
+| `tests/conftest.py` | Session-wide test config (`CHK_A_BASELINE_DIR=/tmp`) |
+| `tests/test_integration_pipeline.py` | Full pipeline integration tests (7 tests) |
+| `tests/test_security_regressions.py` | Security regression tests (74 tests, SEC-001 ถึง SEC-020) |
+
+---
 
 ## 8. TODO List
 
-ดู `TODO.md` สำหรับรายการที่ทำได้จริง (checkbox + timestamp)
+ดูรายละเอียดใน [TODO.md](TODO.md)
+
+---
+
+*สร้างโดย Hermes Agent session วันที่ 2026-09-15 14:30:00*
