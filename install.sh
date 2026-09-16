@@ -156,12 +156,20 @@ if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
     fi
     "${PYTHON_BIN}" -m venv "${VENV_DIR}"
     # Ensure pip is installed (some distributions don't include it by default)
-    "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>/dev/null || true
+    log "Installing pip via ensurepip..."
+    if ! "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>&1; then
+        warn "ensurepip failed, trying get-pip.py..."
+        if ! curl -sL https://bootstrap.pypa.io/get-pip.py | "${VENV_DIR}/bin/python" - 2>&1; then
+            err "Failed to install pip via get-pip.py"
+            exit 1
+        fi
+    fi
     # Verify pip works
     if ! "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
-        warn "pip not available, installing via get-pip.py"
-        curl -sL https://bootstrap.pypa.io/get-pip.py | "${VENV_DIR}/bin/python" -
+        err "pip installation verification failed"
+        exit 1
     fi
+    log "pip installed successfully: $("${VENV_DIR}/bin/python" -m pip --version)"
 fi
 
 log "Installing wheel..."
