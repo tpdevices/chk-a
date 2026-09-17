@@ -170,7 +170,7 @@ if [[ ! -d "scripts" ]]; then
     exit 1
 fi
 log "Installing scripts..."
-cp -rf scripts "${INSTALL_DIR}/"
+cp -rf scripts "${INSTALL_DIR}"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${INSTALL_DIR}"
 # 5. Setup virtualenv and install wheel
 log "Setting up virtualenv..."
