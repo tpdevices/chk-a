@@ -411,7 +411,7 @@ class ReportingConfig(BaseModel):
     schedule_minute: int = Field(
         default=0, ge=0, le=59, description="Minute to generate report (0-59)"
     )
-    output_dir: str = Field(default="reports", description="Directory to save report files")
+    output_dir: str = Field(default="/var/lib/chk-a/reports", description="Directory to save report files")
     filename_format: str = Field(
         default="monthly-report-{timestamp}.{ext}",
         description="Filename format with {timestamp} and {ext} placeholders",

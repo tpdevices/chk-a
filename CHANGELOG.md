@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **2026-09-17 12:26:18** — `schemas.py` / `orchestrator.py` — Fixed: Changed default reporting.output_dir from "reports" to "/var/lib/chk-a/reports" to avoid read-only filesystem error under ProtectSystem=strict. Ensures daily/monthly reports can be written.
 - **2026-09-17 12:14:41** — `install.sh` — Fixed: Use dedicated temp directory (mktemp) for downloads; remove existing files before download; added download helper with cleanup; fixed pip verification typo; ensures clean downloads and avoids permission issues.
 - **2026-09-17 12:08:31** — `install.sh` — Fixed: Use correct GitHub API endpoint for latest release; added timeout and progress bar to all downloads; fixed wheel filename resolution for "latest"; always run chown/chmod for config files; added verification step for env file readability.
 - **2026-09-17 11:55:16** — `install.sh` — Fixed: Moved env.example check to after download in /tmp; removed silent failure on chown/chmod for critical files; added verification that /etc/chk-a/env is readable by service user before starting service.
