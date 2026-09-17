@@ -124,14 +124,16 @@ class TelegramClient:
             resp.raise_for_status()
 
     async def send_message(self, chat_id: str, text: str, parse_mode: str = "HTML") -> bool:
-        """Send ``text`` to ``chat_id``. Returns ``True`` on success, ``False`` otherwise."""
+        """Send ``text`` to ``chat_id``. Returns ``True`` on success, ``False`` otherwise.
+        
+        Note: Caller is responsible for HTML-escaping any user-supplied values in ``text``.
+        The ``text`` is sent as-is with the specified ``parse_mode``.
+        """
         if not self.bot_token or not chat_id:
             self.logger.warning("Telegram send skipped: missing bot_token or chat_id")
             return False
         try:
-            # HTML escape user-supplied text to prevent injection
-            safe_text = _html_escape(text)
-            await self._post({"chat_id": chat_id, "text": safe_text, "parse_mode": parse_mode})
+            await self._post({"chat_id": chat_id, "text": text, "parse_mode": parse_mode})
             self.logger.info("Telegram message sent to chat_id=%s", _mask_chat_id(f"chat_id={chat_id}"))
             return True
         except Exception as exc:  # network / HTTP / retry exhaustion
@@ -145,7 +147,11 @@ class TelegramClient:
         caption: str | None = None,
         parse_mode: str = "HTML",
     ) -> bool:
-        """Send a photo to ``chat_id``. Returns ``True`` on success, ``False`` otherwise."""
+        """Send a photo to ``chat_id``. Returns ``True`` on success, ``False`` otherwise.
+        
+        Note: Caller is responsible for HTML-escaping any user-supplied values in ``caption``.
+        The ``caption`` is sent as-is with the specified ``parse_mode``.
+        """
         if not self.bot_token or not chat_id:
             self.logger.warning("Telegram photo send skipped: missing bot_token or chat_id")
             return False
@@ -158,9 +164,7 @@ class TelegramClient:
             data = aiohttp.FormData()
             data.add_field("chat_id", chat_id)
             if caption:
-                # HTML escape user-supplied caption to prevent injection
-                safe_caption = _html_escape(caption)
-                data.add_field("caption", safe_caption)
+                data.add_field("caption", caption)
                 data.add_field("parse_mode", parse_mode)
             # Add photo file - stream from file
             data.add_field(

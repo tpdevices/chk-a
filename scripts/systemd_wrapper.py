@@ -2,6 +2,7 @@
 """Systemd service wrapper for chk-a — detects restarts and sends notifications."""
 
 import asyncio
+import html
 import os
 import sys
 import time
@@ -36,7 +37,7 @@ async def send_service_notification(action: str, status: str, details: str = "")
         return False
     
     # Build message
-    hostname = os.uname().nodename
+    hostname = html.escape(os.uname().nodename)
     
     emoji_map = {
         'start': '🟢',
@@ -56,7 +57,7 @@ async def send_service_notification(action: str, status: str, details: str = "")
     )
     
     if details:
-        message += f"<b>Details:</b> <code>{details}</code>\n"
+        message += f"<b>Details:</b> <code>{html.escape(details)}</code>\n"
     
     message += f"<b>Time:</b> {__import__('datetime').datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     
