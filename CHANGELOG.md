@@ -1,103 +1,72 @@
 # CHANGELOG
 
 All notable changes to this project will be documented in this file.
-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.3] - 2026-09-17 10:10:05 (Asia/Bangkok UTC+07)
+
+### Security
+- **2026-09-17 10:30:00** — SEC-014: HTML escape in Telegram messages — added `_html_escape()` function and applied to all user-supplied data in `TelegramClient.send_message()`, `TelegramClient.send_photo()`, `create_telegram_summary()`, and `create_daily_telegram_summary()`. Added security regression tests for HTML injection prevention.
+
+### Fixed
+- **2026-09-17 11:00:00** — `install.sh` — Fixed: venv reuse bug where existing venv from failed installation skipped pip installation. Added `NEED_PIP_INSTALL` flag to verify pip presence in existing venv and install if missing. Improved logging for pip installation steps.
+
+### Added
+- **2026-09-17 11:15:00** — `MANIFEST.in` — Added: `include scripts/*.py` to ensure scripts directory is included in the wheel.
+
+- **2026-09-17 11:20:00** — `.github/workflows/release.yml` — Added: Copy scripts directory to release assets and create `scripts.tar.gz` for easy download.
+
+- **2026-09-17 11:25:00** — Build system: Updated wheel to include `scripts/` directory, ensuring `systemd_wrapper.py` and `systemd_notify.py` are installed.
+
 ## [Unreleased]
 
-### Added
-- **2026-09-16 09:45:00** — `src/chk_a/agents/resolver_agent.py` — Added: DoT (DNS-over-TLS) support via `dns.nameserver.DoTNameserver`. Implemented `_build_dot_nameserver()` with hostname-to-IP resolution for SNI verification, `_query_dot()` using `dns.asyncquery.tls()`. DoH (DNS-over-HTTPS) rewritten to use DNS wireformat (`application/dns-message`) per RFC 8484 for broad provider compatibility.
-- **2026-09-16 09:45:00** — `src/chk_a/models/schemas.py` — Added: DoT URL validation in `ResolverConfig._validate_address()` — accepts `tls://host:port` format with RFC 1123 hostname/IP validation and port range check.
-- **2026-09-16 09:45:00** — `config/config.yaml` — Added: Documented DoH and DoT resolver examples in config (commented).
-- **2026-09-16 09:45:00** — `tests/test_config_loader.py` — Added: `test_resolver_address_valid_dot_url()` and invalid DoT URL test cases.
-- **2026-09-16 09:45:00** — `tests/test_resolver_agent.py` — Added: `test_dot_resolver_is_marker()` and `test_dot_resolver_resolves()` unit tests.
-
-### Fixed
-- **2026-09-16 09:45:00** — `src/chk_a/agents/resolver_agent.py` — Fixed: DoH now uses wireformat (`application/dns-message`) with POST method instead of JSON API. Works with Google, Cloudflare, and other DoH providers.
-- **2026-09-16 09:45:00** — `src/chk_a/agents/resolver_agent.py` — Fixed: DoT `_build_dot_nameserver()` resolves hostname to IP address before creating `DoTNameserver` (dnspython requires IP in address field, hostname for SNI).
-
-### Security
-- **2026-09-16 09:45:00** — SEC-010: DoH/DoT support in ResolverAgent — enables encrypted DNS queries for privacy and integrity. All 3 protocols supported: Standard DNS (UDP/TCP 53), DoH (HTTPS 443), DoT (TLS 853).
-- **2026-09-16 10:15:00** — `systemd/chk-a.service` — Fixed: Added `CapabilityBoundingSet=CAP_NET_RAW` and `AmbientCapabilities=CAP_NET_RAW` for MTR ICMP mode raw socket access.
-- **2026-09-16 10:15:00** — `scripts/systemd_wrapper.py` — Fixed: Changed state file path from `/opt/chk-a/last_state.txt` to `/var/lib/chk-a/last_state.txt` to work with `ProtectSystem=strict` (read-only /opt/chk-a).
-- **2026-09-16 11:30:00** — SEC-013: Log file permissions hardening — added configurable `file_mode` (default 0o640) and `dir_mode` (default 0o750) to `LoggingConfig` and `AlertConfig`. Updated `setup_logger()` and `AlertAgent._setup_alert_log_handlers()` to apply permissions on file/directory creation and rotation. Verified on test VM: files 640 (rw-r-----), dirs 750 (rwxr-x---), owned by chk-a:chk-a.
+## [1.0.2] - 2026-09-16
 
 ### Added
-- **2026-09-15 09:45:00** — `src/chk_a/reporting/ml_insights.py` — Added: Baseline-based integrity scoring using `MLAgent.score()` (total-variation distance against learned baseline) replacing Isolation Forest. New `_compute_integrity_baseline_based()` function computes per-resolver integrity by comparing observed IPs against per-FQDN baselines. Avoids false anomalies when multiple resolvers fail simultaneously (e.g., network outage).
-- **2026-09-15 09:45:00** — `src/chk_a/reporting/ml_insights.py` — Added: `ml_agent` parameter to `generate_ml_insights()` and `compute_integrity()` for baseline-based integrity. Falls back to Isolation Forest when `ml_agent` is None (backward compatibility).
-- **2026-09-15 09:45:00** — `src/chk_a/reporting/monthly_report.py` — Added: Creates `MLAgent` with `BaselineStore` for both monthly and daily report generation. Passes `ml_agent` to `generate_ml_insights()` for baseline-based integrity scoring.
-- **2026-09-15 09:45:00** — `src/chk_a/reporting/graph_generator.py` — Modified: `generate_integrity_chart()` uses `.get("is_anomaly", score < 50)` to support both Isolation Forest and baseline-based integrity data formats.
-
-### Changed
-- **2026-09-15 09:45:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: `create_daily_telegram_summary()` Integrity section renamed to "Response Integrity (Baseline Consistency)" with success rate displayed. Anomalous resolvers section changed to Thai "Resolver ปัญหา Integrity (ML Detected)" with both integrity score and success rate.
-- **2026-09-15 09:45:00** — `test_send_daily_report.py` — Updated: Creates `MLAgent` with `BaselineStore` and passes to `generate_ml_insights()` for baseline-based integrity testing.
+- **2026-09-16 14:30:00** — `install.sh` — Improved pip installation in virtualenv: uses `ensurepip` with output logging, fallback to `get-pip.py` if ensurepip fails, verification with version logging. Better error handling for venv creation.
+- **2026-09-16 14:30:00** — `install.sh` — Added detailed logging for each pip installation step: "Installing pip via ensurepip...", "pip installed successfully: pip X.Y.Z from ...", "Falling back to get-pip.py...", "pip installed via get-pip.py: pip X.Y.Z from ..."
 
 ### Fixed
-- **2026-09-15 11:15:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` now filters only CheckResult records (must have `fqdn`, `resolver`, `success` fields) to skip log messages (cycle complete, next cycle, etc.) that lack these fields. Prevents NaN columns and KeyError in downstream `compute_availability()`.
-- **2026-09-15 11:15:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` timestamp parsing handles mixed naive and timezone-aware ISO8601 timestamps. Uses `pd.to_datetime(df["timestamp"], format="mixed", utc=True).dt.tz_localize(None)` to convert all to UTC then drop timezone for consistent naive comparison. Works with both real log format (naive) and mock data format (timezone-aware +07:00).
-- **2026-09-15 10:35:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` timezone handling for daily report. Added `reference_date` parameter and timezone-aware comparison (Asia/Bangkok +07). Now correctly loads yesterday's data when reference_date is set to end of yesterday. Enables accurate daily report using yesterday's mock/test data.
+- **2026-09-16 14:30:00** — `install.sh` — Fixed: pip installation now properly handles edge cases where venv is created but pip is not available. Added explicit verification step after installation.
 
-### Fixed
-- **2026-09-15 12:25:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` now reads rotated log files (date-stamped `.bz2` and numbered `.gz` backups) automatically. Collects all rotated files from the same directory, opens them with appropriate decompressors (bz2/gzip), filters by date range from filenames, and merges with current log. Enables daily report (1-day lookback) and monthly report (30-day lookback) to read historical data spanning multiple rotated files.
-- **2026-09-15 12:25:00** — `src/chk_a/reporting/monthly_report.py` — Confirmed: `generate_ml_insights()` already supports `reference_date` parameter for accurate yesterday/month-end targeting. Daily report function uses `datetime.now() - timedelta(days=1)` as reference to correctly target yesterday's rotated logs.
-- **2026-09-15 14:15:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_compute_integrity_baseline_based()` now computes and includes `unique_ip_count` and `ip_stability` in `raw_features` for baseline-based integrity. These metrics were previously only computed in Isolation Forest fallback, enabling IP Stability & Diversity chart for baseline method.
-- **2026-09-15 14:15:00** — `src/chk_a/orchestrator.py` — Added: `_send_missing_daily_report()` method to check and generate yesterday's daily report on service startup if missing. Called in `run()` after task initialization. Checks `output_dir` for yesterday's report directory; if absent, generates report using `reference_date=yesterday 23:59:59` and sends to Telegram with same format as scheduled 06:00 report.
-
-### Security
-- **2026-09-15 09:45:00** — Baseline-based integrity prevents false positive anomalies during mass resolver failures. Isolation Forest flagged the only working resolver as "anomaly" when 6/7 resolvers failed identically. Baseline scoring evaluates each resolver independently against its learned IP baseline.
-
-### Added
-- **2026-09-14 14:30:00** — `scripts/deploy.sh` — Added: Deploy script to install synced source from `/home/ipds/Hermes-Prj/chk-a/` to FHS runtime `/opt/chk-a/` on target machine (test/prod). Uses `rsync -c` checksum verification and restarts systemd service. Run with `sudo` after dev→test sync.
-- **2026-09-14 14:30:00** — `/etc/chk-a/config.yaml` (test VM) — Added: Missing `daily_report_*` settings to reporting section (`daily_report_enabled`, `daily_report_hour`, `daily_report_minute`, `daily_report_telegram_enabled`, `daily_report_telegram_chat_id`, `daily_report_lookback_days`).
-
-### Fixed
-- **2026-09-14 14:30:00** — Runtime code mismatch resolved — Verified hash equality between Dev source `/home/ipds/Hermes-Prj/chk-a/` and Runtime `/opt/chk-a/` (MD5: `b7717b974eab7b7d163300430e2fdf08`). Executed `scripts/deploy.sh` on test VM to sync and restart service.
-- **2026-09-13 23:45:00** — `src/chk_a/agents/alert_agent.py` — Fixed: Added log rotation for alert JSONL and plain text logs using `logging.handlers.RotatingFileHandler`. New config fields `alert_log_max_size_mb` and `alert_log_backup_count` in `AlertConfig` (M-08).
-- **2026-09-13 23:45:00** — `src/chk_a/models/schemas.py` — Added: `alert_log_max_size_mb` and `alert_log_backup_count` fields to `AlertConfig` for M-08 log rotation configuration.
-- **2026-09-13 23:45:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: Thai font loading robustness. Changed to try direct path access first, fallback to `resources.as_file()` context manager only when needed. Creates `FontProperties` inside context to avoid path invalidation (M-07).
-- **2026-09-13 23:45:00** — `src/chk_a/orchestrator.py` — Fixed: Health server port now reads from config (`SchedulerConfig.health_port`) instead of environment variable. Both port and bind address now from same config object for consistency (M-06).
-- **2026-09-13 23:45:00** — `src/chk_a/models/schemas.py` — Added: `health_port` field to `SchedulerConfig` with validation (0-65535, default=0 disabled).
-- **2026-09-13 23:45:00** — `src/chk_a/agents/ml_agent.py` — Fixed: Path learning key collision. Changed prefix from `__path__` to `chk-a:path:` (contains `:` which is forbidden in DNS labels, preventing collision with real FQDNs). Moved prefix to class constant (M-03).
-- **2026-09-13 23:45:00** — `src/chk_a/agents/consensus_agent.py` — Fixed: Reputation EMA now only updates for successful results with IPs. Failed/empty results (NXDOMAIN, timeout, etc.) no longer decay resolver reputation (M-02).
-- **2026-09-13 23:45:00** — `src/chk_a/agents/resolver_agent.py` — Fixed: Implemented DoH support. Added `_query_doh()` method using `aiohttp` for RFC 8484 DNS JSON format. Removed `NotImplementedError` stub (M-01).
-- **2026-09-13 23:45:00** — `src/chk_a/agents/alert_agent.py` — Fixed: Added `asyncio.Lock` protection for token bucket (`_rate_limit_lock`) and dedup cache (`_dedup_lock`) to prevent race conditions (C-01, C-02).
-- **2026-09-13 23:45:00** — `src/chk_a/orchestrator.py` — Fixed: Daily report and midnight schedulers now use `ZoneInfo("Asia/Bangkok")` for timezone-aware datetime operations. Absolute time scheduling from fixed reference point prevents drift (H-01).
-- **2026-09-13 23:45:00** — `src/chk_a/agents/mtr_agent.py` — Fixed: MTR timeout calculation corrected from `timeout_sec * max_hops + 30` to `max_hops * count * timeout_sec + 60` (H-02).
-- **2026-09-13 23:45:00** — `src/chk_a/storage/baseline_store.py` — Fixed: Age key caching. Private/public keys loaded once at initialization and cached. Private key only loaded when decryption needed (H-03).
-- **2026-09-13 23:45:00** — `src/chk_a/utils/telegram_client.py` — Fixed: `send_photo()` now streams file via `aiofiles` chunked read instead of `read_bytes()` full memory load (H-04).
-- **2026-09-13 23:45:00** — `src/chk_a/orchestrator.py` — Fixed: `_write_check_results()` now batches writes (single `write()` per cycle) instead of line-by-line (H-05).
-- **2026-09-13 23:45:00** — `src/chk_a/reporting/telegram_reporter.py` — Fixed: CircuitBreaker now supports both sync and async `can_execute()`. Added internal `_can_execute_locked()` helper. Concurrent graph sending via `asyncio.gather()`. Added `try/finally` for `reporter.close()` (M-05).
-- **2026-09-13 12:00:00** — `src/chk_a/reporting/telegram_reporter.py` — Fixed: TelegramReporter now uses token in URL path (required by Telegram Bot API) instead of Authorization header. Daily report 06:00 AM was failing with 404 Not Found. Midnight image at 00:00 worked because it uses TelegramClient (token in URL).
-- **2026-09-13 12:00:00** — `tests/test_security_regressions.py` — Updated: Security regression tests for SEC-003 and SEC-007 to verify token-in-URL behavior instead of Authorization header.
-
-### Security
-- **2026-09-13 23:45:00** — C-01: AlertAgent token bucket race condition — added `asyncio.Lock` protection for token bucket refill/check/consume sequence.
-- **2026-09-13 23:45:00** — C-02: AlertAgent dedup cache race condition — added `asyncio.Lock` protection for all dedup cache operations.
-- **2026-09-13 23:45:00** — H-01: Orchestrator timezone-naive scheduler — all datetime operations now use `ZoneInfo("Asia/Bangkok")`.
-- **2026-09-13 23:45:00** — H-02: MTR agent timeout calculation — corrected formula with clear comment.
-- **2026-09-13 23:45:00** — H-03: BaselineStore age key caching — lazy load and cache keys at init.
-- **2026-09-13 23:45:00** — H-04: TelegramClient send_photo memory — streaming via `aiofiles` instead of full memory load.
-- **2026-09-13 23:45:00** — H-05: Orchestrator batch writes — single `write()` per cycle.
-- **2026-09-13 23:45:00** — M-01: ResolverAgent DoH support — implemented RFC 8484 DNS-over-HTTPS.
-- **2026-09-13 23:45:00** — M-02: ConsensusAgent reputation for failed results — skip failed/empty results in reputation EMA.
-- **2026-09-13 23:45:00** — M-03: MLAgent path learning key collision — prefix `chk-a:path:` prevents DNS collision.
-- **2026-09-13 23:45:00** — M-04: Parallel MTR for outliers — `asyncio.gather` instead of sequential.
-- **2026-09-13 23:45:00** — M-05: CircuitBreaker thread-safety — sync/async methods; concurrent sending via `asyncio.gather`.
-- **2026-09-13 23:45:00** — M-06: Health server port/address consistency — both from config.
-- **2026-09-13 23:45:00** — M-07: Graph generator Thai font loading — robust path handling.
-- **2026-09-13 23:45:00** — M-08: AlertAgent log rotation — `RotatingFileHandler` for JSONL and plain text logs.
-
-### Changed
-- **2026-09-13 23:45:00** — `tests/test_loop7.py` — Updated: Tests now use `tmp_path` fixture for alert log paths instead of hardcoded `/var/log/chk-a/` (which requires root).
-- **2026-09-13 23:45:00** — `tests/test_resolver_agent.py` — Updated: `test_doh_returns_not_supported` renamed to `test_doh_resolver_resolves`, properly mocks aiohttp session as async context manager.
+### Known Issues
+- **2026-09-16 14:30:00** — `install.sh` — Venv reuse bug: if venv exists from a previous failed installation, pip installation is skipped because the check only verifies python binary exists. Workaround: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`. Fix planned: add pip verification in venv existence check.
 
 ---
 
-## [1.0.0] - 2026-08-29
+## [1.0.1] - 2026-09-16
+
+### Fixed
+- **2026-09-16 09:30:00** — `install.sh` — Fixed: Wheel filename resolution now uses GitHub API (`/releases/tags/v{version}`) instead of guessing pattern. Handles variable wheel names like `chk_a-0.1.0-py3-none-any.whl`.
+- **2026-09-16 09:30:00** — `install.sh` — Added: Pip installation fallback using `get-pip.py` when `ensurepip` is not available or fails.
+- **2026-09-16 09:30:00** — `install.sh` — Fixed: Wheel download URL construction to match actual GitHub Release asset naming.
+
+### Added
+- **2026-09-16 09:30:00** — `install.sh` — Added error handling and logging for wheel download, supplementary files download, and pip installation steps.
+
+---
+
+## [1.0.0] - 2026-09-16
+
+### Added
+- **2026-09-16 08:00:00** — `.github/workflows/release.yml` — GitHub Actions workflow to build wheel on tag push (v*), create GitHub Release with assets (wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a).
+- **2026-09-16 08:00:00** — `install.sh` — Production installer: downloads wheel + assets from GitHub Releases, creates venv, installs wheel, configures systemd services, sets up logrotate.
+- **2026-09-16 08:00:00** — `uninstall.sh` — Production uninstaller: removes all service files, configs, logs, state, and user.
+- **2026-09-16 08:00:00** — `Makefile` — Targets: `install`, `install-github`, `uninstall`, `upgrade`, `status`, `logs`, `version`, `release-dry-run`.
+- **2026-09-16 08:00:00** — `config.yaml.example` — Example configuration for production deployments.
+- **2026-09-16 08:00:00** — `env.example` — Example environment file for Telegram credentials.
+- **2026-09-16 08:00:00** — `systemd/chk-a.service` — Systemd service template with security hardening (ProtectSystem=strict, CapabilityBoundingSet=CAP_NET_RAW, etc.).
+- **2026-09-16 08:00:00** — `logrotate.chk-a` — Logrotate configuration for `/var/log/chk-a/*.log` and `/var/log/chk-a/*.jsonl`.
+
+### Security
+- **2026-09-16 08:00:00** — Production installer follows security best practices: dedicated service user (chk-a, uid=999), config permissions 640, env permissions 600, log directory permissions 750, systemd hardening.
+
+---
+
+## [0.1.0] - 2026-08-29
 
 ### Added
 - Initial project structure for chk-a DNS A-record monitor

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import html
 import logging
 import time
 from datetime import datetime
@@ -13,6 +14,13 @@ import aiohttp
 from pydantic import SecretStr
 
 log = logging.getLogger(__name__)
+
+
+def _html_escape(value: Any) -> str:
+    """HTML escape a value for safe inclusion in Telegram HTML messages."""
+    if value is None:
+        return "N/A"
+    return html.escape(str(value))
 
 
 class CircuitBreaker:
@@ -335,8 +343,8 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             f"• Resolver ทั้งหมด: {summary.get('total_resolvers', 0)}",
             f"• Query ทั้งหมด: {summary.get('total_queries', 0):,}",
             f"• ความพร้อมใช้งานโดยรวม: {summary.get('overall_availability_pct', 0):.2f}%",
-            f"• 🏆 ดีที่สุด: {summary.get('best_resolver', 'N/A')}",
-            f"• ⚠️ ต้องปรับปรุง: {summary.get('worst_resolver', 'N/A')}",
+            f"• 🏆 ดีที่สุด: {_html_escape(summary.get('best_resolver', 'N/A'))}",
+            f"• ⚠️ ต้องปรับปรุง: {_html_escape(summary.get('worst_resolver', 'N/A'))}",
             f"• 🔴 Anomaly: {len(summary.get('anomalous_resolvers', []))} ตัว",
             "",
         ]
@@ -350,7 +358,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             for i, (resolver, data) in enumerate(sorted_avail, 1):
                 pct = data["availability_pct"]
                 emoji = "🟢" if pct >= 99 else "🟡" if pct >= 95 else "🔴"
-                lines.append(f"{i}. {emoji} {resolver}: {pct:.2f}%")
+                lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.2f}%")
 
             lines.append("")
 
@@ -366,7 +374,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
                 pct = data["path_availability_pct"]
                 health = data.get("path_health_score", 0)
                 emoji = "🟢" if pct >= 90 else "🟡" if pct >= 70 else "🔴"
-                lines.append(f"{i}. {emoji} {resolver}: {pct:.1f}% (Health: {health:.0f})")
+                lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.1f}% (Health: {health:.0f})")
 
             lines.append("")
 
@@ -376,7 +384,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             lines.append("🔴 <b>Resolver 異常 (ML Detected)</b>")
             for r in anomalous[:5]:
                 score = integrity.get(r, {}).get("integrity_score", 0)
-                lines.append(f"• {r} (Integrity: {score:.1f})")
+                lines.append(f"• {_html_escape(r)} (Integrity: {score:.1f})")
             lines.append("")
 
         lines.append("📎 ไฟล์ PDF เต็มรูปแบบ (EN/TH) ส่งทางอีเมล")
@@ -393,8 +401,8 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             f"• Total Resolvers: {summary.get('total_resolvers', 0)}",
             f"• Total Queries: {summary.get('total_queries', 0):,}",
             f"• Overall Availability: {summary.get('overall_availability_pct', 0):.2f}%",
-            f"• 🏆 Best: {summary.get('best_resolver', 'N/A')}",
-            f"• ⚠️ Needs Improvement: {summary.get('worst_resolver', 'N/A')}",
+            f"• 🏆 Best: {_html_escape(summary.get('best_resolver', 'N/A'))}",
+            f"• ⚠️ Needs Improvement: {_html_escape(summary.get('worst_resolver', 'N/A'))}",
             f"• 🔴 Anomalies: {len(summary.get('anomalous_resolvers', []))}",
             "",
         ]
@@ -407,7 +415,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             for i, (resolver, data) in enumerate(sorted_avail, 1):
                 pct = data["availability_pct"]
                 emoji = "🟢" if pct >= 99 else "🟡" if pct >= 95 else "🔴"
-                lines.append(f"{i}. {emoji} {resolver}: {pct:.2f}%")
+                lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.2f}%")
 
             lines.append("")
 
@@ -423,7 +431,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
                 pct = data["path_availability_pct"]
                 health = data.get("path_health_score", 0)
                 emoji = "🟢" if pct >= 90 else "🟡" if pct >= 70 else "🔴"
-                lines.append(f"{i}. {emoji} {resolver}: {pct:.1f}% (Health: {health:.0f})")
+                lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.1f}% (Health: {health:.0f})")
 
             lines.append("")
 
@@ -432,7 +440,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             lines.append("🔴 <b>Anomalous Resolvers (ML Detected)</b>")
             for r in anomalous[:5]:
                 score = integrity.get(r, {}).get("integrity_score", 0)
-                lines.append(f"• {r} (Integrity: {score:.1f})")
+                lines.append(f"• {_html_escape(r)} (Integrity: {score:.1f})")
             lines.append("")
 
         lines.append("📎 Full PDF reports (EN/TH) sent via email")
@@ -546,14 +554,14 @@ def create_daily_telegram_summary(
 
     lines = [
         f"📅 <b>chk-a รายงานรายวัน ({yesterday})</b>",
-        f"🖥️ Host: {hostname}",
+        f"🖥️ Host: {_html_escape(hostname)}",
         "",
         "📈 <b>สรุป Availability / Path Availability / Integrity</b>",
         f"• Resolver ทั้งหมด: {summary.get('total_resolvers', 0)}",
         f"• Query ทั้งหมด: {summary.get('total_queries', 0):,}",
         f"• Availability โดยรวม: {summary.get('overall_availability_pct', 0):.2f}%",
-        f"• 🏆 ดีที่สุด: {summary.get('best_resolver', 'N/A')}",
-        f"• ⚠️ ต้องปรับปรุง: {summary.get('worst_resolver', 'N/A')}",
+        f"• 🏆 ดีที่สุด: {_html_escape(summary.get('best_resolver', 'N/A'))}",
+        f"• ⚠️ ต้องปรับปรุง: {_html_escape(summary.get('worst_resolver', 'N/A'))}",
         f"• 🔴 Anomaly (ML): {len(summary.get('anomalous_resolvers', []))} ตัว",
         "",
     ]
@@ -567,7 +575,7 @@ def create_daily_telegram_summary(
         for i, (resolver, data) in enumerate(sorted_avail, 1):
             pct = data["availability_pct"]
             emoji = "🟢" if pct >= 99 else "🟡" if pct >= 95 else "🔴"
-            lines.append(f"{i}. {emoji} {resolver}: {pct:.2f}%")
+            lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.2f}%")
         lines.append("")
 
     # Path Availability (MTR)
@@ -582,7 +590,7 @@ def create_daily_telegram_summary(
             pct = data["path_availability_pct"]
             health = data.get("path_health_score", 0)
             emoji = "🟢" if pct >= 90 else "🟡" if pct >= 70 else "🔴"
-            lines.append(f"{i}. {emoji} {resolver}: {pct:.1f}% (Health: {health:.0f})")
+            lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.1f}% (Health: {health:.0f})")
         lines.append("")
 
     # Integrity (response consistency - baseline-based)
@@ -595,7 +603,7 @@ def create_daily_telegram_summary(
             score = data.get("integrity_score", 0)
             success_rate = data.get("success_rate", 0)
             emoji = "🟢" if score >= 95 else "🟡" if score >= 80 else "🔴"
-            lines.append(f"{i}. {emoji} {resolver}: {score:.1f} (✓{success_rate:.0f}%)")
+            lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {score:.1f} (✓{success_rate:.0f}%)")
         lines.append("")
 
     # Anomalous resolvers (baseline-based)
@@ -605,7 +613,7 @@ def create_daily_telegram_summary(
         for r in anomalous[:5]:
             score = integrity.get(r, {}).get("integrity_score", 0)
             success = integrity.get(r, {}).get("success_rate", 0)
-            lines.append(f"• {r} (Integrity: {score:.1f}, Success: {success:.0f}%)")
+            lines.append(f"• {_html_escape(r)} (Integrity: {score:.1f}, Success: {success:.0f}%)")
         lines.append("")
 
     lines.append("📈 กราฟแนบด้านล่าง (Availability / Path / Integrity / Anomaly)")

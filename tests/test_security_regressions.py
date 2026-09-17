@@ -697,5 +697,104 @@ class TestSEC020_MTRResolverSync:
         assert config.mtr.resolvers == ["google", "quad9"]
 
 
+class TestSEC014_HTMLInjection:
+    """SEC-014: HTML escape in Telegram messages to prevent injection."""
+
+    def test_telegram_client_html_escapes_message_text(self):
+        """TelegramClient.send_message must HTML escape user-supplied text."""
+        from chk_a.utils.telegram_client import TelegramClient, _html_escape
+        from pydantic import SecretStr
+
+        # Test the escape function directly
+        malicious = "<script>alert('xss')</script>"
+        escaped = _html_escape(malicious)
+        assert "&lt;script&gt;alert(&#x27;xss&#x27;)&lt;/script&gt;" == escaped
+
+        # Test with various HTML special chars
+        assert _html_escape("<b>bold</b>") == "&lt;b&gt;bold&lt;/b&gt;"
+        assert _html_escape("a & b") == "a &amp; b"
+        assert _html_escape('"quote"') == "&quot;quote&quot;"
+        assert _html_escape("'single'") == "&#x27;single&#x27;"
+
+    def test_telegram_client_html_escapes_photo_caption(self):
+        """TelegramClient.send_photo must HTML escape caption."""
+        from chk_a.utils.telegram_client import _html_escape
+
+        malicious = "<img src=x onerror=alert(1)>"
+        escaped = _html_escape(malicious)
+        assert "&lt;img src=x onerror=alert(1)&gt;" == escaped
+
+    def test_telegram_reporter_html_escapes_resolver_names(self):
+        """create_telegram_summary must HTML escape resolver names and FQDNs."""
+        from chk_a.reporting.telegram_reporter import create_telegram_summary, _html_escape
+
+        # Test the escape function
+        malicious = "<b>malicious</b>"
+        escaped = _html_escape(malicious)
+        assert "&lt;b&gt;malicious&lt;/b&gt;" == escaped
+
+        # Test that resolver names in summary are escaped
+        ml_insights = {
+            "summary": {
+                "total_resolvers": 2,
+                "total_queries": 100,
+                "overall_availability_pct": 99.5,
+                "best_resolver": "<script>alert(1)</script>",
+                "worst_resolver": "normal-resolver",
+                "anomalous_resolvers": ["<img src=x onerror=alert(1)>"],
+            },
+            "availability": {
+                "<script>alert(1)</script>": {"availability_pct": 99.0},
+                "normal-resolver": {"availability_pct": 100.0},
+            },
+            "integrity": {},
+            "path_availability": {},
+            "lookback_days": 30,
+        }
+
+        summary = create_telegram_summary(ml_insights, lang="th")
+        # Verify malicious content is escaped
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in summary
+        assert "&lt;img src=x onerror=alert(1)&gt;" in summary
+        # Verify normal content is preserved
+        assert "normal-resolver" in summary
+
+    def test_telegram_reporter_daily_summary_html_escapes(self):
+        """create_daily_telegram_summary must HTML escape all user data."""
+        from chk_a.reporting.telegram_reporter import create_daily_telegram_summary, _html_escape
+
+        ml_insights = {
+            "summary": {
+                "total_resolvers": 2,
+                "total_queries": 100,
+                "overall_availability_pct": 99.5,
+                "best_resolver": "<script>alert(1)</script>",
+                "worst_resolver": "normal-resolver",
+                "anomalous_resolvers": ["<img src=x onerror=alert(1)>"],
+            },
+            "availability": {
+                "<script>alert(1)</script>": {"availability_pct": 99.0},
+                "normal-resolver": {"availability_pct": 100.0},
+            },
+            "integrity": {
+                "<script>alert(1)</script>": {"integrity_score": 95.0, "success_rate": 99.0},
+                "normal-resolver": {"integrity_score": 100.0, "success_rate": 100.0},
+            },
+            "path_availability": {
+                "<script>alert(1)</script>": {"path_availability_pct": 98.0, "path_health_score": 95},
+                "normal-resolver": {"path_availability_pct": 100.0, "path_health_score": 100},
+            },
+            "lookback_days": 1,
+        }
+
+        summary = create_daily_telegram_summary(ml_insights, hostname="<b>host</b>", lookback_days=1)
+        # Verify malicious content is escaped
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in summary
+        assert "&lt;img src=x onerror=alert(1)&gt;" in summary
+        assert "&lt;b&gt;host&lt;/b&gt;" in summary
+        # Verify normal content is preserved
+        assert "normal-resolver" in summary
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

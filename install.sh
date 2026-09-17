@@ -145,9 +145,16 @@ curl -L -o config.yaml.example "${CONFIG_EXAMPLE_URL}" 2>/dev/null || warn "Coul
 curl -L -o env.example "${ENV_EXAMPLE_URL}" 2>/dev/null || warn "Could not download env.example"
 curl -L -o chk-a.service "${SERVICE_URL}" 2>/dev/null || warn "Could not download chk-a.service"
 curl -L -o logrotate.chk-a "${LOGROTATE_URL}" 2>/dev/null || warn "Could not download logrotate.chk-a"
+# Download scripts tarball
+SCRIPTS_URL="${DOWNLOAD_BASE}/scripts.tar.gz"
+curl -L -o scripts.tar.gz "${SCRIPTS_URL}" 2>/dev/null || warn "Could not download scripts.tar.gz"
+if [[ -f "scripts.tar.gz" ]]; then
+    tar -xzf scripts.tar.gz
+fi
 
 # 5. Setup virtualenv and install wheel
 log "Setting up virtualenv..."
+NEED_PIP_INSTALL=0
 if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
     PYTHON_BIN="${PYTHON_VERSION:-python3.14}"
     if ! command -v "${PYTHON_BIN}" >/dev/null 2>&1; then
@@ -155,6 +162,17 @@ if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
         warn "python3.14 not found, falling back to python3"
     fi
     "${PYTHON_BIN}" -m venv "${VENV_DIR}"
+    NEED_PIP_INSTALL=1
+else
+    log "Virtualenv already exists at ${VENV_DIR}"
+    # Check if pip is available in existing venv
+    if ! "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
+        warn "pip not found in existing venv, will install pip"
+        NEED_PIP_INSTALL=1
+    fi
+fi
+
+if [[ ${NEED_PIP_INSTALL} -eq 1 ]]; then
     # Ensure pip is installed (some distributions don't include it by default)
     log "Installing pip via ensurepip..."
     if ! "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>&1; then
@@ -260,6 +278,14 @@ if [[ -f "logrotate.chk-a" ]]; then
     cp -f "logrotate.chk-a" /etc/logrotate.d/chk-a
 else
     warn "logrotate.chk-a not found in release assets, skipping logrotate install"
+fi
+
+# Copy scripts directory (for systemd_wrapper.py, systemd_notify.py)
+if [[ -d "scripts" ]]; then
+    log "Installing scripts..."
+    cp -rf scripts "${INSTALL_DIR}/"
+else
+    warn "scripts directory not found in release assets, skipping scripts install"
 fi
 
 # 8. Fix ownership and permissions

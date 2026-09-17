@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-15 14:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -8,11 +8,11 @@
 
 **chk-a** เป็นระบบตรวจสอบความผิดปกติของ DNS A-record แบบ Multi-Agent เขียนด้วย Python ระบบจะสอบถาม DNS resolver หลายตัวพร้อมกันสำหรับ FQDN ที่กำหนด สร้างคะแนนเสียงถ่วงน้ำหนัก (Weighted Consensus) เรียนรู้ Baseline แบบ Online Exponential Decay ตรวจจับ Anomaly และส่ง Alert ผ่าน Telegram พร้อมรายงานรายวัน/รายเดือน (ภาษาไทย/อังกฤษ + กราฟ + PDF)
 
-**ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)
-**พัฒนา:** WSL Ubuntu (172.20.14.199/20)
-**เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)
-**Service User:** `chk-a` (uid=999)
-**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)
+**ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
+**พัฒนา:** WSL Ubuntu (172.20.14.199/20)  
+**เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)  
+**Service User:** `chk-a` (uid=999)  
+**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **Timestamp ทั้งหมด:** เวลาท้องถิ่น Asia/Bangkok (+07), รูปแบบ `YYYY-MM-DD HH:MM:SS`
 
 ---
@@ -106,7 +106,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ ทุก timestamp ในโปรเจกต์ใช้เวลาท้องถิ่น Asia/Bangkok (+07) อย่างสม่ำเสมอ
 
 ### การทดสอบและการดำเนินงาน
-- ✅ **251/251 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
+- ✅ **253/253 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
 - ✅ CLI subcommands: `validate-config`, `check-once`, `show-baseline`, `test-telegram`, `test-daily-image`, `mtr`
 - ✅ Dev↔Test VM sync ผ่าน `rsync -c` (checksum) พร้อม sync กลับทันทีของการแก้ไขบน VM
 - ✅ Test VM: Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds), service รันเป็น `chk-a` (uid=999)
@@ -160,7 +160,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ แก้ config test VM `/etc/chk-a/config.yaml` — เพิ่ม `daily_report_*` settings ที่หายไป
 - ✅ Service ทำงานด้วยโค้ดและ config ที่อัปเดตแล้ว
 
-### **ใหม่: รองรับ Rotated Logs และ Baseline Integrity Metrics (2026-09-15)**
+### รองรับ Rotated Logs และ Baseline Integrity Metrics (2026-09-15)
 - ✅ **`_load_recent_checks()` อ่าน rotated logs อัตโนมัติ** — ไฟล์ date-stamped `.bz2` และ numbered `.gz` backups จาก log directory
 - ✅ **แก้ไขการ parse timestamp mixed timezone** — รองรับทั้ง naive (real log) และ timezone-aware (mock data) ISO8601 ผ่าน `pd.to_datetime(format="mixed", utc=True).dt.tz_localize(None)`
 - ✅ **Baseline-based integrity scoring** — ใช้ `MLAgent.score()` (total-variation distance ต่อ learned baseline) แทน Isolation Forest
@@ -171,20 +171,32 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **ตัวอย่างรายงาน 06:00 น. (ข้อมูลเมื่อวาน)** — ใช้ `reference_date=yesterday 23:59` → โหลดข้อมูลเมื่อวานถูกต้อง
 - ✅ **Real-time daily report (เที่ยงคืนถึงตอนนี้)** — สร้าง script manual run, filter ข้อมูลวันนี้จาก current log
 
-### **ใหม่: ตรวจสอบรายงานวันที่วานขาดหายตอน Startup (2026-09-15)**
+### ตรวจสอบรายงานวันที่วานขาดหายตอน Startup (2026-09-15)
 - ✅ **Orchestrator ตรวจสอบรายงานวันที่วานขาดหายตอนเริ่ม service** — เรียก `_send_missing_daily_report()` หลัง init tasks
 - ✅ ตรวจสอบ `output_dir` หาโฟลเดอร์รายงานวันที่วาน; ถ้าไม่มี สร้างและส่งอัตโนมัติ
 - ✅ ใช้ `reference_date=yesterday 23:59:59` เพื่อ target ข้อมูล rotated log ของเมื่อวานได้ถูกต้อง
 - ✅ ส่ง Telegram ด้วยรูปแบบเหมือนรายงาน 06:00 น. ที่กำหนด (ภาษาไทย, emoji, protected palette, hostname, timestamp)
 
+### GitHub Release และ Production Installer (2026-09-16)
+- ✅ **GitHub Actions Release Workflow** — `.github/workflows/release.yml` build wheel เมื่อ push tag (v*), สร้าง GitHub Release พร้อม assets
+- ✅ **Production Installer (`install.sh`)** — ดาวน์โหลด wheel + assets จาก GitHub Releases, สร้าง venv, ติดตั้ง wheel, config systemd, logrotate
+- ✅ **Uninstaller (`uninstall.sh`)** — ลบทุกอย่างของ service, configs, logs, state, user
+- ✅ **Makefile** — Targets: `install`, `install-github`, `uninstall`, `upgrade`, `status`, `logs`, `version`, `release-dry-run`
+- ✅ **v1.0.0 released** (2026-09-16) — 10 assets: wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a
+- ✅ **v1.0.1 released** (2026-09-16) — แก้ wheel filename resolution ผ่าน GitHub API, เพิ่ม pip installation fallback
+- ✅ **v1.0.2 released** (2026-09-16) — ปรับปรุง pip installation: `ensurepip` พร้อม log output, fallback `get-pip.py`, verification พร้อม log version
+
 ---
 
 ## 4. สิ่งที่กำลังทำอยู่
 
+- 🔄 **Production Installer Debugging** — v1.0.2 released, กำลังทดสอบ pip installation ใน venv บนเครื่อง production
+  - **ปัญหา**: venv ค้างจากครั้งก่อนที่ล้มเหลว ทำให้ script ข้าม pip installation
+  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
+  - **Root Cause**: Script เช็ค `[[ ! -x "${VENV_DIR}/bin/python" ]]` แต่ไม่ verify pip presence
+  - **Next Fix**: เพิ่ม pip presence check ใน venv validation condition
+
 - 🔄 **P2 Security Remediation** (Medium findings — sprint ถัดไป):
-  - SEC-010: Implement DoH/DoT support ใน ResolverAgent
-  - SEC-011: Verify MTR `CAP_NET_RAW` ใน systemd unit
-  - SEC-013: Log file permissions
   - SEC-014: HTML escape ในข้อความ Telegram
 
 ---
@@ -200,13 +212,21 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **Test VM ขาด daily_report_* config** — เพิ่มใน `/etc/chk-a/config.yaml`
 - ✅ **Runtime code mismatch** — แก้โดยรัน `scripts/deploy.sh` บน test VM
 - ✅ **รายงานวันที่วานขาดหายตอน startup** — ตรวจสอบและสร้างอัตโนมัติตอน service เริ่มทำงาน
+- ✅ **v1.0.0/v1.0.1 install.sh wheel download** — แก้ผ่าน GitHub API lookup + constructed filename fallback
+- ✅ **v1.0.1/v1.0.2 pip installation** — เพิ่ม ensurepip + get-pip.py fallback + verification
+
+### ปัญหาที่ยังคงอยู่
+- 🔄 **install.sh venv reuse bug** — ถ้า venv มีอยู่แล้วจากครั้งที่ล้มเหลว จะข้าม pip installation
+  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
+  - **Fix ที่ต้องทำ**: เพิ่ม pip verification ใน venv existence check
 
 ---
 
 ## 6. งานที่ต้องทำต่อ
 
 ### สัปดาห์นี้ (P1)
-- เอกสาร systemd unit files ใน repo (เป็นข้อมูลอ้างอิง)
+- แก้ install.sh venv reuse bug (เพิ่ม pip verification ใน venv check)
+- จัดทำเอกสาร systemd unit files ใน repo (เป็นข้อมูลอ้างอิง)
 - เพิ่ม deployment checklist (config perms, systemd caps, log dirs)
 - สร้าง runbook สำหรับการดำเนินงานทั่วไป
 
@@ -255,7 +275,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `scripts/systemd_wrapper.py` | Systemd service wrapper — ตรวจจับการ restart, ส่งการแจ้ง start/restart/stop/fail |
 | `scripts/systemd_notify.py` | Notifier สถานะ systemd — start/stop/restart/fail/error |
 | `scripts/send_test_telegram.py` | ส่งข้อความ Telegram ทดสอบ anomaly/recovery พร้อมรูปภาพ |
-| `scripts/deploy.sh` | **ใหม่ (2026-09-14)** Deploy source ที่ sync มาไปยัง FHS runtime `/opt/chk-a/` |
+| `scripts/deploy.sh` | Deploy source ที่ sync มาไปยัง FHS runtime `/opt/chk-a/` |
 
 ### Test & Scripts
 | ไฟล์ | วัตถุประสงค์ |
@@ -265,6 +285,14 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `tests/test_integration_pipeline.py` | Full pipeline integration tests (7 tests) |
 | `tests/test_security_regressions.py` | Security regression tests (74 tests, SEC-001 ถึง SEC-020) |
 
+### Release & Deployment
+| ไฟล์ | วัตถุประสงค์ |
+|------|-------------|
+| `.github/workflows/release.yml` | GitHub Actions: build wheel, create release on tag push |
+| `install.sh` | Production installer from GitHub Releases |
+| `uninstall.sh` | Production uninstaller |
+| `Makefile` | Dev/ops targets: install, uninstall, upgrade, status, logs |
+
 ---
 
 ## 8. TODO List
@@ -273,4 +301,4 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-15 14:30:00*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-16 15:30:00*

@@ -1,6 +1,6 @@
 # Project Status — chk-a
 
-**Last Updated:** 2026-09-15 14:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -8,11 +8,11 @@
 
 **chk-a** is a multi-agent DNS A-record anomaly monitoring system. It continuously queries multiple DNS resolvers for configured FQDNs, builds a weighted consensus, learns baselines via online exponential-decay counters, detects anomalies, and sends formatted alerts via Telegram with comprehensive reporting (daily/monthly, EN/TH, charts + PDF).
 
-**Repository:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)
-**Development:** WSL Ubuntu (172.20.14.199/20)
-**Test Target:** VirtualBox Ubuntu 24.04 at 192.168.56.122 (user: ipds)
-**Service User:** `chk-a` (uid=999)
-**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)
+**Repository:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
+**Development:** WSL Ubuntu (172.20.14.199/20)  
+**Test Target:** VirtualBox Ubuntu 24.04 at 192.168.56.122 (user: ipds)  
+**Service User:** `chk-a` (uid=999)  
+**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **All timestamps:** Local Asia/Bangkok (+07), format `YYYY-MM-DD HH:MM:SS`
 
 ---
@@ -106,7 +106,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ All project timestamps now consistently use Asia/Bangkok local time (+07)
 
 ### Testing & Operations
-- ✅ **251/251 tests pass** on **both dev and test VM** (zero-regression policy)
+- ✅ **253/253 tests pass** on **both dev and test VM** (zero-regression policy)
 - ✅ CLI subcommands: `validate-config`, `check-once`, `show-baseline`, `test-telegram`, `test-daily-image`, `mtr`
 - ✅ Dev↔Test VM sync via `rsync -c` (checksum) with immediate sync back of VM edits
 - ✅ Test VM: Ubuntu 24.04 at 192.168.56.122 (user: ipds), service runs as `chk-a` (uid=999)
@@ -160,7 +160,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Fixed test VM config `/etc/chk-a/config.yaml` — Added missing `daily_report_*` settings
 - ✅ Service running with updated code and config
 
-### **NEW: Rotated Log Support & Baseline Integrity Metrics (2026-09-15)**
+### Rotated Log Support & Baseline Integrity Metrics (2026-09-15)
 - ✅ **`_load_recent_checks()` auto-reads rotated logs** — date-stamped `.bz2` and numbered `.gz` backups from log directory
 - ✅ **Mixed timezone timestamp parsing fixed** — handles both naive (real log) and timezone-aware (mock data) ISO8601 timestamps via `pd.to_datetime(format="mixed", utc=True).dt.tz_localize(None)`
 - ✅ **Baseline-based integrity scoring** — uses `MLAgent.score()` (total-variation distance against learned baseline) replacing Isolation Forest
@@ -171,20 +171,32 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **06:00 AM daily report sample (yesterday's data)** — uses `reference_date=yesterday 23:59` → correct yesterday data loaded
 - ✅ **Real-time daily report (midnight to now)** — manual run script created, filters to today's data from current log
 
-### **NEW: Startup Missing Daily Report Check (2026-09-15)**
+### Startup Missing Daily Report Check (2026-09-15)
 - ✅ **Orchestrator checks for missing yesterday's report on startup** — `_send_missing_daily_report()` called after task initialization
 - ✅ Checks `output_dir` for yesterday's report directory; if missing, generates and sends automatically
 - ✅ Uses `reference_date=yesterday 23:59:59` to correctly target yesterday's rotated logs
 - ✅ Sends to Telegram with same format as scheduled 06:00 report (Thai, emoji, protected palette, hostname, timestamp)
 
+### GitHub Release & Production Installer (2026-09-16)
+- ✅ **GitHub Actions Release Workflow** — `.github/workflows/release.yml` builds wheel on tag push (v*), creates GitHub Release with assets
+- ✅ **Production Installer (`install.sh`)** — Downloads wheel + assets from GitHub Releases, creates venv, installs wheel, configures systemd, logrotate
+- ✅ **Uninstaller (`uninstall.sh`)** — Complete removal of service, configs, logs, state, user
+- ✅ **Makefile** — Targets: `install`, `install-github`, `uninstall`, `upgrade`, `status`, `logs`, `version`, `release-dry-run`
+- ✅ **v1.0.0** released (2026-09-16) — 10 assets: wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a
+- ✅ **v1.0.1** released (2026-09-16) — Fixed wheel filename resolution via GitHub API, added pip installation fallback
+- ✅ **v1.0.2** released (2026-09-16) — Enhanced pip installation: `ensurepip` with output logging, fallback to `get-pip.py`, verification with version logging
+
 ---
 
 ## 4. In Progress
 
+- 🔄 **Production Installer Debugging** — v1.0.2 released, testing pip installation in venv on production machine
+  - **Issue**: Existing venv from previous failed attempts causes script to skip pip installation
+  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
+  - **Root Cause**: Script checks `[[ ! -x "${VENV_DIR}/bin/python" ]]` but doesn't verify pip presence
+  - **Next Fix**: Add pip presence check to venv validation condition
+
 - 🔄 **P2 Security Remediation** (Medium findings — next sprint):
-  - SEC-010: Implement DoH/DoT support in ResolverAgent
-  - SEC-011: Verify MTR `CAP_NET_RAW` in systemd unit
-  - SEC-013: Log file permissions
   - SEC-014: HTML escape in Telegram messages
 
 ---
@@ -200,13 +212,21 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **Test VM missing daily_report_* config** — Added to `/etc/chk-a/config.yaml`
 - ✅ **Runtime code mismatch** — Fixed by running `scripts/deploy.sh` on test VM
 - ✅ **Missing yesterday's report on startup** — Auto-check and generate on service start
+- ✅ **v1.0.0/v1.0.1 install.sh wheel download** — Fixed via GitHub API lookup + constructed filename fallback
+- ✅ **v1.0.1/v1.0.2 pip installation** — Added ensurepip + get-pip.py fallback + verification
+
+### Active
+- 🔄 **install.sh venv reuse bug** — If venv exists from failed attempt, pip installation is skipped
+  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
+  - **Fix needed**: Add pip verification to venv existence check
 
 ---
 
 ## 6. Next Actions
 
 ### This Week (P1)
-- Document systemd unit files in repo (reference)
+- Fix install.sh venv reuse bug (add pip verification to venv check)
+- Document systemd unit files in repo (for reference)
 - Add deployment checklist (config perms, systemd caps, log dirs)
 - Create runbook for common operations
 
@@ -255,7 +275,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `scripts/systemd_wrapper.py` | Systemd service wrapper — detects restarts, sends start/restart/stop/fail notifications |
 | `scripts/systemd_notify.py` | Direct systemd status notifier — start/stop/restart/fail/error |
 | `scripts/send_test_telegram.py` | Sends test anomaly/recovery Telegram messages with images |
-| `scripts/deploy.sh` | **NEW (2026-09-14)** Deploy synced source to FHS runtime `/opt/chk-a/` |
+| `scripts/deploy.sh` | Deploy synced source to FHS runtime `/opt/chk-a/` |
 
 ### Test & Scripts
 | File | Purpose |
@@ -265,6 +285,14 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `tests/test_integration_pipeline.py` | Full pipeline integration tests (7 tests) |
 | `tests/test_security_regressions.py` | Security regression tests (74 tests, SEC-001 to SEC-020) |
 
+### Release & Deployment
+| File | Purpose |
+|------|---------|
+| `.github/workflows/release.yml` | GitHub Actions: build wheel, create release on tag push |
+| `install.sh` | Production installer from GitHub Releases |
+| `uninstall.sh` | Production uninstaller |
+| `Makefile` | Dev/ops targets: install, uninstall, upgrade, status, logs |
+
 ---
 
 ## 8. TODO List
@@ -273,4 +301,4 @@ See [TODO.md](TODO.md) for detailed breakdown.
 
 ---
 
-*Generated by Hermes Agent session on 2026-09-15 14:30:00*
+*Generated by Hermes Agent session on 2026-09-16 15:30:00*

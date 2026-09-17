@@ -6,12 +6,13 @@ exponential backoff). The client is intentionally dependency-light: ``aiohttp``
 for the request, ``tenacity`` for resilience.
 
 Security: Bot token is never logged. URL paths containing the token are masked
-in all log output.
+in all log output. User-supplied text/caption is HTML-escaped to prevent injection.
 """
 
 from __future__ import annotations
 
 import asyncio
+import html
 from pathlib import Path
 from typing import Any
 
@@ -27,6 +28,13 @@ from tenacity import (
 from .logger import setup_logger
 
 _API_BASE = "https://api.telegram.org"
+
+
+def _html_escape(value: Any) -> str:
+    """HTML escape a value for safe inclusion in Telegram HTML messages."""
+    if value is None:
+        return "N/A"
+    return html.escape(str(value))
 
 
 def _mask_token(text: str) -> str:
@@ -121,7 +129,9 @@ class TelegramClient:
             self.logger.warning("Telegram send skipped: missing bot_token or chat_id")
             return False
         try:
-            await self._post({"chat_id": chat_id, "text": text, "parse_mode": parse_mode})
+            # HTML escape user-supplied text to prevent injection
+            safe_text = _html_escape(text)
+            await self._post({"chat_id": chat_id, "text": safe_text, "parse_mode": parse_mode})
             self.logger.info("Telegram message sent to chat_id=%s", _mask_chat_id(f"chat_id={chat_id}"))
             return True
         except Exception as exc:  # network / HTTP / retry exhaustion
@@ -148,7 +158,9 @@ class TelegramClient:
             data = aiohttp.FormData()
             data.add_field("chat_id", chat_id)
             if caption:
-                data.add_field("caption", caption)
+                # HTML escape user-supplied caption to prevent injection
+                safe_caption = _html_escape(caption)
+                data.add_field("caption", safe_caption)
                 data.add_field("parse_mode", parse_mode)
             # Add photo file - stream from file
             data.add_field(

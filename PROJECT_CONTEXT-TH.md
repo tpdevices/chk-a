@@ -1,6 +1,6 @@
 # บริบทโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-15 14:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -8,11 +8,11 @@
 
 **chk-a** เป็นระบบตรวจสอบความผิดปกติของ DNS A-record แบบ Multi-Agent เขียนด้วย Python ระบบจะสอบถาม DNS resolver หลายตัวพร้อมกันสำหรับ FQDN ที่กำหนด สร้างคะแนนเสียงถ่วงน้ำหนัก (Weighted Consensus) เรียนรู้ Baseline แบบ Online Exponential Decay ตรวจจับ Anomaly และส่ง Alert ผ่าน Telegram พร้อมรายงานรายวัน/รายเดือน (ภาษาไทย/อังกฤษ + กราฟ + PDF)
 
-**ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)
-**พัฒนา:** WSL Ubuntu (172.20.14.199/20)
-**เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)
-**Service User:** `chk-a` (uid=999)
-**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)
+**ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
+**พัฒนา:** WSL Ubuntu (172.20.14.199/20)  
+**เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)  
+**Service User:** `chk-a` (uid=999)  
+**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **Timestamp ทั้งหมด:** เวลาท้องถิ่น Asia/Bangkok (+07), รูปแบบ `YYYY-MM-DD HH:MM:SS`
 
 ---
@@ -70,77 +70,78 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 13. **รองรับ Rotated Logs** — `_load_recent_checks()` อ่าน date-stamped `.bz2` และ numbered `.gz` backups อัตโนมัติ (2026-09-15)
 14. **Baseline-based Integrity** — ใช้ `MLAgent.score()` (total-variation distance) แทน Isolation Forest, พร้อม IP stability/diversity metrics (2026-09-15)
 15. **Startup Missing Report Check** — Orchestrator ตรวจสอบและส่งรายงานวันที่วานขาดหายตอน startup (2026-09-15)
+16. **GitHub Release & Production Installer** — Actions workflow build wheel เมื่อ push tag, สร้าง release; `install.sh` ดาวน์โหลดจาก GitHub Releases, ติดตั้งไป `/opt/chk-a/` พร้อม systemd (2026-09-16)
 
 ---
 
 ## การตั้งค่า (Configuration)
 
-**หลัก:** `/etc/chk-a/config.yaml` (test VM)
+**หลัก:** `/etc/chk-a/config.yaml` (test VM)  
 **อ้างอิง:** `/opt/chk-a/config.example.yaml`
 
 Section สำคัญ:
 - `fqdns` — รายการ FQDN พร้อม `min_consensus` และ `expected_ips` (optional)
-- `resolvers` — รายการ resolver endpoint (`name`, `address` เป็น `IP:port`, `weight`, `timeout_ms`)
+- `resolvers` — Resolver endpoints (`name`, `address` เป็น `IP:port`, `weight`, `timeout_ms`)
 - `ml` — `baseline_decay`, `anomaly_threshold`, `min_samples_before_alert`
 - `alert` — Telegram credentials, dedup window, rate limit, log paths, daily image config, dedup cache path
 - `scheduler` — `min_interval_sec` (30), `max_interval_sec` (180), `jitter`
 - `mtr` — enabled flag, interval, max_hops, count, interval_ms, timeout_sec, mode (icmp/tcp/udp), resolvers list
-- `reporting` — ตารางเวลารายเดือน/รายวัน, output dir, Telegram/email config, graph inclusion
+- `reporting` — Monthly/daily schedules, output dir, Telegram/email config, graph inclusion
 - `baseline_store_path` — `/var/lib/chk-a/baselines.json`
 
 **Secrets:** `/etc/chk-a/env` — เก็บ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_CHAT_ID` (test VM)
 
 ---
 
-## รายละเอียดการรายงาน
+## รายละเอียดการรายงาน (Reporting Details)
 
 ### รายงานรายเดือน (วันที่ 1 ทุกเดือน, 06:00 น.)
 - ML insights จาก lookback 30 วัน
 - กราฟ 7 ประเภท × EN/TH = 14 กราฟ + 2 Dashboards = 16 ไฟล์
-- PDF รายงาน (EN/TH) ผ่าน fpdf2
-- Telegram: สรุปภาษาไทย + กราฟ (ส่งแบบ batch, ครั้งละ 5 รูป)
-- อีเมล: แนบ PDF เต็มรูปแบบ
+- รายงาน PDF (EN/TH) ผ่าน fpdf2
+- Telegram: สรุปภาษาไทย + กราฟ (batched, 5 รูปต่อ batch)
+- อีเมล: PDF attachment เต็ม
 
 ### รายงานรายวัน (06:00 น., lookback 1 วัน)
-- กราฟเหมือนกัน, หน้าต่างเวลา 1 วัน
-- Telegram: สรุปภาษาไทย + กราฟ (ส่งแบบ batch)
+- กราฟเหมือนกัน, time window 1 วัน
+- Telegram: สรุปภาษาไทย + กราฟ (batched)
 
-### กราฟ (7 ประเภท)
-1. Availability Bar (เปอร์เซ็นต์ availability ต่อ resolver)
+### ประเภทกราฟ (7)
+1. Availability Bar (availability % ต่อ resolver)
 2. Availability Heatmap (รายชั่วโมงต่อ resolver)
 3. Integrity Score (ML-based ต่อ resolver)
-4. Latency Boxplot (การกระจาย latency ต่อ resolver)
-5. IP Stability & Diversity (ชุด IP ที่ไม่ซ้ำ, stability %)
+4. Latency Boxplot (latency distribution ต่อ resolver)
+5. IP Stability & Diversity (unique IP set, stability %)
 6. MTR Path Visualization (hop loss/latency)
 7. Path Availability (ML-based network path health)
 
-### การแสดงผลภาษาไทย
-กราฟทุกตัวเรียก `_apply_thai_fonts()` → translation map ครอบคลุมทุก label, footer แยกซ้าย/ขวา (hostname | timestamp), lang param ควบคุม TH/EN ไม่ซ้ำซ้อน
+### การแสดงภาษาไทย
+ทุกกราฟเรียก `_apply_thai_fonts()` → translation map ครอบคลุมทุก label, footer แบ่งซ้าย/ขวา (hostname | timestamp), lang param ควบคุม TH/EN โดยไม่ซ้ำ
 
 ---
 
 ## รูปแบบ Telegram
 
-### ข้อความ Alert (HTML)
-- Severity emoji: 🔴 Critical / 🟡 Warning / 🔵 Info
-- Type label: 📊 Baseline Deviation / 🗳️ Consensus Deviation / 🆕 New IP / 🚫 NXDOMAIN
-- จับกลุ่ม Majority vs Outliers
-- Resolver ที่ล้มเหลว แสดงแยก
-- เปรียบเทียบ Baseline สำหรับ baseline_deviation
-- Hostname, resolver names, timestamp (เวลาท้องถิ่น)
+### Alert Messages (HTML)
+- Severity emojis: 🔴 Critical / 🟡 Warning / 🔵 Info
+- Type labels: 📊 Baseline Deviation / 🗳️ Consensus Deviation / 🆕 New IP / 🚫 NXDOMAIN
+- จัดกลุ่ม Majority vs Outliers
+- Failed resolvers แสดงแยก
+- Baseline comparison สำหรับ baseline_deviation
+- Hostname, resolver names, timestamp (local time)
 
 ### การแจ้งเตือน Anomaly/Recovery (2026-09-09)
-- **Event ID:** `{hostname}-YYYYMMDD-HHmmss` (ทั้ง anomaly และ recovery เพื่อ correlation)
+- **Event ID:** `{hostname}-YYYYMMDD-HHmmss` (ทั้ง anomaly และ recovery สำหรับ correlation)
 - **Anomaly:** `img/priority.jpg` + สาเหตุ, last unreachable IP จาก MTR, consensus score
 - **Recovery:** `img/ok.jpg` + ระยะเวลาความผิดปกติ (ชม./นาที/วินาที), ML baseline stability, recovery confidence
 - ML logging ลงไฟล์พร้อม start time, end time, duration
 
 ### การแจ้งสถานะ Service (2026-09-12)
-- **Start:** 🟢 การแจ้ง Service Start
-- **Restart:** 🔄 การแจ้ง Service Restart (ตรวจจับผ่าน state file)
-- **Stop:** 🔴 การแจ้ง Service Stop
-- **Fail:** ❌ การแจ้ง Service Fail พร้อมรายละเอียด
-- **Error:** ⚠️ การแจ้ง Service Error พร้อมรายละเอียด
+- **Start:** 🟢 Service Start notification
+- **Restart:** 🔄 Service Restart notification (ตรวจจับผ่าน state file)
+- **Stop:** 🔴 Service Stop notification
+- **Fail:** ❌ Service Fail notification พร้อมรายละเอียด
+- **Error:** ⚠️ Service Error notification พร้อมรายละเอียด
 - ส่งผ่าน `systemd_wrapper.py` (ExecStartPre สำหรับ start, ExecStop สำหรับ stop)
 
 ### Plain Text Log (`/var/log/chk-a/alerts.log`)
@@ -154,45 +155,45 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ## การทดสอบและคุณภาพ
 
-- **251/251 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
-- **สถานที่ทดสอบ:** ทุกอย่างบน test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
-- **แก้ test ไม่แก้ agent code** — ตามกติกาโครงการ
-- **Code review patterns:** ตาม skill `software-development` → `code-review-patterns`
+- **253/253 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
+- **Test Location:** ทุกอย่างบน test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
+- **Fix Tests, Not Agent Code** — ตามกฎโครงการ
+- **Code Review Patterns:** ตาม skill `software-development` → `code-review-patterns`
 
 ---
 
-## สถานะความปลอดภัย (Security)
+## สถานะความปลอดภัย (Security Status)
 
-**Security Code Review ครบถ้วน:** 23 ข้อพบ
+**Security Code Review เสร็จสิ้น:** 23 findings
 - **2 Critical:** AlertAgent token bucket race (C-01) ✅ แก้แล้ว, AlertAgent dedup cache race (C-02) ✅ แก้แล้ว
 - **5 High:** Orchestrator timezone-naive scheduler (H-01) ✅ แก้แล้ว, MTR timeout calc (H-02) ✅ แก้แล้ว, BaselineStore key caching (H-03) ✅ แก้แล้ว, TelegramClient memory (H-04) ✅ แก้แล้ว, Orchestrator batch writes (H-05) ✅ แก้แล้ว
 - **8 Medium:** DoH support (M-01) ✅ แก้แล้ว, Consensus reputation (M-02) ✅ แก้แล้ว, MLAgent key collision (M-03) ✅ แก้แล้ว, Parallel MTR (M-04) ✅ แก้แล้ว, CircuitBreaker (M-05) ✅ แก้แล้ว, Health server consistency (M-06) ✅ แก้แล้ว, Thai font loading (M-07) ✅ แก้แล้ว, AlertAgent log rotation (M-08) ✅ แก้แล้ว
-- **5 Low/Info:** SEC-010 (DoH/DoT), SEC-011 (CAP_NET_RAW), SEC-013 (log perms), SEC-014 (HTML escape), SEC-015..SEC-020 ✅ แก้แล้ว
+- **5 Low/Info:** SEC-010 (DoH/DoT) ✅ แก้แล้ว, SEC-011 (CAP_NET_RAW) ✅ แก้แล้ว, SEC-013 (log perms) ✅ แก้แล้ว, SEC-014 (HTML escape) ⏳ กำลังทำ, SEC-015..SEC-020 ✅ แก้แล้ว
 
 **แก้แล้ว (Security Regression Tests SEC-001..SEC-020):**
-- SEC-001: เพิ่ม `_validate_target_ip()` ใน `mtr_agent.py` ผ่าน `ipaddress.ip_address()`
+- SEC-001: เพิ่ม `_validate_target_ip()` ใน `mtr_agent.py` ใช้ `ipaddress.ip_address()`
 - SEC-002: เพิ่ม path validation ใน `baseline_store.py` `__init__` และ `_is_path_allowed()`, dynamic `_get_allowed_base_dir()` จาก `CHK_A_BASELINE_DIR`
-- SEC-003: Parse `/etc/chk-a/env` เข้า config model โดยตรง (ไม่มลทิน `os.environ`); redact tokens ใน logs; **ใช้ token ใน URL path (ข้อกำหนดของ Telegram Bot API), masked ใน logs**
+- SEC-003: Parse `/etc/chk-a/env` ตรงเข้า config model (ไม่ `os.environ` pollution); redact tokens ใน logs; ใช้ **token ใน URL path (ข้อกำหนดของ Telegram Bot API), masked ใน logs**
 - SEC-004: เปลี่ยน `_health_bind_address()` เป็น instance method อ่านจาก validated config; loopback validation ใน `SchedulerConfig`; ลบ env-var bypass
 - SEC-005: ลบ `email_use_tls` field; port-based TLS — port 465 ใช้ `SMTP_SSL`, port 587 ใช้ `SMTP` + `starttls()`
 - SEC-006: Pydantic v2 validators ใน models — FQDN (RFC 1035/2181), resolver address (IP:port/hostname:port/DoH), expected IPs
 - SEC-007: Telegram API calls ใช้ **token ใน URL path (ข้อกำหนดของ Telegram Bot API), masked ใน logs**
 - SEC-008: LRU dedup cache พร้อม TTL และ max-size (OrderedDict, maxsize=10000, ttl_sec=3600)
-- SEC-009: Log injection prevention ผ่าน `_sanitize_log_field()` (escapes newlines, carriage returns, tabs)
+- SEC-009: Log injection prevention ผ่าน `_sanitize_log_field()` (escape newlines, carriage returns, tabs)
 - SEC-012: Hard concurrency ceiling — MTR semaphore (4), max_concurrent capped at 100, Telegram circuit breaker
 - SEC-015: Baseline encryption at rest ผ่าน age/pyrage (public key ใน config, private key จาก env)
-- SEC-016: Pinned dependencies พร้อม SHA-256 hashes (39 packages), CI พร้อม pip-audit
+- SEC-016: Pinned dependencies พร้อม SHA-256 hashes (39 packages), CI with pip-audit
 - SEC-017: Config perms `chmod 640`, env perms `chmod 600`, chown root:chk-a
 - SEC-018: Telegram circuit breaker (CLOSED/OPEN/HALF_OPEN, threshold=5, recovery=60s)
-- SEC-019: Daily report scheduler drift fix — absolute time scheduling พร้อม fixed reference point
+- SEC-019: Daily report scheduler drift fix — absolute time scheduling with fixed reference point
 - SEC-020: MTR/Resolver config sync validation — `mtr.resolvers` ต้องเป็น subset ของ `resolvers`
-- Test infrastructure: `tests/conftest.py` ตั้ง `CHK_A_BASELINE_DIR=/tmp`
+- Test infrastructure: `tests/conftest.py` กำหนด `CHK_A_BASELINE_DIR=/tmp`
 
 ### การแก้ไข Telegram Reporter (2026-09-13)
-- **สาเหตุหลัก:** `TelegramReporter` ใช้ `Authorization: Bearer *** header แต่ Telegram Bot API กำหนดให้ใช้ token ใน URL path (`/bot<token>/method`)
-- **ผลกระทบ:** รายงานรายวัน 06:00 น. ล้มเหลว 404 Not Found; รูปภาพเที่ยงคืนทำงานได้เพราะใช้ `TelegramClient` (token ใน URL)
-- **การแก้ไข:** อัปเดต `TelegramReporter` ให้ใช้ token ใน URL path (เหมือนกับ `TelegramClient`)
-- **ไฟล์ที่แก้:** `src/chk_a/reporting/telegram_reporter.py`, `tests/test_security_regressions.py`
+- **Root Cause:** `TelegramReporter` ใช้ `Authorization: Bearer *** header แต่ Telegram Bot API กำหนดให้ใช้ token ใน URL path (`/bot<token>/method`)
+- **Impact:** รายงานรายวัน 06:00 น. ล้มเหลว 404 Not Found; รูปภาพเที่ยงคืนทำงานเพราะใช้ `TelegramClient` (token ใน URL)
+- **Fix:** อัปเดต `TelegramReporter` ให้ใช้ token ใน URL path (เหมือน `TelegramClient`)
+- **Files Changed:** `src/chk_a/reporting/telegram_reporter.py`, `tests/test_security_regressions.py`
 - **Circuit Breaker:** รีคัฟเวอร์อัตโนมัติหลัง 60 วินาที (HALF_OPEN → CLOSED)
 
 ### โครงสร้างพื้นฐานการ Deploy (2026-09-14)
@@ -220,40 +221,59 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - ใช้ `reference_date=yesterday 23:59:59` เพื่อ target ข้อมูล rotated log ของเมื่อวานได้ถูกต้อง
 - ส่ง Telegram ด้วยรูปแบบเหมือนรายงาน 06:00 น. ที่กำหนด (ภาษาไทย, emoji, protected palette, hostname, timestamp)
 
+### GitHub Release และ Production Installer (2026-09-16)
+- **GitHub Actions Release Workflow** — `.github/workflows/release.yml` build wheel เมื่อ push tag (v*), สร้าง GitHub Release พร้อม assets
+- **Production Installer (`install.sh`)** — ดาวน์โหลด wheel + assets จาก GitHub Releases, สร้าง venv, ติดตั้ง wheel, config systemd, logrotate
+- **Uninstaller (`uninstall.sh`)** — ลบทุกอย่างของ service, configs, logs, state, user
+- **Makefile** — Targets: `install`, `install-github`, `uninstall`, `upgrade`, `status`, `logs`, `version`, `release-dry-run`
+- **v1.0.0 released** (2026-09-16) — 10 assets: wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a
+- **v1.0.1 released** (2026-09-16) — แก้ wheel filename resolution ผ่าน GitHub API, เพิ่ม pip installation fallback
+- **v1.0.2 released** (2026-09-16) — ปรับปรุง pip installation: `ensurepip` พร้อม log output, fallback `get-pip.py`, verification พร้อม log version
+- **Known Issue:** install.sh venv reuse bug — ถ้า venv มีอยู่แล้วจากครั้งที่ล้มเหลว จะข้าม pip installation
+  - **Workaround:** `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
+  - **Fix needed:** เพิ่ม pip verification ใน venv existence check
+
 ---
 
-## การตั้งค่า AI Model (สำหรับ cyber-security-review)
+## AI Model Config (สำหรับ cyber-security-review)
 
-**Provider ที่มีอยู่:** NVIDIA (หลัก), 9router/OpenRouter/AnyAPI/Aihubmix (gateways), Ollama-Local, Poolside.AI
+**Available Providers:** NVIDIA (primary), 9router/OpenRouter/AnyAPI/Aihubmix (gateways), Ollama-Local, Poolside.AI
 
-**Reference Models ที่แนะนำ:**
-1. `nvidia/nemotron-3-ultra-550b-a55b` — Primary analyst (reasoning strength สูงสุด)
+**Recommended Reference Models:**
+1. `nvidia/nemotron-3-ultra-550b-a55b` — Primary analyst (highest reasoning strength)
 2. `poolside/laguna-s-2.1` — Code specialist (security code review)
 3. `anthropic/claude-3.5-sonnet` — General analyst (balanced, context 200k)
 4. `openai/gpt-4o` — Multimodal (diagrams, configs)
 5. `qwen2.5-coder:7b` (Ollama-Local) — Local static analysis
 
-**Aggregator ที่แนะนำ:**
-1. `nvidia/nemotron-3-ultra-550b-a55b` — หลัก (evidence weighing, CVSS scoring)
+**Recommended Aggregators:**
+1. `nvidia/nemotron-3-ultra-550b-a55b` — Primary (evidence weighing, CVSS scoring)
 2. `anthropic/claude-3.5-sonnet` — Fallback (calibrated judgment)
 
 ---
 
-## หมายเหตุการดำเนินงาน
+## หมายเหตุการดำเนินงาน (Operational Notes)
 
-- **SSH:** Dev→Test passwordless (`ipds@192.168.56.122`), reverse ไม่ได้
+- **SSH:** Dev→Test passwordless (`ipds@192.168.56.122`), reverse NOT possible
 - **Logs:** `journalctl -u chk-a-resolver -f` (และ consensus, alert, mtr)
-- **เปลี่ยน Config:** แก้ `/etc/chk-a/config.yaml` → `sudo systemctl restart chk-a-*`
-- **MTR Resolvers List** ใน config แยกต่างหาก — ต้อง sync เองกับ `resolvers` list
-- **GitHub:** HTTPS with PAT (ไม่ใช้ SSH บน WSL)
-- **การแจ้งสถานะ Service:** `systemd_wrapper.py` เรียกผ่าน ExecStartPre (start) และ ExecStop (stop) ใน `systemd/chk-a.service`; state file ที่ `/opt/chk-a/last_state.txt`
+- **Config Change:** แก้ `/etc/chk-a/config.yaml` → `sudo systemctl restart chk-a-*`
+- **MTR Resolvers List** ใน config แยกจาก `resolvers` list — ต้อง sync เอง
+- **GitHub:** HTTPS with PAT (ไม่มี SSH บน WSL)
+- **Service Status Notification:** `systemd_wrapper.py` เรียกผ่าน ExecStartPre (start) และ ExecStop (stop) ใน `systemd/chk-a.service`; state file ที่ `/opt/chk-a/last_state.txt`
 - **State File Permission:** ต้องรัน `sudo chown ipds:ipds /opt/chk-a/last_state.txt` หลังสร้างครั้งแรก
-- **Time Convention:** ทุก timestamp ใช้เวลาท้องถิ่น Asia/Bangkok (+07); `datetime.now()` ทั่วทั้งโปรเจกต์, ไม่มี `datetime.utcnow()` ที่ไหนเลย
+- **Time Convention:** ทุก timestamp ใช้เวลาท้องถิ่น Asia/Bangkok (+07); `datetime.now()` ทั่วทั้งโค้ด, ไม่มี `datetime.utcnow()` ที่ไหนเลย
 - **Standard Deploy Workflow:**
-  1. Dev: แก้โค้ดใน `/home/ipds/Hermes-Prj/chk-a/`
+  1. Dev: แก้โค้ดที่ `/home/ipds/Hermes-Prj/chk-a/`
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
+- **Production Install Workflow:**
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.2/install.sh`
+  2. `chmod +x install.sh`
+  3. `sudo ./install.sh v1.0.2`
+  4. แก้ `/etc/chk-a/env` ใส่ Telegram credentials
+  4. แก้ `/etc/chk-a/config.yaml` ใส่ FQDNs/resolvers
+  5. `sudo systemctl restart chk-a`
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-15 14:30:00*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-16 15:30:00*

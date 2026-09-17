@@ -1,6 +1,6 @@
 # Project Context — chk-a
 
-**Last Updated:** 2026-09-15 14:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -8,11 +8,11 @@
 
 **chk-a** is a multi-agent DNS A-record anomaly monitoring system. It continuously queries multiple DNS resolvers for configured FQDNs, builds a weighted consensus, learns baselines via online exponential-decay counters, detects anomalies, and sends formatted alerts via Telegram with comprehensive reporting (daily/monthly, EN/TH, charts + PDF).
 
-**Repository:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)
-**Development:** WSL Ubuntu (172.20.14.199/20)
-**Test Target:** VirtualBox Ubuntu 24.04 at 192.168.56.122 (user: ipds)
-**Service User:** `chk-a` (uid=999)
-**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)
+**Repository:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
+**Development:** WSL Ubuntu (172.20.14.199/20)  
+**Test Target:** VirtualBox Ubuntu 24.04 at 192.168.56.122 (user: ipds)  
+**Service User:** `chk-a` (uid=999)  
+**Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **All timestamps:** Local Asia/Bangkok (+07), format `YYYY-MM-DD HH:MM:SS`
 
 ---
@@ -70,12 +70,13 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 13. **Rotated Log Support** — `_load_recent_checks()` auto-reads date-stamped `.bz2` and numbered `.gz` backups (2026-09-15)
 14. **Baseline-based Integrity** — Uses `MLAgent.score()` (total-variation distance) replacing Isolation Forest, with IP stability/diversity metrics (2026-09-15)
 15. **Startup Missing Report Check** — Orchestrator checks and sends yesterday's daily report on startup if missing (2026-09-15)
+16. **GitHub Release & Production Installer** — Actions workflow builds wheel on tag, creates release; `install.sh` downloads from GitHub Releases, installs to `/opt/chk-a/` with systemd (2026-09-16)
 
 ---
 
 ## Configuration
 
-**Primary:** `/etc/chk-a/config.yaml` (test VM)
+**Primary:** `/etc/chk-a/config.yaml` (test VM)  
 **Reference:** `/opt/chk-a/config.example.yaml`
 
 Key Sections:
@@ -154,7 +155,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ## Testing & Quality
 
-- **251/251 tests pass** on **both dev and test VM** (zero-regression policy)
+- **253/253 tests pass** on **both dev and test VM** (zero-regression policy)
 - **Test Location:** Everything on test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
 - **Fix Tests, Not Agent Code** — per project rules
 - **Code Review Patterns:** Per skill `software-development` → `code-review-patterns`
@@ -167,7 +168,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - **2 Critical:** AlertAgent token bucket race (C-01) ✅ FIXED, AlertAgent dedup cache race (C-02) ✅ FIXED
 - **5 High:** Orchestrator timezone-naive scheduler (H-01) ✅ FIXED, MTR timeout calc (H-02) ✅ FIXED, BaselineStore key caching (H-03) ✅ FIXED, TelegramClient memory (H-04) ✅ FIXED, Orchestrator batch writes (H-05) ✅ FIXED
 - **8 Medium:** DoH support (M-01) ✅ FIXED, Consensus reputation (M-02) ✅ FIXED, MLAgent key collision (M-03) ✅ FIXED, Parallel MTR (M-04) ✅ FIXED, CircuitBreaker (M-05) ✅ FIXED, Health server consistency (M-06) ✅ FIXED, Thai font loading (M-07) ✅ FIXED, AlertAgent log rotation (M-08) ✅ FIXED
-- **5 Low/Info:** SEC-010 (DoH/DoT), SEC-011 (CAP_NET_RAW), SEC-013 (log perms), SEC-014 (HTML escape), SEC-015..SEC-020 ✅ FIXED
+- **5 Low/Info:** SEC-010 (DoH/DoT) ✅ FIXED, SEC-011 (CAP_NET_RAW) ✅ FIXED, SEC-013 (log perms) ✅ FIXED, SEC-014 (HTML escape) ⏳ IN PROGRESS, SEC-015..SEC-020 ✅ FIXED
 
 **Fixed (Security Regression Tests SEC-001..SEC-020):**
 - SEC-001: Added `_validate_target_ip()` in `mtr_agent.py` using `ipaddress.ip_address()`
@@ -220,6 +221,18 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - Uses `reference_date=yesterday 23:59:59` to correctly target yesterday's rotated logs
 - Sends to Telegram with same format as scheduled 06:00 report (Thai, emoji, protected palette, hostname, timestamp)
 
+### GitHub Release & Production Installer (2026-09-16)
+- **GitHub Actions Release Workflow** — `.github/workflows/release.yml` builds wheel on tag push (v*), creates GitHub Release with assets
+- **Production Installer (`install.sh`)** — Downloads wheel + assets from GitHub Releases, creates venv, installs wheel, configures systemd, logrotate
+- **Uninstaller (`uninstall.sh`)** — Complete removal of service, configs, logs, state, user
+- **Makefile** — Targets: `install`, `install-github`, `uninstall`, `upgrade`, `status`, `logs`, `version`, `release-dry-run`
+- **v1.0.0 released** (2026-09-16) — 10 assets: wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a
+- **v1.0.1 released** (2026-09-16) — Fixed wheel filename resolution via GitHub API, added pip installation fallback
+- **v1.0.2 released** (2026-09-16) — Enhanced pip installation: `ensurepip` with output logging, fallback to `get-pip.py`, verification with version logging
+- **Known Issue:** install.sh venv reuse bug — if venv exists from failed attempt, pip installation is skipped
+  - **Workaround:** `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
+  - **Fix needed:** Add pip verification to venv existence check
+
 ---
 
 ## AI Model Config (for cyber-security-review)
@@ -253,7 +266,14 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   1. Dev: Edit code in `/home/ipds/Hermes-Prj/chk-a/`
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
+- **Production Install Workflow:**
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.2/install.sh`
+  2. `chmod +x install.sh`
+  3. `sudo ./install.sh v1.0.2`
+  4. Edit `/etc/chk-a/env` with Telegram credentials
+  5. Edit `/etc/chk-a/config.yaml` with FQDNs/resolvers
+  6. `sudo systemctl restart chk-a`
 
 ---
 
-*Created by Hermes Agent session on 2026-09-15 14:30:00*
+*Created by Hermes Agent session on 2026-09-16 15:30:00*

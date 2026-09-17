@@ -85,6 +85,10 @@ jobs:
           cp config/chk-a.env.example dist/env.example
           cp systemd/chk-a.service dist/
           cp logrotate.d/chk-a dist/logrotate.chk-a
+          # Copy scripts directory for systemd wrapper
+          cp -r scripts dist/
+          # Create scripts tarball for easy download
+          tar -czf dist/scripts.tar.gz -C dist scripts
           ls -la dist/
 
       - name: Create Release
