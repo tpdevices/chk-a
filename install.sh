@@ -314,7 +314,7 @@ chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR
 chmod 0750 "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
 chown root:"${SERVICE_GROUP}" "${ETC_DIR}/config.yaml" "${ETC_DIR}/env" 2>/dev/null || true
 chmod 0640 "${ETC_DIR}/config.yaml" 2>/dev/null || true
-chmod 0600 "${ETC_DIR}/env" 2>/dev/null || true
+chmod 0640 "${ETC_DIR}/env" 2>/dev/null || true
 
 # 9. Enable and start service
 log "Reloading systemd and enabling service..."

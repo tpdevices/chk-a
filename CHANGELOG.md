@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **2026-09-17 11:37:33** — `install.sh` — Fixed: Changed permission of /etc/chk-a/env from 0600 to 0640 to allow the chk-a service user to read the Telegram credentials.
 - **2026-09-17 10:55:37** — `install.sh` — Fixed: Added robust download and extraction of scripts.tar.gz with verification and error handling; ensured ownership of installed files.
 ## [1.0.2] - 2026-09-16
 
