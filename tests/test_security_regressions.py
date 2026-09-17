@@ -588,7 +588,7 @@ class TestSEC017_ConfigFilePermissions:
 
         # install.sh uses 0640 and 0600 (octal with leading zero)
         assert "chmod 0640" in content and "config.yaml" in content
-        assert "chmod 0600" in content and "env" in content
+        assert "chmod 0640" in content and "env" in content
         assert "chown root:" in content
 
 

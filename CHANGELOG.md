@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **2026-09-17 13:32:37** — `pyproject.toml` — Fixed: Lowered Python requirement from 3.11+ to 3.10+ to support Ubuntu 22.04 LTS (Python 3.10.12). Added conditional dependency `backports.zoneinfo` for Python <3.9. Updated Black target versions to py310/py311.
 - **2026-09-17 12:39:20** — `telegram_client.py`, `systemd_wrapper.py` — Fixed: Removed HTML auto-escape from TelegramClient (caller responsibility). Added proper HTML escaping in systemd_wrapper.py for hostname and details. HTML parsing in Telegram now renders correctly (bold, monospace, etc.).
 - **2026-09-17 12:26:18** — `schemas.py` / `orchestrator.py` — Fixed: Changed default reporting.output_dir from "reports" to "/var/lib/chk-a/reports" to avoid read-only filesystem error under ProtectSystem=strict. Ensures daily/monthly reports can be written.
 - **2026-09-17 12:14:41** — `install.sh` — Fixed: Use dedicated temp directory (mktemp) for downloads; remove existing files before download; added download helper with cleanup; fixed pip verification typo; ensures clean downloads and avoids permission issues.
