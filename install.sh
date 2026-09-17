@@ -119,7 +119,18 @@ mkdir -p "${LIB_DIR}/matplotlib"
 
 # 3. Download wheel
 log "Downloading wheel from GitHub Releases..."
-cd /tmp
+
+# Create a dedicated temporary directory for downloads
+DOWNLOAD_DIR=$(mktemp -d -t chk-a-install-XXXXXX)
+log "Using temporary download directory: ${DOWNLOAD_DIR}"
+cd "${DOWNLOAD_DIR}"
+
+# Cleanup function
+cleanup() {
+    log "Cleaning up temporary directory..."
+    rm -rf "${DOWNLOAD_DIR}"
+}
+trap cleanup EXIT
 
 # Try to get the exact wheel filename from GitHub API first
 log "Fetching wheel filename from GitHub API..."
@@ -158,12 +169,27 @@ log "Wheel downloaded successfully ($(du -h "${WHEEL_FILE}" | cut -f1))"
 
 # 4. Download supplementary files
 log "Downloading supplementary files..."
-curl -L --max-time 30 -o install.sh "${INSTALL_SH_URL}" 2>/dev/null || warn "Could not download install.sh (using embedded)"
-curl -L --max-time 30 -o Makefile "${MAKEFILE_URL}" 2>/dev/null || warn "Could not download Makefile"
-curl -L --max-time 30 -o config.yaml.example "${CONFIG_EXAMPLE_URL}" 2>/dev/null || warn "Could not download config.yaml.example"
-curl -L --max-time 30 -o env.example "${ENV_EXAMPLE_URL}" 2>/dev/null || warn "Could not download env.example"
-curl -L --max-time 30 -o chk-a.service "${SERVICE_URL}" 2>/dev/null || warn "Could not download chk-a.service"
-curl -L --max-time 30 -o logrotate.chk-a "${LOGROTATE_URL}" 2>/dev/null || warn "Could not download logrotate.chk-a"
+
+# Helper function to download with cleanup
+download_file() {
+    local url="$1"
+    local output="$2"
+    local description="$3"
+    
+    rm -f "${output}"  # Remove any existing file
+    if curl -L --max-time 30 -o "${output}" "${url}" 2>/dev/null; then
+        log "Downloaded ${description}"
+    else
+        warn "Could not download ${description} (using embedded/fallback)"
+    fi
+}
+
+download_file "${INSTALL_SH_URL}" "install.sh" "install.sh"
+download_file "${MAKEFILE_URL}" "Makefile" "Makefile"
+download_file "${CONFIG_EXAMPLE_URL}" "config.yaml.example" "config.yaml.example"
+download_file "${ENV_EXAMPLE_URL}" "env.example" "env.example"
+download_file "${SERVICE_URL}" "chk-a.service" "chk-a.service"
+download_file "${LOGROTATE_URL}" "logrotate.chk-a" "logrotate.chk-a"
 
 # Ensure env.example exists and is not empty
 if [[ ! -f "env.example" || ! -s "env.example" ]]; then
@@ -181,6 +207,7 @@ fi
 # Download scripts tarball
 SCRIPTS_URL="${DOWNLOAD_BASE}/scripts.tar.gz"
 log "Downloading scripts.tar.gz..."
+rm -f scripts.tar.gz  # Remove any existing file
 if ! curl -L --max-time 60 --progress-bar -o scripts.tar.gz "${SCRIPTS_URL}"; then
     err "Failed to download scripts.tar.gz from ${SCRIPTS_URL}"
     exit 1
@@ -241,7 +268,7 @@ if [[ ${NEED_PIP_INSTALL} -eq 1 ]]; then
         fi
     fi
     # Verify pip works
-    if ! "${VENV_DIR}/bin.python" -m pip --version >/dev/null 2>&1; then
+    if ! "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
         err "pip installation verification failed"
         exit 1
     fi
