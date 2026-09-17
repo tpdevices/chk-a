@@ -78,11 +78,13 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# Determine download URL
+# Determine download base URL
 if [[ "$VERSION" == "latest" ]]; then
     DOWNLOAD_BASE="https://github.com/${REPO}/releases/latest/download"
+    API_URL="https://api.github.com/repos/${REPO}/releases/latest"
 else
     DOWNLOAD_BASE="https://github.com/${REPO}/releases/download/${VERSION}"
+    API_URL="https://api.github.com/repos/${REPO}/releases/tags/${VERSION}"
 fi
 
 WHEEL_URL="${DOWNLOAD_BASE}/chk_a-*-py3-none-any.whl"
@@ -120,31 +122,48 @@ log "Downloading wheel from GitHub Releases..."
 cd /tmp
 
 # Try to get the exact wheel filename from GitHub API first
-WHEEL_FILE=$(curl -sL "https://api.github.com/repos/${REPO}/releases/tags/${VERSION}" | grep -o '"name": "chk_a-[^"]*\.whl"' | head -1 | cut -d'"' -f4)
+log "Fetching wheel filename from GitHub API..."
+API_RESPONSE=$(curl -sL --max-time 30 "${API_URL}" 2>/dev/null || true)
+WHEEL_FILE=$(echo "${API_RESPONSE}" | grep -o '"name": "chk_a-[^"]*\.whl"' | head -1 | cut -d'"' -f4)
 
 if [[ -z "${WHEEL_FILE}" ]]; then
     # Fallback: try to construct filename from version
-    VERSION_NUM=$(echo "${VERSION}" | sed 's/^v//')
+    if [[ "$VERSION" == "latest" ]]; then
+        # For latest, we need to get version from API response
+        VERSION_NUM=$(echo "${API_RESPONSE}" | grep -o '"tag_name": "v[^"]*"' | head -1 | cut -d'"' -f4 | sed 's/^v//')
+        if [[ -z "${VERSION_NUM}" ]]; then
+            err "Could not determine version from GitHub API"
+            exit 1
+        fi
+    else
+        VERSION_NUM=$(echo "${VERSION}" | sed 's/^v//')
+    fi
     WHEEL_FILE="chk_a-${VERSION_NUM}-py3-none-any.whl"
     log "Using constructed wheel filename: ${WHEEL_FILE}"
 fi
 
 WHEEL_URL="${DOWNLOAD_BASE}/${WHEEL_FILE}"
 
-log "Downloading: ${WHEEL_FILE}"
-curl -L -o "${WHEEL_FILE}" "${WHEEL_URL}" || {
+log "Downloading wheel: ${WHEEL_FILE}"
+if ! curl -L --max-time 120 --progress-bar -o "${WHEEL_FILE}" "${WHEEL_URL}"; then
     err "Failed to download wheel from ${WHEEL_URL}"
     exit 1
-}
+fi
+
+if [[ ! -f "${WHEEL_FILE}" || ! -s "${WHEEL_FILE}" ]]; then
+    err "Wheel file missing or empty after download"
+    exit 1
+fi
+log "Wheel downloaded successfully ($(du -h "${WHEEL_FILE}" | cut -f1))"
 
 # 4. Download supplementary files
 log "Downloading supplementary files..."
-curl -L -o install.sh "${INSTALL_SH_URL}" 2>/dev/null || warn "Could not download install.sh (using embedded)"
-curl -L -o Makefile "${MAKEFILE_URL}" 2>/dev/null || warn "Could not download Makefile"
-curl -L -o config.yaml.example "${CONFIG_EXAMPLE_URL}" 2>/dev/null || warn "Could not download config.yaml.example"
-curl -L -o env.example "${ENV_EXAMPLE_URL}" 2>/dev/null || warn "Could not download env.example"
-curl -L -o chk-a.service "${SERVICE_URL}" 2>/dev/null || warn "Could not download chk-a.service"
-curl -L -o logrotate.chk-a "${LOGROTATE_URL}" 2>/dev/null || warn "Could not download logrotate.chk-a"
+curl -L --max-time 30 -o install.sh "${INSTALL_SH_URL}" 2>/dev/null || warn "Could not download install.sh (using embedded)"
+curl -L --max-time 30 -o Makefile "${MAKEFILE_URL}" 2>/dev/null || warn "Could not download Makefile"
+curl -L --max-time 30 -o config.yaml.example "${CONFIG_EXAMPLE_URL}" 2>/dev/null || warn "Could not download config.yaml.example"
+curl -L --max-time 30 -o env.example "${ENV_EXAMPLE_URL}" 2>/dev/null || warn "Could not download env.example"
+curl -L --max-time 30 -o chk-a.service "${SERVICE_URL}" 2>/dev/null || warn "Could not download chk-a.service"
+curl -L --max-time 30 -o logrotate.chk-a "${LOGROTATE_URL}" 2>/dev/null || warn "Could not download logrotate.chk-a"
 
 # Ensure env.example exists and is not empty
 if [[ ! -f "env.example" || ! -s "env.example" ]]; then
@@ -161,7 +180,11 @@ fi
 
 # Download scripts tarball
 SCRIPTS_URL="${DOWNLOAD_BASE}/scripts.tar.gz"
-curl -L -o scripts.tar.gz "${SCRIPTS_URL}" 2>/dev/null || { err "Failed to download scripts.tar.gz"; exit 1; }
+log "Downloading scripts.tar.gz..."
+if ! curl -L --max-time 60 --progress-bar -o scripts.tar.gz "${SCRIPTS_URL}"; then
+    err "Failed to download scripts.tar.gz from ${SCRIPTS_URL}"
+    exit 1
+fi
 if [[ ! -f "scripts.tar.gz" ]]; then
     err "scripts.tar.gz missing after download"
     exit 1
@@ -212,13 +235,13 @@ if [[ ${NEED_PIP_INSTALL} -eq 1 ]]; then
     log "Installing pip via ensurepip..."
     if ! "${VENV_DIR}/bin/python" -m ensurepip --upgrade 2>&1; then
         warn "ensurepip failed, trying get-pip.py..."
-        if ! curl -sL https://bootstrap.pypa.io/get-pip.py | "${VENV_DIR}/bin/python" - 2>&1; then
+        if ! curl -sL --max-time 60 https://bootstrap.pypa.io/get-pip.py | "${VENV_DIR}/bin/python" - 2>&1; then
             err "Failed to install pip via get-pip.py"
             exit 1
         fi
     fi
     # Verify pip works
-    if ! "${VENV_DIR}/bin/python" -m pip --version >/dev/null 2>&1; then
+    if ! "${VENV_DIR}/bin.python" -m pip --version >/dev/null 2>&1; then
         err "pip installation verification failed"
         exit 1
     fi
@@ -301,8 +324,10 @@ fi
 [[ -f "${ETC_DIR}/config.yaml" ]] || cp -f "${ETC_DIR}/config.yaml.example" "${ETC_DIR}/config.yaml"
 [[ -f "${ETC_DIR}/env" ]] || cp -f "${ETC_DIR}/env.example" "${ETC_DIR}/env"
 
-# Ensure env file has correct permissions (readable by service user)
-chown root:"${SERVICE_GROUP}" "${ETC_DIR}/env"
+# Ensure env file has correct permissions (readable by service user) - ALWAYS RUN
+log "Setting permissions for config files..."
+chown root:"${SERVICE_GROUP}" "${ETC_DIR}/config.yaml" "${ETC_DIR}/env"
+chmod 0640 "${ETC_DIR}/config.yaml"
 chmod 0640 "${ETC_DIR}/env"
 
 # 7. Install systemd service and logrotate
@@ -327,19 +352,22 @@ else
     warn "scripts directory not found in release assets, skipping scripts install"
 fi
 
-# 8. Fix ownership and permissions
+# 8. Fix ownership and permissions - ALWAYS RUN
 log "Fixing ownership and permissions..."
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
 chmod 0750 "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
+chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${INSTALL_DIR}"
 chown root:"${SERVICE_GROUP}" "${ETC_DIR}/config.yaml" "${ETC_DIR}/env"
 chmod 0640 "${ETC_DIR}/config.yaml"
 chmod 0640 "${ETC_DIR}/env"
 
 # Verify env file is readable by service user
+log "Verifying env file readability..."
 if ! sudo -u "${SERVICE_USER}" test -r "${ETC_DIR}/env"; then
     err "Environment file ${ETC_DIR}/env is not readable by user ${SERVICE_USER}"
     exit 1
 fi
+log "Env file is readable by service user ✓"
 
 # 9. Enable and start service
 log "Reloading systemd and enabling service..."

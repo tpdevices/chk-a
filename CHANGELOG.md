@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **2026-09-17 12:08:31** — `install.sh` — Fixed: Use correct GitHub API endpoint for latest release; added timeout and progress bar to all downloads; fixed wheel filename resolution for "latest"; always run chown/chmod for config files; added verification step for env file readability.
 - **2026-09-17 11:55:16** — `install.sh` — Fixed: Moved env.example check to after download in /tmp; removed silent failure on chown/chmod for critical files; added verification that /etc/chk-a/env is readable by service user before starting service.
 - **2026-09-17 11:45:15** — `install.sh` — Fixed: Added check to ensure env.example exists and is not empty after download; if missing or empty, creates a minimal one with placeholder values to prevent missing file errors.
 - **2026-09-17 11:37:33** — `install.sh` — Fixed: Changed permission of /etc/chk-a/env from 0600 to 0640 to allow the chk-a service user to read the Telegram credentials.
