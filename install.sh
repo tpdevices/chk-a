@@ -90,18 +90,6 @@ INSTALL_SH_URL="${DOWNLOAD_BASE}/install.sh"
 MAKEFILE_URL="${DOWNLOAD_BASE}/Makefile"
 CONFIG_EXAMPLE_URL="${DOWNLOAD_BASE}/config.yaml.example"
 ENV_EXAMPLE_URL="${DOWNLOAD_BASE}/env.example"
-# Ensure env.example exists and is not empty
-if [[ ! -f "env.example" || ! -s "env.example" ]]; then
-    warn "env.example missing or empty, creating a minimal one"
-    cat > env.example <<'ENVEOF'
-# chk-a environment file
-TELEGRAM_BOT_TOKEN=
-TELEGRAM_CHAT_ID=
-CHK_A_CONFIG=/etc/chk-a/config.yaml
-CHK_A_HEALTH_PORT=0
-CHK_A_WATCHDOG_INTERVAL=30
-ENVEOF
-fi
 SERVICE_URL="${DOWNLOAD_BASE}/chk-a.service"
 LOGROTATE_URL="${DOWNLOAD_BASE}/logrotate.chk-a"
 
@@ -157,6 +145,20 @@ curl -L -o config.yaml.example "${CONFIG_EXAMPLE_URL}" 2>/dev/null || warn "Coul
 curl -L -o env.example "${ENV_EXAMPLE_URL}" 2>/dev/null || warn "Could not download env.example"
 curl -L -o chk-a.service "${SERVICE_URL}" 2>/dev/null || warn "Could not download chk-a.service"
 curl -L -o logrotate.chk-a "${LOGROTATE_URL}" 2>/dev/null || warn "Could not download logrotate.chk-a"
+
+# Ensure env.example exists and is not empty
+if [[ ! -f "env.example" || ! -s "env.example" ]]; then
+    warn "env.example missing or empty, creating a minimal one"
+    cat > env.example <<'ENVEOF'
+# chk-a environment file
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+CHK_A_CONFIG=/etc/chk-a/config.yaml
+CHK_A_HEALTH_PORT=0
+CHK_A_WATCHDOG_INTERVAL=30
+ENVEOF
+fi
+
 # Download scripts tarball
 SCRIPTS_URL="${DOWNLOAD_BASE}/scripts.tar.gz"
 curl -L -o scripts.tar.gz "${SCRIPTS_URL}" 2>/dev/null || { err "Failed to download scripts.tar.gz"; exit 1; }
@@ -182,8 +184,9 @@ if [[ ! -d "scripts" ]]; then
     exit 1
 fi
 log "Installing scripts..."
-cp -rf scripts "${INSTALL_DIR}"
+cp -rf scripts "${INSTALL_DIR}/"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${INSTALL_DIR}"
+
 # 5. Setup virtualenv and install wheel
 log "Setting up virtualenv..."
 NEED_PIP_INSTALL=0
@@ -219,7 +222,7 @@ if [[ ${NEED_PIP_INSTALL} -eq 1 ]]; then
         err "pip installation verification failed"
         exit 1
     fi
-    log "pip installed successfully: $("${VENV_DIR}/bin/python" -m pip --version)"
+    log "pip installed successfully: $(("${VENV_DIR}/bin/python" -m pip --version))"
 fi
 
 log "Installing wheel..."
@@ -298,6 +301,10 @@ fi
 [[ -f "${ETC_DIR}/config.yaml" ]] || cp -f "${ETC_DIR}/config.yaml.example" "${ETC_DIR}/config.yaml"
 [[ -f "${ETC_DIR}/env" ]] || cp -f "${ETC_DIR}/env.example" "${ETC_DIR}/env"
 
+# Ensure env file has correct permissions (readable by service user)
+chown root:"${SERVICE_GROUP}" "${ETC_DIR}/env"
+chmod 0640 "${ETC_DIR}/env"
+
 # 7. Install systemd service and logrotate
 log "Installing systemd service and logrotate..."
 if [[ -f "chk-a.service" ]]; then
@@ -324,9 +331,15 @@ fi
 log "Fixing ownership and permissions..."
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
 chmod 0750 "${LOG_DIR}" "${LIB_DIR}" "${ETC_DIR}"
-chown root:"${SERVICE_GROUP}" "${ETC_DIR}/config.yaml" "${ETC_DIR}/env" 2>/dev/null || true
-chmod 0640 "${ETC_DIR}/config.yaml" 2>/dev/null || true
-chmod 0640 "${ETC_DIR}/env" 2>/dev/null || true
+chown root:"${SERVICE_GROUP}" "${ETC_DIR}/config.yaml" "${ETC_DIR}/env"
+chmod 0640 "${ETC_DIR}/config.yaml"
+chmod 0640 "${ETC_DIR}/env"
+
+# Verify env file is readable by service user
+if ! sudo -u "${SERVICE_USER}" test -r "${ETC_DIR}/env"; then
+    err "Environment file ${ETC_DIR}/env is not readable by user ${SERVICE_USER}"
+    exit 1
+fi
 
 # 9. Enable and start service
 log "Reloading systemd and enabling service..."
