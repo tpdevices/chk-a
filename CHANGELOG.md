@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **2026-09-17 10:55:37** — `install.sh` — Fixed: Added robust download and extraction of scripts.tar.gz with verification and error handling; ensured ownership of installed files.
 ## [1.0.2] - 2026-09-16
 
 ### Added

@@ -147,11 +147,31 @@ curl -L -o chk-a.service "${SERVICE_URL}" 2>/dev/null || warn "Could not downloa
 curl -L -o logrotate.chk-a "${LOGROTATE_URL}" 2>/dev/null || warn "Could not download logrotate.chk-a"
 # Download scripts tarball
 SCRIPTS_URL="${DOWNLOAD_BASE}/scripts.tar.gz"
-curl -L -o scripts.tar.gz "${SCRIPTS_URL}" 2>/dev/null || warn "Could not download scripts.tar.gz"
-if [[ -f "scripts.tar.gz" ]]; then
-    tar -xzf scripts.tar.gz
+curl -L -o scripts.tar.gz "${SCRIPTS_URL}" 2>/dev/null || { err "Failed to download scripts.tar.gz"; exit 1; }
+if [[ ! -f "scripts.tar.gz" ]]; then
+    err "scripts.tar.gz missing after download"
+    exit 1
 fi
-
+if [[ ! -s "scripts.tar.gz" ]]; then
+    err "scripts.tar.gz is empty"
+    exit 1
+fi
+if ! tar -tzf scripts.tar.gz >/dev/null 2>&1; then
+    err "scripts.tar.gz is not a valid tar archive"
+    exit 1
+fi
+log "Extracting scripts.tar.gz..."
+if ! tar -xzf scripts.tar.gz; then
+    err "Failed to extract scripts.tar.gz"
+    exit 1
+fi
+if [[ ! -d "scripts" ]]; then
+    err "scripts directory not found after extraction"
+    exit 1
+fi
+log "Installing scripts..."
+cp -rf scripts "${INSTALL_DIR}/"
+chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${INSTALL_DIR}"
 # 5. Setup virtualenv and install wheel
 log "Setting up virtualenv..."
 NEED_PIP_INSTALL=0
