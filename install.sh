@@ -90,6 +90,18 @@ INSTALL_SH_URL="${DOWNLOAD_BASE}/install.sh"
 MAKEFILE_URL="${DOWNLOAD_BASE}/Makefile"
 CONFIG_EXAMPLE_URL="${DOWNLOAD_BASE}/config.yaml.example"
 ENV_EXAMPLE_URL="${DOWNLOAD_BASE}/env.example"
+# Ensure env.example exists and is not empty
+if [[ ! -f "env.example" || ! -s "env.example" ]]; then
+    warn "env.example missing or empty, creating a minimal one"
+    cat > env.example <<'ENVEOF'
+# chk-a environment file
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+CHK_A_CONFIG=/etc/chk-a/config.yaml
+CHK_A_HEALTH_PORT=0
+CHK_A_WATCHDOG_INTERVAL=30
+ENVEOF
+fi
 SERVICE_URL="${DOWNLOAD_BASE}/chk-a.service"
 LOGROTATE_URL="${DOWNLOAD_BASE}/logrotate.chk-a"
 
