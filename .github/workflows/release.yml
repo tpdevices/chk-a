@@ -108,5 +108,6 @@ jobs:
             dist/env.example
             dist/chk-a.service
             dist/logrotate.chk-a
+            dist/scripts.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
