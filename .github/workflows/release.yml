@@ -81,7 +81,7 @@ jobs:
           cp install.sh dist/
           cp uninstall.sh dist/
           cp Makefile dist/
-          cp config/chk-a.config.yaml.example dist/config.yaml.example
+          cp config/config.yaml.example dist/config.yaml.example
           cp config/chk-a.env.example dist/env.example
           cp systemd/chk-a.service dist/
           cp logrotate.d/chk-a dist/logrotate.chk-a
