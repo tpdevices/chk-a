@@ -403,6 +403,71 @@ def generate_availability_heatmap(
     _save_figure(fig, output_path)
 
 
+def generate_availability_daily_heatmap(
+    availability_data: dict[str, dict[str, Any]],
+    output_path: Path,
+    title: str = "Daily Availability Heatmap",
+    lang: str = "en",
+    hostname: str | None = None,
+) -> None:
+    """Generate heatmap of daily availability per resolver (for monthly reports)."""
+    if not availability_data:
+        return
+
+    resolvers = list(availability_data.keys())
+    # Get all unique dates across all resolvers
+    all_dates = set()
+    for resolver in resolvers:
+        daily = availability_data[resolver].get("daily_availability", {})
+        all_dates.update(daily.keys())
+
+    if not all_dates:
+        return
+
+    # Sort dates
+    sorted_dates = sorted(all_dates)
+    date_labels = [d[-5:] for d in sorted_dates]  # MM-DD format
+
+    # Build matrix
+    matrix = np.full((len(resolvers), len(sorted_dates)), np.nan)
+    for i, resolver in enumerate(resolvers):
+        daily = availability_data[resolver].get("daily_availability", {})
+        for j, date in enumerate(sorted_dates):
+            val = daily.get(date)
+            if val is not None:
+                matrix[i, j] = val
+
+    fig, ax = plt.subplots(figsize=(max(12, len(sorted_dates) * 0.4), max(6, len(resolvers) * 0.35)))
+
+    im = ax.imshow(matrix, aspect="auto", cmap="RdYlGn", vmin=0, vmax=100, interpolation="nearest")
+
+    # Colorbar
+    cbar = plt.colorbar(im, ax=ax, shrink=0.8)
+    cbar.set_label("Availability (%)", fontsize=11)
+
+    # Ticks
+    ax.set_yticks(range(len(resolvers)))
+    ax.set_yticklabels(resolvers, fontsize=9)
+    ax.set_xticks(range(len(sorted_dates)))
+    ax.set_xticklabels(date_labels, fontsize=8, rotation=45)
+
+    # X axis label (local time per project convention)
+    xlabel = "วันในเดือน" if lang == "th" else "Day of Month"
+    ax.set_xlabel(xlabel, fontsize=11)
+
+    # Add text annotations for non-NaN values
+    for i in range(len(resolvers)):
+        for j in range(len(sorted_dates)):
+            val = matrix[i, j]
+            if not np.isnan(val):
+                color = "white" if val < 50 else "black"
+                ax.text(j, i, f"{val:.0f}%", ha="center", va="center", fontsize=7, color=color)
+
+    _add_header_footer(fig, ax, title, hostname, lang)
+    _apply_thai_fonts(fig, ax, lang)
+    _save_figure(fig, output_path)
+
+
 def generate_integrity_chart(
     integrity_data: dict[str, dict[str, Any]],
     output_path: Path,
@@ -777,6 +842,7 @@ def generate_summary_dashboard(
         base_titles = {
             "availability_bar": "ความพร้อมใช้งานของ Resolver (%)",
             "availability_heatmap": "Heatmap ความพร้อมใช้งานรายชั่วโมง",
+            "availability_daily_heatmap": "Heatmap ความพร้อมใช้งานรายวัน",
             "integrity": "คะแนนความสมบูรณ์ของ Resolver (ML-based)",
             "latency": "การกระจายตัวของ Latency (ms)",
             "ip_stability": "ความเสถียรและความหลากหลายของ IP",
@@ -787,6 +853,7 @@ def generate_summary_dashboard(
         base_titles = {
             "availability_bar": "Resolver Availability (%)",
             "availability_heatmap": "Hourly Availability Heatmap",
+            "availability_daily_heatmap": "Daily Availability Heatmap",
             "integrity": "Resolver Integrity Score (ML-based)",
             "latency": "Resolver Latency Distribution (ms)",
             "ip_stability": "Resolver IP Stability & Diversity",
@@ -803,12 +870,17 @@ def generate_summary_dashboard(
     generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname)
     generated.append(path)
 
-    # 2. Availability heatmap
+    # 2. Availability heatmap (hourly)
     path = output_dir / f"availability-heatmap-{timestamp}.png"
     generate_availability_heatmap(availability, path, title=base_titles["availability_heatmap"], lang=lang, hostname=hostname)
     generated.append(path)
 
-    # 3. Integrity chart
+    # 3. Availability daily heatmap (NEW - for monthly reports)
+    path = output_dir / f"availability-daily-heatmap-{timestamp}.png"
+    generate_availability_daily_heatmap(availability, path, title=base_titles["availability_daily_heatmap"], lang=lang, hostname=hostname)
+    generated.append(path)
+
+    # 4. Integrity chart
     path = output_dir / f"integrity-score-{timestamp}.png"
     generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname)
     generated.append(path)
@@ -867,6 +939,21 @@ def generate_availability_heatmap_th(
         availability_data,
         output_path,
         title="Heatmap ความพร้อมใช้งานรายชั่วโมง",
+        lang="th",
+        hostname=hostname,
+    )
+
+
+def generate_availability_daily_heatmap_th(
+    availability_data: dict[str, dict[str, Any]],
+    output_path: Path,
+    hostname: str | None = None,
+) -> None:
+    """Thai version of daily availability heatmap."""
+    generate_availability_daily_heatmap(
+        availability_data,
+        output_path,
+        title="Heatmap ความพร้อมใช้งานรายวัน",
         lang="th",
         hostname=hostname,
     )

@@ -1,0 +1,217 @@
+# chk-a Configuration (multi-agent DNS A-record anomaly monitor)
+# Production example for /etc/chk-a/config.yaml
+#
+# Secrets use ${ENV} substitution and are read from /etc/chk-a/env
+# (TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID). Do NOT hard-code tokens here.
+#
+# คู่มือ: 
+# - ค่าที่ขึ้นต้นด้วย # เป็นคำอธิบาย ไม่ต้องลบออก
+# - ค่า default จะถูกใช้งานถ้าไม่ได้กำหนด
+# - ต้องการแก้ไข ให้ uncomment (ลบ # หน้าค่า) แล้วแก้ไข
+# - path ทุกตัวต้องเป็น absolute path (ขึ้นต้นด้วย /)
+
+# =============================================================================
+# 1. FQDNs - โดเมนที่ต้องการเฝ้าระวัง IP address
+# =============================================================================
+fqdns:
+  - name: "example.com"                    # ชื่อโดเมน (FQDN)
+    expected_ips: ["93.184.216.34"]         # IP ที่คาดหวัง (optional allowlist) - ถ้า IP เปลี่ยนจากนี้จะแจ้งเตือน
+    min_consensus: 0.6                      # ขั้นต่ำ consensus score (0.0-1.0) - ค่าต่ำ = ยอมรับความแตกต่างมากขึ้น
+  - name: "api.github.com"
+    min_consensus: 0.5
+
+# ตัวอย่างสำหรับ internal DNS (ใช้ IP ภายในองค์กร):
+#  - name: "internal.example.com"
+#    expected_ips: ["10.0.0.1", "10.0.0.2"]
+#    min_consensus: 0.7
+
+# =============================================================================
+# 2. RESOLVERS - DNS Resolver ทั้งหมดที่ใช้ query (รองรับ Do53, DoH, DoT)
+# =============================================================================
+resolvers:
+  # --- Standard DNS (Do53) - UDP/TCP port 53 ---
+  - name: "google"
+    address: "8.8.8.8:53"
+    weight: 1.0                              # น้ำหนักในการโหวต consensus (1.0 = ปกติ)
+    timeout_ms: 2000                         # timeout ในการ query (ms)
+  - name: "cloudflare"
+    address: "1.1.1.1:53"
+    weight: 1.0
+    timeout_ms: 2000
+  - name: "quad9"
+    address: "9.9.9.9:53"
+    weight: 1.0
+    timeout_ms: 2000
+
+  # --- DNS-over-HTTPS (DoH) - RFC 8484 ---
+  # Uncomment และแก้ไขตามต้องการ:
+  # - name: "google-doh"
+  #   address: "https://dns.google/dns-query"
+  #   weight: 1.0
+  #   timeout_ms: 3000
+  # - name: "cloudflare-doh"
+  #   address: "https://cloudflare-dns.com/dns-query"
+  #   weight: 1.0
+  #   timeout_ms: 3000
+
+  # --- DNS-over-TLS (DoT) - RFC 7858 ---
+  # Uncomment และแก้ไขตามต้องการ:
+  # - name: "google-dot"
+  #   address: "tls://dns.google:853"
+  #   weight: 1.0
+  #   timeout_ms: 3000
+  # - name: "cloudflare-dot"
+  #   address: "tls://1.1.1.1:853"
+  #   weight: 1.0
+  #   timeout_ms: 3000
+  # - name: "quad9-dot"
+  #   address: "tls://dns.quad9.net:853"
+  #   weight: 1.0
+  #   timeout_ms: 3000
+
+# =============================================================================
+# 3. RESOLVER AGENT - ทูนประสิทธิภาพการ query DNS
+# =============================================================================
+resolver_agent:
+  # max_concurrent: 20                        # จำนวน query พร้อมกันสูงสุด (None = auto-tune จากจำนวน resolvers)
+  # default_timeout_ms: 2000                  # timeout เริ่มต้นถ้า resolver ไม่ได้กำหนด
+
+# =============================================================================
+# 4. ML (MACHINE LEARNING) - การเรียนรู้ baseline + anomaly detection
+# =============================================================================
+ml:
+  baseline_decay: 0.05              # EMA decay factor (0.0-1.0) - ค่าสูง = ลืมเก่าเร็ว, ค่าต่ำ = จดจำนาน
+                                    # 0.05 = ประมาณ 20 cycles (10-20 นาที) จะลดน้ำหนักเก่าลงครึ่ง
+  anomaly_threshold: 0.7            # คะแนน anomaly ขึ้นไปจากนี้จะแจ้งเตือน (0.0-1.0)
+                                    # ค่าสูง (0.8-0.9) = แจ้งน้อย/เข้มงวด, ค่าต่ำ (0.5-0.6) = แจ้งมาก/ไว
+                                    # สำหรับ internal DNS แนะนำ 0.5-0.6 (IP ควรคงที่)
+  min_samples_before_alert: 10      # จำนวน samples ขั้นต่ำก่อนเริ่มแจ้งเตือน
+                                    # ป้องกัน false positive ตอนเริ่มต้น service (baseline ว่าง)
+
+# =============================================================================
+# 5. ALERT - การแจ้งเตือน Telegram, deduplication, rate limiting, log paths
+# =============================================================================
+alert:
+  # --- Telegram Credentials (อ่านจาก /etc/chk-a/env ผ่าน ${ENV}) ---
+  telegram_bot_token: "${TELEGRAM_BOT_TOKEN}"     # Bot token จาก @BotFather
+  telegram_chat_id: "${TELEGRAM_CHAT_ID}"         # Chat ID จาก @userinfobot (เช่น -100xxxxxxxxxx)
+
+  # --- Deduplication & Rate Limiting ---
+  dedup_window_minutes: 30        # เวลายกเลิกการแจ้งซ้ำ (นาที) - event เดียวกันใน 30 นาทีจะส่งแค่ครั้งเดียว
+  rate_limit_per_hour: 20         # จำกัดการส่งสูงสุดต่อชั่วโมง (token bucket)
+
+  # --- Log Paths (rotation ทุก 50MB, เก็บ 10 ไฟล์) ---
+  alert_log_path: "/var/log/chk-a/alerts.jsonl"      # JSONL audit log (detail)
+  alert_text_log_path: "/var/log/chk-a/alerts.log"   # Plain text log (1 บรรทัดต่อ alert)
+  
+  # --- Daily Image (ส่งเวลา 00:00 ทุกคืน) ---
+  daily_image_path: "img/sleepy.jpg"                  # relative path จาก /opt/chk-a/ หรือ absolute path
+  # daily_image_chat_id: "${TELEGRAM_CHAT_ID}"        # Chat ID สำหรับ daily image (ว่าง = ใช้ telegram_chat_id)
+  daily_image_caption: "🌙 Good night from chk-a! Daily DNS monitor heartbeat."
+
+  # --- Anomaly/Recovery Images (ส่งตอนเจอ anomaly และ recover) ---
+  # anomaly_image_path: "img/priority.jpg"             # รูปตอนเจอ anomaly (default: img/priority.jpg)
+  # recovery_image_path: "img/ok.jpg"                  # รูปตอน recover (default: img/ok.jpg)
+
+  # --- Persistent Dedup Cache (อยู่รอด restart) ---
+  dedup_cache_path: "/var/lib/chk-a/dedup_cache.json"  # ว่าง = ใช้ in-memory only
+
+  # --- Log Rotation ---
+  alert_log_max_size_mb: 50       # ขนาดไฟล์ log สูงสุด (MB) ก่อน rotate
+  alert_log_backup_count: 10      # จำนวนไฟล์ backup ที่เก็บไว้
+
+  # --- Baseline Encryption at Rest (SEC-015) ---
+  # baseline_encryption_enabled: false
+  # baseline_age_public_key: "age1..."          # age public key สำหรับเข้ารหัส
+  # baseline_age_private_key_env: "CHK_A_BASELINE_AGE_KEY"  # env var ที่เก็บ private key
+
+# =============================================================================
+# 6. SCHEDULER - การตั้งค่า cycle interval และ health endpoint
+# =============================================================================
+scheduler:
+  min_interval_sec: 30            # หน่วงเวลาระหว่าง cycle ขั้นต่ำ (วินาที)
+  max_interval_sec: 180           # หน่วงเวลาระหว่าง cycle สูงสุด (วินาที) - random ระหว่าง min-max
+  jitter: true                    # เพิ่ม randomness ป้องกัน thundering herd
+  
+  # Health check endpoint (สำหรับ systemd watchdog)
+  health_port: 0                  # 0 = ปิด, >0 = เปิด port (เช่น 8080)
+  health_bind_address: "127.0.0.1"  # bind address (ต้องเป็น loopback เท่านั้น เพื่อความปลอดภัย)
+
+# =============================================================================
+# 7. LOGGING - JSONL log rotation สำหรับ check results
+# =============================================================================
+logging:
+  level: "INFO"                   # Log level: DEBUG, INFO, WARNING, ERROR
+  file: "/var/log/chk-a/checks.jsonl"    # ไฟล์ log หลัก (JSONL)
+  max_size_mb: 50                 # rotate เมื่อเกินขนาดนี้ (MB)
+  backup_count: 10                # เก็บ backup ไฟล์กี่ไฟล์
+
+# =============================================================================
+# 8. MTR - Network Path Tracing (My Traceroute)
+# =============================================================================
+mtr:
+  enabled: false                  # true = เปิดใช้งาน MTR tracing
+  interval_sec: 3600              # รัน MTR ทุกๆ กี่วินาที (default 1 ชม.)
+  max_hops: 30                    # จำนวน hop สูงสุด
+  count: 10                       # จำนวน ping ต่อ hop (MTR -c)
+  interval_ms: 1000               # ระยะห่างระหว่าง ping (ms) (MTR -i)
+  timeout_sec: 10                 # timeout ต่อ ping (วินาที) (MTR -W)
+  mode: "icmp"                    # โหมด: "icmp" (default), "tcp", "udp"
+  # port: 53                        # port สำหรับ tcp/udp mode (required ถ้าไม่ใช่ icmp)
+  resolvers:                      # resolver names ที่จะ trace (ว่าง = ทั้งหมด)
+    - "google"
+    - "cloudflare"
+    - "quad9"
+  log_path: "/var/log/chk-a/mtr.jsonl"    # ไฟล์เก็บ MTR results (JSONL)
+  max_concurrent: 4               # จำนวน MTR พร้อมกันสูงสุด (hard ceiling 10)
+
+# =============================================================================
+# 9. REPORTING - รายงานรายวัน/รายเดือน, Telegram, Email, Graphs
+# =============================================================================
+reporting:
+  # --- Monthly Report (1 तारीกของเดือน เวลา 06:00) ---
+  enabled: true                   # true = เปิด monthly report
+  schedule_day: 1                 # วันที่ของเดือน (1-28) - 1 = วันที่ 1
+  schedule_hour: 6                # ชั่วโมง (0-23) - 6 = 06:00 น.
+  schedule_minute: 0              # นาที (0-59)
+  output_dir: "/var/lib/chk-a/reports"    # โฟลเดอร์เก็บรายงาน
+  filename_format: "monthly-report-{timestamp}.{ext}"  # รูปแบบชื่อไฟล์
+  include_graphs: true            # รวมกราฟในรายงาน
+  include_ml_insights: true       # รวม ML insights
+  lookback_days: 30               # วิเคราะห์ข้อมูลย้อนหลังกี่วัน
+
+  # --- Telegram Summary for Monthly Report ---
+  telegram_enabled: true          # ส่งสรุปไป Telegram
+  # telegram_chat_id: ""            # Chat ID สำหรับรายงาน (ว่าง = ใช้ alert.telegram_chat_id)
+
+  # --- Email Report (optional) ---
+  email_enabled: false            # true = ส่งอีเมลพร้อม PDF
+  smtp_host: ""                   # SMTP server (เช่น smtp.gmail.com)
+  smtp_port: 587                  # 587 = STARTTLS, 465 = implicit TLS
+  smtp_username: ""               # SMTP username
+  smtp_password: ""               # SMTP password (จะอ่านจาก ENV ถ้าตั้งค่าใน env)
+  email_from: ""                  # Sender email
+  email_to: []                    # รายการ recipient emails
+  email_use_tls: true             # ใช้ TLS (port 465/587 เท่านั้น)
+
+  # --- Daily Report (ทุกวัน เวลา 06:00 รายงานของวาน) ---
+  daily_report_enabled: true      # true = เปิด daily report
+  daily_report_hour: 6            # ชั่วโมง (0-23) - 6 = 06:00 น.
+  daily_report_minute: 0          # นาที (0-59)
+  daily_report_telegram_enabled: true
+  # daily_report_telegram_chat_id: ""   # Chat ID สำหรับ daily report (ว่าง = ใช้ alert.telegram_chat_id)
+  daily_report_lookback_days: 1   # รายงานข้อมูลย้อนหลังกี่วัน (1 = เมื่อวาน)
+
+# =============================================================================
+# 10. BASELINE STORE - ที่เก็บ ML baseline (ต้องอยู่บน ReadWritePath ของ service)
+# =============================================================================
+baseline_store_path: "/var/lib/chk-a/baselines.json"
+
+# =============================================================================
+# หมายเหตุเพิ่มเติม:
+# =============================================================================
+# 1. ไฟล์นี้คือตัวอย่าง (example) - copy ไปเป็น /etc/chk-a/config.yaml แล้วแก้ไข
+# 2. Secrets (token, password) ห้าม hard-code ให้ใช้ ${ENV} และใส่ใน /etc/chk-a/env
+# 3. หลังแก้ config ให้ restart service: systemctl restart chk-a
+# 4. ดู logs: journalctl -u chk-a -f
+# 5. Test config: chk-a-validate

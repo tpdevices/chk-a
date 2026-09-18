@@ -1,6 +1,6 @@
 # Project Context — chk-a
 
-**Last Updated:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -71,6 +71,9 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 14. **Baseline-based Integrity** — Uses `MLAgent.score()` (total-variation distance) replacing Isolation Forest, with IP stability/diversity metrics (2026-09-15)
 15. **Startup Missing Report Check** — Orchestrator checks and sends yesterday's daily report on startup if missing (2026-09-15)
 16. **GitHub Release & Production Installer** — Actions workflow builds wheel on tag, creates release; `install.sh` downloads from GitHub Releases, installs to `/opt/chk-a/` with systemd (2026-09-16)
+17. **Manual Report Scripts** — `manual_daily_report.py` and `manual_monthly_report.py` for on-demand reporting (2026-09-17)
+18. **All Resolvers Displayed in Telegram** — Removed Top 5/10 limits from summaries and graph sending (2026-09-17 15:30:00, 19:30:00)
+19. **Daily Availability Heatmap** — Added day-of-month vs resolver heatmap for monthly reports (2026-09-17 20:00:00)
 
 ---
 
@@ -98,22 +101,25 @@ Key Sections:
 ### Monthly Report (1st of month, 06:00 AM)
 - ML insights from 30-day lookback
 - 7 chart types × EN/TH = 14 charts + 2 Dashboards = 16 files
+- **NEW: Daily Availability Heatmap** — day-of-month vs resolver availability matrix (EN/TH = 2 additional graphs)
+- Total: 18-20 graphs per monthly report
 - PDF reports (EN/TH) via fpdf2
-- Telegram: Thai summary + charts (batched, 5 images per batch)
+- Telegram: Thai summary + charts (batched, all graphs sent)
 - Email: Full PDF attachment
 
 ### Daily Report (06:00 AM, lookback 1 day)
 - Same charts, 1-day time window
-- Telegram: Thai summary + charts (batched)
+- Telegram: Thai summary + charts (batched, all graphs sent)
 
 ### Chart Types (7)
 1. Availability Bar (availability % per resolver)
 2. Availability Heatmap (hourly per resolver)
-3. Integrity Score (ML-based per resolver)
-4. Latency Boxplot (latency distribution per resolver)
-5. IP Stability & Diversity (unique IP set, stability %)
-6. MTR Path Visualization (hop loss/latency)
-7. Path Availability (ML-based network path health)
+3. **NEW: Daily Availability Heatmap** (day-of-month per resolver)
+4. Integrity Score (ML-based per resolver)
+5. Latency Boxplot (latency distribution per resolver)
+6. IP Stability & Diversity (unique IP set, stability %)
+7. MTR Path Visualization (hop loss/latency)
+8. Path Availability (ML-based network path health)
 
 ### Thai Display
 Every chart calls `_apply_thai_fonts()` → translation map covers all labels, footer split left/right (hostname | timestamp), lang param controls TH/EN without duplication
@@ -155,7 +161,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ## Testing & Quality
 
-- **253/253 tests pass** on **both dev and test VM** (zero-regression policy)
+- **257/257 tests pass** on **both dev and test VM** (zero-regression policy)
 - **Test Location:** Everything on test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
 - **Fix Tests, Not Agent Code** — per project rules
 - **Code Review Patterns:** Per skill `software-development` → `code-review-patterns`
@@ -168,7 +174,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - **2 Critical:** AlertAgent token bucket race (C-01) ✅ FIXED, AlertAgent dedup cache race (C-02) ✅ FIXED
 - **5 High:** Orchestrator timezone-naive scheduler (H-01) ✅ FIXED, MTR timeout calc (H-02) ✅ FIXED, BaselineStore key caching (H-03) ✅ FIXED, TelegramClient memory (H-04) ✅ FIXED, Orchestrator batch writes (H-05) ✅ FIXED
 - **8 Medium:** DoH support (M-01) ✅ FIXED, Consensus reputation (M-02) ✅ FIXED, MLAgent key collision (M-03) ✅ FIXED, Parallel MTR (M-04) ✅ FIXED, CircuitBreaker (M-05) ✅ FIXED, Health server consistency (M-06) ✅ FIXED, Thai font loading (M-07) ✅ FIXED, AlertAgent log rotation (M-08) ✅ FIXED
-- **5 Low/Info:** SEC-010 (DoH/DoT) ✅ FIXED, SEC-011 (CAP_NET_RAW) ✅ FIXED, SEC-013 (log perms) ✅ FIXED, SEC-014 (HTML escape) ⏳ IN PROGRESS, SEC-015..SEC-020 ✅ FIXED
+- **5 Low/Info:** SEC-010 (DoH/DoT) ✅ FIXED, SEC-011 (CAP_NET_RAW) ✅ FIXED, SEC-013 (log perms) ✅ FIXED, SEC-014 (HTML escape) ✅ FIXED (2026-09-17), SEC-015..SEC-020 ✅ FIXED
 
 **Fixed (Security Regression Tests SEC-001..SEC-020):**
 - SEC-001: Added `_validate_target_ip()` in `mtr_agent.py` using `ipaddress.ip_address()`
@@ -229,9 +235,32 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - **v1.0.0 released** (2026-09-16) — 10 assets: wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a
 - **v1.0.1 released** (2026-09-16) — Fixed wheel filename resolution via GitHub API, added pip installation fallback
 - **v1.0.2 released** (2026-09-16) — Enhanced pip installation: `ensurepip` with output logging, fallback to `get-pip.py`, verification with version logging
-- **Known Issue:** install.sh venv reuse bug — if venv exists from failed attempt, pip installation is skipped
-  - **Workaround:** `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
-  - **Fix needed:** Add pip verification to venv existence check
+
+### Install.sh Fixes (2026-09-17)
+- **v1.0.3** — Fix install.sh venv reuse bug (added pip verification, improved logging)
+- **v1.0.4** — Fix env permission to 0640 so service can read Telegram credentials
+- **v1.0.5** — Ensure env.example is present and not empty after download
+- **v1.0.6** — Fix env file permissions (0640) so service can read credentials
+- **v1.0.7** — Ensure env.example is present and not empty after download
+- **v1.0.8** — Move env.example check to /tmp, remove silent failures, add verification step
+- **v1.0.9** — Fix wheel download for "latest" (correct GitHub API endpoint), add timeouts/progress bars
+- **v1.0.10** — Use dedicated temp dir (mktemp) for downloads, remove existing files before download
+- **v1.0.11** — Change default reporting.output_dir to /var/lib/chk-a/reports to fix read-only filesystem error
+- **v1.0.12** — Fix HTML parsing in Telegram messages (remove auto-escape from TelegramClient, add proper escaping in callers)
+- **v1.0.13** — Support Python 3.10+ (Ubuntu 22.04 LTS), add backports.zoneinfo dependency
+- **v1.0.14** — Add manual daily/monthly report scripts for on-demand reporting
+
+### Manual Report Scripts (2026-09-17)
+- ✅ `scripts/manual_daily_report.py` — On-demand daily report from midnight to now
+- ✅ `scripts/manual_monthly_report.py` — On-demand monthly report from 1st of month to now
+- ✅ **Fixed: Both scripts now show ALL resolvers** (removed hardcoded `[:10]` limits) — 2026-09-17 19:30:00
+- Both generate Thai/English summaries + graphs, send to Telegram on demand
+
+### Daily Availability Heatmap for Monthly Reports (2026-09-17 20:00:00)
+- ✅ Added `daily_availability` computation in `ml_insights.py::compute_availability()`
+- ✅ Added `generate_availability_daily_heatmap()` in `graph_generator.py` with Thai version
+- ✅ Integrated into `generate_summary_dashboard()` — monthly reports now include both hourly and daily heatmaps
+- ✅ Monthly reports: 18-20 graphs total (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
 
 ---
 
@@ -267,13 +296,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.2/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.14/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.2`
+  3. `sudo ./install.sh v1.0.14`
   4. Edit `/etc/chk-a/env` with Telegram credentials
   5. Edit `/etc/chk-a/config.yaml` with FQDNs/resolvers
   6. `sudo systemctl restart chk-a`
 
 ---
 
-*Created by Hermes Agent session on 2026-09-16 15:30:00*
+*Created by Hermes Agent session on 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*

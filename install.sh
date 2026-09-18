@@ -237,6 +237,31 @@ log "Installing scripts..."
 cp -rf scripts "${INSTALL_DIR}/"
 chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${INSTALL_DIR}"
 
+# Download img tarball
+IMG_URL="${DOWNLOAD_BASE}/img.tar.gz"
+log "Downloading img.tar.gz..."
+rm -f img.tar.gz  # Remove any existing file
+if ! curl -L --max-time 60 --progress-bar -o img.tar.gz "${IMG_URL}"; then
+    warn "Could not download img.tar.gz (using embedded/fallback images)"
+else
+    if [[ -f "img.tar.gz" && -s "img.tar.gz" ]]; then
+        if tar -tzf img.tar.gz >/dev/null 2>&1; then
+            log "Extracting img.tar.gz..."
+            if ! tar -xzf img.tar.gz; then
+                warn "Failed to extract img.tar.gz"
+            elif [[ -d "img" ]]; then
+                log "Installing images..."
+                cp -rf img "${INSTALL_DIR}/"
+                chown -R "${SERVICE_USER}:${SERVICE_GROUP}" "${INSTALL_DIR}/img"
+            fi
+        else
+            warn "img.tar.gz is not a valid tar archive"
+        fi
+    else
+        warn "img.tar.gz missing or empty after download"
+    fi
+fi
+
 # 5. Setup virtualenv and install wheel
 log "Setting up virtualenv..."
 NEED_PIP_INSTALL=0

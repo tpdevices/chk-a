@@ -349,12 +349,12 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
             "",
         ]
 
-        # Top 5 availability
+        # All resolvers availability
         if availability:
-            lines.append("📊 <b>Top 5 Availability</b>")
+            lines.append("📊 <b>All Resolvers Availability</b>")
             sorted_avail = sorted(
                 availability.items(), key=lambda x: x[1]["availability_pct"], reverse=True
-            )[:5]
+            )
             for i, (resolver, data) in enumerate(sorted_avail, 1):
                 pct = data["availability_pct"]
                 emoji = "🟢" if pct >= 99 else "🟡" if pct >= 95 else "🔴"
@@ -362,14 +362,14 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
 
             lines.append("")
 
-        # Path availability section
+        # Path availability section - all resolvers
         if path_availability:
             lines.append("🛣️ <b>Path Availability (Host→Resolver)</b>")
             sorted_path = sorted(
                 path_availability.items(),
                 key=lambda x: x[1]["path_availability_pct"],
                 reverse=True,
-            )[:5]
+            )
             for i, (resolver, data) in enumerate(sorted_path, 1):
                 pct = data["path_availability_pct"]
                 health = data.get("path_health_score", 0)
@@ -473,9 +473,8 @@ async def send_monthly_report_telegram(
         tasks.append(reporter.send_message(summary_text))
         keys.append("summary")
 
-        # Graphs (limit to avoid spam)
-        graph_limit = min(5, len(graph_paths))
-        for i, graph_path in enumerate(graph_paths[:graph_limit]):
+        # Graphs (send all)
+        for i, graph_path in enumerate(graph_paths):
             caption = graph_path.stem.replace("-", " ").title()
             tasks.append(reporter.send_photo(graph_path, caption))
             keys.append(f"graph_{i}")
@@ -519,9 +518,8 @@ async def send_daily_report_telegram(
         tasks.append(reporter.send_message(summary_text))
         keys.append("summary")
 
-        # Graphs (limit to avoid spam)
-        graph_limit = min(6, len(graph_paths))
-        for i, graph_path in enumerate(graph_paths[:graph_limit]):
+        # Graphs (send all)
+        for i, graph_path in enumerate(graph_paths):
             caption = graph_path.stem.replace("-", " ").title()
             tasks.append(reporter.send_photo(graph_path, caption))
             keys.append(f"graph_{i}")

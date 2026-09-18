@@ -87,8 +87,12 @@ jobs:
           cp logrotate.d/chk-a dist/logrotate.chk-a
           # Copy scripts directory for systemd wrapper
           cp -r scripts dist/
+          # Copy img directory for daily/anomaly/recovery images
+          cp -r img dist/
           # Create scripts tarball for easy download
           tar -czf dist/scripts.tar.gz -C dist scripts
+          # Create img tarball
+          tar -czf dist/img.tar.gz -C dist img
           ls -la dist/
 
       - name: Create Release

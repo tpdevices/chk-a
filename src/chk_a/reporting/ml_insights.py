@@ -395,6 +395,7 @@ def compute_availability(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
     - p95_latency_ms
     - p99_latency_ms
     - hourly_availability (dict hour->pct)
+    - daily_availability (dict date->pct)  # NEW: for daily heatmap
     """
     if df.empty:
         return {}
@@ -431,6 +432,16 @@ def compute_availability(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
             else:
                 hourly[hour] = None
 
+        # Daily availability (NEW) - for daily heatmap in monthly report
+        daily = {}
+        if not group.empty:
+            # Group by date (normalize timestamp to date)
+            group_copy = group.copy()
+            group_copy["date"] = group_copy["timestamp"].dt.date
+            for date, date_group in group_copy.groupby("date"):
+                date_success = len(date_group[date_group["success"]])
+                daily[str(date)] = date_success / len(date_group) * 100
+
         results[resolver] = {
             "total_queries": total,
             "successful_queries": success_count,
@@ -438,6 +449,7 @@ def compute_availability(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
             "availability_pct": round(availability, 2),
             **latency_stats,
             "hourly_availability": hourly,
+            "daily_availability": daily,  # NEW
         }
 
     return results

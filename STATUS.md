@@ -1,6 +1,6 @@
 # Project Status — chk-a
 
-**Last Updated:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -68,6 +68,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Daily report (06:00 AM, lookback 1 day) — **FIXED: Telegram 404 error**
 - ✅ 7 chart types × 2 languages (EN/TH) = 14 charts + 2 Dashboards = 16 files
   - Availability Bar, Availability Heatmap, Integrity Score, Latency Boxplot, IP Stability, MTR Path, Path Availability
+- ✅ **NEW: Daily Availability Heatmap** — Day-of-month vs resolver availability matrix for monthly reports (2026-09-17)
 - ✅ Thai language support via `_apply_thai_fonts()` with translation map covering all chart types
 - ✅ PDF reports (EN/TH) via fpdf2
 - ✅ Telegram batch sending (configurable batch size, delay, exponential backoff retry)
@@ -80,6 +81,8 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Alert Deduplication (30 min window, persistent JSON cache)
 - ✅ Token Bucket Rate Limiting (20/hr default)
 - ✅ HTML-formatted alerts: Majority vs Outliers view, emojis (🔴/🟡/🔵), type labels (📊/🗳️/🆕/🚫)
+- ✅ **All resolvers displayed** in summaries (removed Top 5/10 limits) — 2026-09-17
+- ✅ **All graphs sent** to Telegram (removed 5/6 graph limits) — 2026-09-17
 
 ### Anomaly/Recovery Notifications (2026-09-09)
 - ✅ Event ID format: `{hostname}-YYYYMMDD-HHmmss` for both anomaly and recovery
@@ -106,7 +109,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ All project timestamps now consistently use Asia/Bangkok local time (+07)
 
 ### Testing & Operations
-- ✅ **253/253 tests pass** on **both dev and test VM** (zero-regression policy)
+- ✅ **257/257 tests pass** on **both dev and test VM** (zero-regression policy)
 - ✅ CLI subcommands: `validate-config`, `check-once`, `show-baseline`, `test-telegram`, `test-daily-image`, `mtr`
 - ✅ Dev↔Test VM sync via `rsync -c` (checksum) with immediate sync back of VM edits
 - ✅ Test VM: Ubuntu 24.04 at 192.168.56.122 (user: ipds), service runs as `chk-a` (uid=999)
@@ -186,18 +189,39 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **v1.0.1** released (2026-09-16) — Fixed wheel filename resolution via GitHub API, added pip installation fallback
 - ✅ **v1.0.2** released (2026-09-16) — Enhanced pip installation: `ensurepip` with output logging, fallback to `get-pip.py`, verification with version logging
 
+### Install.sh Fixes (2026-09-17)
+- ✅ **v1.0.3** — Fix install.sh venv reuse bug (added pip verification, improved logging)
+- ✅ **v1.0.4** — Fix env permission to 0640 so service can read Telegram credentials
+- ✅ **v1.0.5** — Ensure env.example is present and not empty after download
+- ✅ **v1.0.6** — Fix env file permissions (0640) so service can read credentials
+- ✅ **v1.0.7** — Ensure env.example is present and not empty after download
+- ✅ **v1.0.8** — Move env.example check to /tmp, remove silent failures, add verification step
+- ✅ **v1.0.9** — Fix wheel download for "latest" (correct GitHub API endpoint), add timeouts/progress bars
+- ✅ **v1.0.10** — Use dedicated temp dir (mktemp) for downloads, remove existing files before download
+- ✅ **v1.0.11** — Change default reporting.output_dir to /var/lib/chk-a/reports to fix read-only filesystem error
+- ✅ **v1.0.12** — Fix HTML parsing in Telegram messages (remove auto-escape from TelegramClient, add proper escaping in callers)
+- ✅ **v1.0.13** — Support Python 3.10+ (Ubuntu 22.04 LTS), add backports.zoneinfo dependency
+- ✅ **v1.0.14** — Add manual daily/monthly report scripts for on-demand reporting
+
+### Manual Report Scripts (2026-09-17)
+- ✅ `scripts/manual_daily_report.py` — On-demand daily report from midnight to now
+- ✅ `scripts/manual_monthly_report.py` — On-demand monthly report from 1st of month to now
+- ✅ **Fixed: Both scripts now show ALL resolvers** (removed hardcoded `[:10]` limits) — 2026-09-17 19:30:00
+- Both generate Thai/English summaries + graphs, send to Telegram on demand
+
+### Daily Availability Heatmap for Monthly Reports (2026-09-17 20:00:00)
+- ✅ Added `daily_availability` computation in `ml_insights.py::compute_availability()`
+- ✅ Added `generate_availability_daily_heatmap()` in `graph_generator.py` with Thai version
+- ✅ Integrated into `generate_summary_dashboard()` — monthly reports now include both hourly and daily heatmaps
+- ✅ Monthly reports: 18-20 graphs total (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
+
 ---
 
 ## 4. In Progress
 
-- 🔄 **Production Installer Debugging** — v1.0.2 released, testing pip installation in venv on production machine
-  - **Issue**: Existing venv from previous failed attempts causes script to skip pip installation
-  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
-  - **Root Cause**: Script checks `[[ ! -x "${VENV_DIR}/bin/python" ]]` but doesn't verify pip presence
-  - **Next Fix**: Add pip presence check to venv validation condition
-
+- 🔄 **Production Installer Debugging** — v1.0.14 released, testing on fresh VM
 - 🔄 **P2 Security Remediation** (Medium findings — next sprint):
-  - SEC-014: HTML escape in Telegram messages
+  - SEC-014: HTML escape in Telegram messages (DONE - 2026-09-17)
 
 ---
 
@@ -214,21 +238,30 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **Missing yesterday's report on startup** — Auto-check and generate on service start
 - ✅ **v1.0.0/v1.0.1 install.sh wheel download** — Fixed via GitHub API lookup + constructed filename fallback
 - ✅ **v1.0.1/v1.0.2 pip installation** — Added ensurepip + get-pip.py fallback + verification
+- ✅ **v1.0.3-v1.0.14** — Sequential fixes for install.sh, env permissions, env.example, wheel download, temp dirs, output_dir, Python 3.10+, manual report scripts
 
 ### Active
-- 🔄 **install.sh venv reuse bug** — If venv exists from failed attempt, pip installation is skipped
-  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
-  - **Fix needed**: Add pip verification to venv existence check
+- 🔄 **Verify production install on fresh VM** — v1.0.14 released, need to test on clean VM
 
 ---
 
 ## 6. Next Actions
 
 ### This Week (P1)
-- Fix install.sh venv reuse bug (add pip verification to venv check)
+- Verify production install on fresh VM (v1.0.14)
 - Document systemd unit files in repo (for reference)
 - Add deployment checklist (config perms, systemd caps, log dirs)
 - Create runbook for common operations
+
+### This Sprint (P2)
+- SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR
+- Add log rotation test coverage
+- Email reporting integration
+
+### This Quarter (P3)
+- Dashboard web UI (FastAPI + HTMX + Chart.js)
+- GitHub repo cleanup & branch consolidation
+- Historical data compaction
 
 ---
 
@@ -254,11 +287,12 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 ### Reporting
 | File | Lines | Purpose |
 |------|-------|---------|
-| `src/chk_a/reporting/graph_generator.py` | ~850 | 7 chart types × EN/TH, Thai fonts, translation map |
+| `src/chk_a/reporting/graph_generator.py` | ~950 | 7 chart types × EN/TH, Thai fonts, translation map + Daily Heatmap |
 | `src/chk_a/reporting/monthly_report.py` | ~350 | Report pipeline: insights → graphs → PDF → Telegram/email |
 | `src/chk_a/reporting/telegram_reporter.py` | ~400 | Batched photo sending, exponential backoff, HTML summary |
 | `src/chk_a/reporting/pdf_generator.py` | ~200 | fpdf2 EN/TH templates |
-| `src/chk_a/reporting/ml_insights.py` | ~250 | Availability, integrity, path health, anomaly detection |
+| `src/chk_a/reporting/ml_insights.py` | ~260 | Availability, integrity, path health, anomaly detection + daily_availability |
+| `src/chk_a/reporting/telegram_client.py` | ~180 | Async Telegram client with retry, circuit breaker |
 
 ### Entry Point & Config
 | File | Purpose |
@@ -276,6 +310,8 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `scripts/systemd_notify.py` | Direct systemd status notifier — start/stop/restart/fail/error |
 | `scripts/send_test_telegram.py` | Sends test anomaly/recovery Telegram messages with images |
 | `scripts/deploy.sh` | Deploy synced source to FHS runtime `/opt/chk-a/` |
+| `scripts/manual_daily_report.py` | On-demand daily report from midnight to now |
+| `scripts/manual_monthly_report.py` | On-demand monthly report from 1st to now |
 
 ### Test & Scripts
 | File | Purpose |
@@ -291,7 +327,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `.github/workflows/release.yml` | GitHub Actions: build wheel, create release on tag push |
 | `install.sh` | Production installer from GitHub Releases |
 | `uninstall.sh` | Production uninstaller |
-| `Makefile` | Dev/ops targets: install, uninstall, upgrade, status, logs |
+| `Makefile` | Dev/ops targets: install, uninstall, upgrade, status, logs, version |
 
 ---
 
@@ -301,4 +337,4 @@ See [TODO.md](TODO.md) for detailed breakdown.
 
 ---
 
-*Generated by Hermes Agent session on 2026-09-16 15:30:00*
+*Generated by Hermes Agent session on 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*

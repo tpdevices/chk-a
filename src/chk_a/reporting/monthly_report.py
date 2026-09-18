@@ -328,8 +328,9 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     store = BaselineStore(config.baseline_store_path)
     ml_agent = MLAgent(config.ml, store)
 
-    # For daily report, use yesterday as reference date to get yesterday's data
-    yesterday_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=0) - timedelta(days=1)
+    # For daily report, use yesterday's end (23:59:59) as reference date to get yesterday's full day data
+    yesterday = datetime.now() - timedelta(days=1)
+    yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
     insights = generate_ml_insights(log_path, lookback, mtr_log_path, ml_agent=ml_agent, reference_date=yesterday_end)
     log.info(
         "Daily ML insights generated: %d resolvers, %.2f%% overall availability",

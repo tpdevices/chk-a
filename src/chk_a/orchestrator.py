@@ -816,16 +816,33 @@ class Orchestrator:
                     if candidate.is_file():
                         img_path = candidate
                         break
-            # Send image with hostname in caption
-            hostname = self.hostname
-            caption = f"{alert_cfg.daily_image_caption}\n🖥️ Host: <code>{hostname}</code>"
-            ok = await self.alert.telegram.send_photo(
-                chat_id=chat_id,
-                photo_path=img_path,
-                caption=caption,
-                parse_mode="HTML",
-            )
-            self.logger.info("Daily image sent: ok=%s path=%s", ok, img_path)
+            # Check if image exists
+            if not img_path.is_file():
+                self.logger.warning("Daily image not found at %s, trying fallback images...", img_path)
+                # Try fallback to anomaly/recovery images from AlertAgent
+                for fallback_attr in ["anomaly_image_path", "recovery_image_path"]:
+                    fb_path = getattr(self.alert, fallback_attr, None)
+                    if fb_path and fb_path.is_file():
+                        img_path = fb_path
+                        self.logger.info("Using fallback image: %s", img_path)
+                        break
+                else:
+                    self.logger.error("No daily image available (tried %s and fallbacks), skipping image send", alert_cfg.daily_image_path)
+                    img_path = None
+            
+            if img_path and img_path.is_file():
+                # Send image with hostname in caption
+                hostname = self.hostname
+                caption = f"{alert_cfg.daily_image_caption}\n🖥️ Host: <code>{hostname}</code>"
+                ok = await self.alert.telegram.send_photo(
+                    chat_id=chat_id,
+                    photo_path=img_path,
+                    caption=caption,
+                    parse_mode="HTML",
+                )
+                self.logger.info("Daily image sent: ok=%s path=%s", ok, img_path)
+            else:
+                self.logger.warning("Daily image skipped: no valid image file found")
         else:
             self.logger.info("Daily image skipped: missing chat_id or bot_token")
 

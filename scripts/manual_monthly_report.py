@@ -162,20 +162,20 @@ async def generate_current_month_report():
                 f"\n"
             )
             
-            # Add availability section
+            # Add availability section - show ALL resolvers
             availability = insights.get("availability", {})
             if availability:
-                summary_text += "📊 <b>Top 10 Resolver Availability</b>\n"
+                summary_text += "📊 <b>All Resolvers Availability</b>\n"
                 sorted_avail = sorted(
                     availability.items(), key=lambda x: x[1]["availability_pct"], reverse=True
-                )[:10]
+                )
                 for i, (resolver, data) in enumerate(sorted_avail, 1):
                     pct = data["availability_pct"]
                     emoji = "🟢" if pct >= 99 else "🟡" if pct >= 95 else "🔴"
                     summary_text += f"{i}. {emoji} {resolver}: {pct:.2f}%\n"
                 summary_text += "\n"
             
-            # Add path availability
+            # Add path availability - show ALL resolvers
             path_availability = insights.get("path_availability", {})
             if path_availability:
                 summary_text += "🛣️ <b>Path Availability (MTR Host→Resolver)</b>\n"
@@ -183,7 +183,7 @@ async def generate_current_month_report():
                     path_availability.items(),
                     key=lambda x: x[1]["path_availability_pct"],
                     reverse=True,
-                )[:10]
+                )
                 for i, (resolver, data) in enumerate(sorted_path, 1):
                     pct = data["path_availability_pct"]
                     health = data.get("path_health_score", 0)
@@ -191,13 +191,13 @@ async def generate_current_month_report():
                     summary_text += f"{i}. {emoji} {resolver}: {pct:.1f}% (Health: {health:.0f})\n"
                 summary_text += "\n"
             
-            # Add integrity
+            # Add integrity - show ALL resolvers
             integrity = insights.get("integrity", {})
             if integrity:
                 summary_text += "🔐 <b>Response Integrity (Baseline Consistency)</b>\n"
                 sorted_integrity = sorted(
                     integrity.items(), key=lambda x: x[1].get("integrity_score", 0), reverse=True
-                )[:10]
+                )
                 for i, (resolver, data) in enumerate(sorted_integrity, 1):
                     score = data.get("integrity_score", 0)
                     success_rate = data.get("success_rate", 0)

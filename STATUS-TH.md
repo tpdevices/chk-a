@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -68,6 +68,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ รายงานรายวัน (06:00 น., lookback 1 วัน) — **แก้แล้ว: Telegram 404 error**
 - ✅ กราฟ 7 ประเภท × 2 ภาษา (EN/TH) = 14 กราฟ + 2 Dashboards = 16 ไฟล์
   - Availability Bar, Availability Heatmap, Integrity Score, Latency Boxplot, IP Stability, MTR Path, Path Availability
+- ✅ **ใหม่: Daily Availability Heatmap** — Heatmap แบบวันในเดือน vs resolver สำหรับรายงานรายเดือน (2026-09-17)
 - ✅ รองรับภาษาไทยผ่าน `_apply_thai_fonts()` พร้อม translation map ครอบคลุมทุกประเภทกราฟ
 - ✅ รายงาน PDF (EN/TH) ผ่าน fpdf2
 - ✅ Telegram batch sending (ปรับ batch size, delay, exponential backoff retry ได้)
@@ -80,6 +81,8 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Alert Deduplication (หน้าต่าง 30 นาที, cache JSON persistent)
 - ✅ Token Bucket Rate Limiting (ค่าเริ่มต้น 20/ชม.)
 - ✅ Alert แบบ HTML-formatted: มุมมอง Majority vs Outliers, emojis (🔴/🟡/🔵), type labels (📊/🗳️/🆕/🚫)
+- ✅ **แสดง Resolver ทั้งหมดในสรุป** (ลบ Top 5/10 limits) — 2026-09-17
+- ✅ **ส่งกราฟทั้งหมด** ไป Telegram (ลบ 5/6 graph limits) — 2026-09-17
 
 ### การแจ้งเตือน Anomaly/Recovery (2026-09-09)
 - ✅ Event ID format: `{hostname}-YYYYMMDD-HHmmss` สำหรับทั้ง anomaly และ recovery
@@ -106,7 +109,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ ทุก timestamp ในโปรเจกต์ใช้เวลาท้องถิ่น Asia/Bangkok (+07) อย่างสม่ำเสมอ
 
 ### การทดสอบและการดำเนินงาน
-- ✅ **253/253 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
+- ✅ **257/257 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
 - ✅ CLI subcommands: `validate-config`, `check-once`, `show-baseline`, `test-telegram`, `test-daily-image`, `mtr`
 - ✅ Dev↔Test VM sync ผ่าน `rsync -c` (checksum) พร้อม sync กลับทันทีของการแก้ไขบน VM
 - ✅ Test VM: Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds), service รันเป็น `chk-a` (uid=999)
@@ -186,53 +189,83 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **v1.0.1 released** (2026-09-16) — แก้ wheel filename resolution ผ่าน GitHub API, เพิ่ม pip installation fallback
 - ✅ **v1.0.2 released** (2026-09-16) — ปรับปรุง pip installation: `ensurepip` พร้อม log output, fallback `get-pip.py`, verification พร้อม log version
 
+### Install.sh Fixes (2026-09-17)
+- ✅ **v1.0.3** — Fix install.sh venv reuse bug (added pip verification, improved logging)
+- ✅ **v1.0.4** — Fix env permission to 0640 so service can read Telegram credentials
+- ✅ **v1.0.5** — Ensure env.example is present and not empty after download
+- ✅ **v1.0.6** — Fix env file permissions (0640) so service can read credentials
+- ✅ **v1.0.7** — Ensure env.example is present and not empty after download
+- ✅ **v1.0.8** — Move env.example check to /tmp, remove silent failures, add verification step
+- ✅ **v1.0.9** — Fix wheel download for "latest" (correct GitHub API endpoint), add timeouts/progress bars
+- ✅ **v1.0.10** — Use dedicated temp dir (mktemp) for downloads, remove existing files before download
+- ✅ **v1.0.11** — Change default reporting.output_dir to /var/lib/chk-a/reports to fix read-only filesystem error
+- ✅ **v1.0.12** — Fix HTML parsing in Telegram messages (remove auto-escape from TelegramClient, add proper escaping in callers)
+- ✅ **v1.0.13** — Support Python 3.10+ (Ubuntu 22.04 LTS), add backports.zoneinfo dependency
+- ✅ **v1.0.14** — Add manual daily/monthly report scripts for on-demand reporting
+
+### Manual Report Scripts (2026-09-17)
+- ✅ `scripts/manual_daily_report.py` — รายงานรายวัน on-demand จากเที่ยงคืนถึงตอนนี้
+- ✅ `scripts/manual_monthly_report.py` — รายงานรายเดือน on-demand จากวันที่ 1 ถึงตอนนี้
+- ✅ **แก้แล้ว: ทั้งคู่แสดง Resolver ทั้งหมด** (ลบ hardcoded `[:10]` limits) — 2026-09-17 19:30:00
+- ทั้งคู่สร้างสรุปไทย/อังกฤษ + กราฟ ส่ง Telegram on-demand
+
+### Daily Availability Heatmap สำหรับรายงานรายเดือน (2026-09-17 20:00:00)
+- ✅ เพิ่ม `daily_availability` computation ใน `ml_insights.py::compute_availability()`
+- ✅ เพิ่ม `generate_availability_daily_heatmap()` ใน `graph_generator.py` พร้อมเวอร์ชันไทย
+- ✅ บูรณาการใน `generate_summary_dashboard()` — รายงานรายเดือนมีทั้ง Hourly และ Daily Heatmap
+- ✅ รายงานรายเดือน: กราฟ 18-20 รูป (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
+
 ---
 
 ## 4. สิ่งที่กำลังทำอยู่
 
-- 🔄 **Production Installer Debugging** — v1.0.2 released, กำลังทดสอบ pip installation ใน venv บนเครื่อง production
-  - **ปัญหา**: venv ค้างจากครั้งก่อนที่ล้มเหลว ทำให้ script ข้าม pip installation
-  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
-  - **Root Cause**: Script เช็ค `[[ ! -x "${VENV_DIR}/bin/python" ]]` แต่ไม่ verify pip presence
-  - **Next Fix**: เพิ่ม pip presence check ใน venv validation condition
-
-- 🔄 **P2 Security Remediation** (Medium findings — sprint ถัดไป):
-  - SEC-014: HTML escape ในข้อความ Telegram
+- 🔄 **Production Installer Debugging** — v1.0.14 released, testing on fresh VM
+- 🔄 **P2 Security Remediation** (Medium findings — next sprint):
+  - SEC-014: HTML escape in Telegram messages (DONE - 2026-09-17)
 
 ---
 
 ## 5. ปัญหาที่พบ
 
-### ปัญหาที่แก้แล้ว
-- ✅ ติดตั้ง seaborn บน test VM
-- ✅ แก้ไข mock `send_photo` signature ใน test_alert_agent.py
-- ✅ แก้ไขปัญหาสิทธิ์ state file: `sudo chown ipds:ipds /opt/chk-a/last_state.txt`
-- ✅ `sudo: A terminal is required to authenticate` — ผู้ใช้รัน sudo commands โดยตรงบน test VM
-- ✅ **รายงานรายวัน Telegram 404 error** — แก้โดยใช้ token ใน URL path (ข้อกำหนดของ Telegram Bot API)
-- ✅ **Test VM ขาด daily_report_* config** — เพิ่มใน `/etc/chk-a/config.yaml`
-- ✅ **Runtime code mismatch** — แก้โดยรัน `scripts/deploy.sh` บน test VM
-- ✅ **รายงานวันที่วานขาดหายตอน startup** — ตรวจสอบและสร้างอัตโนมัติตอน service เริ่มทำงาน
-- ✅ **v1.0.0/v1.0.1 install.sh wheel download** — แก้ผ่าน GitHub API lookup + constructed filename fallback
-- ✅ **v1.0.1/v1.0.2 pip installation** — เพิ่ม ensurepip + get-pip.py fallback + verification
+### แก้เสร็จแล้ว
+- ✅ seaborn installed on test VM
+- ✅ `send_photo` mock signature fixed in test_alert_agent.py
+- ✅ State file permission issue resolved: `sudo chown ipds:ipds /opt/chk-a/last_state.txt`
+- ✅ `sudo: A terminal is required to authenticate` — user runs sudo commands directly on test VM
+- ✅ **Daily report Telegram 404 error** — Fixed by using token in URL path (Telegram Bot API requirement)
+- ✅ **Test VM missing daily_report_* config** — Added to `/etc/chk-a/config.yaml`
+- ✅ **Runtime code mismatch** — Fixed by running `scripts/deploy.sh` on test VM
+- ✅ **Missing yesterday's report on startup** — Auto-check and generate on service start
+- ✅ **v1.0.0/v1.0.1 install.sh wheel download** — Fixed via GitHub API lookup + constructed filename fallback
+- ✅ **v1.0.1/v1.0.2 pip installation** — Added ensurepip + get-pip.py fallback + verification
+- ✅ **v1.0.3-v1.0.14** — Sequential fixes for install.sh, env permissions, env.example, wheel download, temp dirs, output_dir, Python 3.10+, manual report scripts
 
-### ปัญหาที่ยังคงอยู่
-- 🔄 **install.sh venv reuse bug** — ถ้า venv มีอยู่แล้วจากครั้งที่ล้มเหลว จะข้าม pip installation
-  - **Workaround**: `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
-  - **Fix ที่ต้องทำ**: เพิ่ม pip verification ใน venv existence check
+### กำลังดำเนินการ
+- 🔄 **Verify production install on fresh VM** — v1.0.14 released, need to test on clean VM
 
 ---
 
 ## 6. งานที่ต้องทำต่อ
 
 ### สัปดาห์นี้ (P1)
-- แก้ install.sh venv reuse bug (เพิ่ม pip verification ใน venv check)
-- จัดทำเอกสาร systemd unit files ใน repo (เป็นข้อมูลอ้างอิง)
-- เพิ่ม deployment checklist (config perms, systemd caps, log dirs)
-- สร้าง runbook สำหรับการดำเนินงานทั่วไป
+- Verify production install on fresh VM (v1.0.14)
+- Document systemd unit files in repo (for reference)
+- Add deployment checklist (config perms, systemd caps, log dirs)
+- Create runbook for common operations
+
+### Sprint นี้ (P2)
+- SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR
+- Add log rotation test coverage
+- Email reporting integration
+
+### Quarter นี้ (P3)
+- Dashboard web UI (FastAPI + HTMX + Chart.js)
+- GitHub repo cleanup & branch consolidation
+- Historical data compaction
 
 ---
 
-## 7. รายการไฟล์ที่เกี่ยวข้อง
+## 7. ไฟล์ที่เกี่ยวข้อง
 
 ### Core Agents
 | ไฟล์ | บรรทัด | วัตถุประสงค์ |
@@ -254,11 +287,12 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 ### Reporting
 | ไฟล์ | บรรทัด | วัตถุประสงค์ |
 |------|-------|-------------|
-| `src/chk_a/reporting/graph_generator.py` | ~850 | 7 chart types × EN/TH, Thai fonts, translation map |
+| `src/chk_a/reporting/graph_generator.py` | ~950 | 7 chart types × EN/TH, Thai fonts, translation map + Daily Heatmap |
 | `src/chk_a/reporting/monthly_report.py` | ~350 | Report pipeline: insights → graphs → PDF → Telegram/email |
 | `src/chk_a/reporting/telegram_reporter.py` | ~400 | Batched photo sending, exponential backoff, HTML summary |
 | `src/chk_a/reporting/pdf_generator.py` | ~200 | fpdf2 EN/TH templates |
-| `src/chk_a/reporting/ml_insights.py` | ~250 | Availability, integrity, path health, anomaly detection |
+| `src/chk_a/reporting/ml_insights.py` | ~260 | Availability, integrity, path health, anomaly detection + daily_availability |
+| `src/chk_a/reporting/telegram_client.py` | ~180 | Async Telegram client with retry, circuit breaker |
 
 ### Entry Point & Config
 | ไฟล์ | วัตถุประสงค์ |
@@ -276,6 +310,8 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `scripts/systemd_notify.py` | Notifier สถานะ systemd — start/stop/restart/fail/error |
 | `scripts/send_test_telegram.py` | ส่งข้อความ Telegram ทดสอบ anomaly/recovery พร้อมรูปภาพ |
 | `scripts/deploy.sh` | Deploy source ที่ sync มาไปยัง FHS runtime `/opt/chk-a/` |
+| `scripts/manual_daily_report.py` | On-demand daily report from midnight to now |
+| `scripts/manual_monthly_report.py` | On-demand monthly report from 1st to now |
 
 ### Test & Scripts
 | ไฟล์ | วัตถุประสงค์ |
@@ -291,7 +327,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `.github/workflows/release.yml` | GitHub Actions: build wheel, create release on tag push |
 | `install.sh` | Production installer from GitHub Releases |
 | `uninstall.sh` | Production uninstaller |
-| `Makefile` | Dev/ops targets: install, uninstall, upgrade, status, logs |
+| `Makefile` | Dev/ops targets: install, uninstall, upgrade, status, logs, version |
 
 ---
 
@@ -301,4 +337,4 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-16 15:30:00*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*

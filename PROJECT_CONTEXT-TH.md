@@ -1,6 +1,6 @@
 # บริบทโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-16 15:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -71,6 +71,9 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 14. **Baseline-based Integrity** — ใช้ `MLAgent.score()` (total-variation distance) แทน Isolation Forest, พร้อม IP stability/diversity metrics (2026-09-15)
 15. **Startup Missing Report Check** — Orchestrator ตรวจสอบและส่งรายงานวันที่วานขาดหายตอน startup (2026-09-15)
 16. **GitHub Release & Production Installer** — Actions workflow build wheel เมื่อ push tag, สร้าง release; `install.sh` ดาวน์โหลดจาก GitHub Releases, ติดตั้งไป `/opt/chk-a/` พร้อม systemd (2026-09-16)
+17. **Manual Report Scripts** — `manual_daily_report.py` และ `manual_monthly_report.py` สำหรับรายงาน on-demand (2026-09-17)
+18. **แสดง Resolver ทั้งหมดใน Telegram** — ลบ Top 5/10 limits จากสรุปและการส่งกราฟ (2026-09-17 15:30:00, 19:30:00)
+19. **Daily Availability Heatmap** — เพิ่ม Heatmap แบบวันในเดือน vs resolver สำหรับรายงานรายเดือน (2026-09-17 20:00:00)
 
 ---
 
@@ -98,22 +101,25 @@ Section สำคัญ:
 ### รายงานรายเดือน (วันที่ 1 ทุกเดือน, 06:00 น.)
 - ML insights จาก lookback 30 วัน
 - กราฟ 7 ประเภท × EN/TH = 14 กราฟ + 2 Dashboards = 16 ไฟล์
+- **ใหม่: Daily Availability Heatmap** — Heatmap แบบวันในเดือน vs resolver (EN/TH = 2 กราฟเพิ่ม)
+- รวม: 18-20 กราฟต่อรายงานรายเดือน
 - รายงาน PDF (EN/TH) ผ่าน fpdf2
-- Telegram: สรุปภาษาไทย + กราฟ (batched, 5 รูปต่อ batch)
+- Telegram: สรุปภาษาไทย + กราฟ (batched, ส่งกราฟทั้งหมด)
 - อีเมล: PDF attachment เต็ม
 
 ### รายงานรายวัน (06:00 น., lookback 1 วัน)
 - กราฟเหมือนกัน, time window 1 วัน
-- Telegram: สรุปภาษาไทย + กราฟ (batched)
+- Telegram: สรุปภาษาไทย + กราฟ (batched, ส่งกราฟทั้งหมด)
 
 ### ประเภทกราฟ (7)
 1. Availability Bar (availability % ต่อ resolver)
 2. Availability Heatmap (รายชั่วโมงต่อ resolver)
-3. Integrity Score (ML-based ต่อ resolver)
-4. Latency Boxplot (latency distribution ต่อ resolver)
-5. IP Stability & Diversity (unique IP set, stability %)
-6. MTR Path Visualization (hop loss/latency)
-7. Path Availability (ML-based network path health)
+3. **ใหม่: Daily Availability Heatmap** (วันในเดือนต่อ resolver)
+4. Integrity Score (ML-based ต่อ resolver)
+5. Latency Boxplot (latency distribution ต่อ resolver)
+6. IP Stability & Diversity (unique IP set, stability %)
+7. MTR Path Visualization (hop loss/latency)
+8. Path Availability (ML-based network path health)
 
 ### การแสดงภาษาไทย
 ทุกกราฟเรียก `_apply_thai_fonts()` → translation map ครอบคลุมทุก label, footer แบ่งซ้าย/ขวา (hostname | timestamp), lang param ควบคุม TH/EN โดยไม่ซ้ำ
@@ -155,7 +161,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ## การทดสอบและคุณภาพ
 
-- **253/253 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
+- **257/257 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
 - **Test Location:** ทุกอย่างบน test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
 - **Fix Tests, Not Agent Code** — ตามกฎโครงการ
 - **Code Review Patterns:** ตาม skill `software-development` → `code-review-patterns`
@@ -168,7 +174,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - **2 Critical:** AlertAgent token bucket race (C-01) ✅ แก้แล้ว, AlertAgent dedup cache race (C-02) ✅ แก้แล้ว
 - **5 High:** Orchestrator timezone-naive scheduler (H-01) ✅ แก้แล้ว, MTR timeout calc (H-02) ✅ แก้แล้ว, BaselineStore key caching (H-03) ✅ แก้แล้ว, TelegramClient memory (H-04) ✅ แก้แล้ว, Orchestrator batch writes (H-05) ✅ แก้แล้ว
 - **8 Medium:** DoH support (M-01) ✅ แก้แล้ว, Consensus reputation (M-02) ✅ แก้แล้ว, MLAgent key collision (M-03) ✅ แก้แล้ว, Parallel MTR (M-04) ✅ แก้แล้ว, CircuitBreaker (M-05) ✅ แก้แล้ว, Health server consistency (M-06) ✅ แก้แล้ว, Thai font loading (M-07) ✅ แก้แล้ว, AlertAgent log rotation (M-08) ✅ แก้แล้ว
-- **5 Low/Info:** SEC-010 (DoH/DoT) ✅ แก้แล้ว, SEC-011 (CAP_NET_RAW) ✅ แก้แล้ว, SEC-013 (log perms) ✅ แก้แล้ว, SEC-014 (HTML escape) ⏳ กำลังทำ, SEC-015..SEC-020 ✅ แก้แล้ว
+- **5 Low/Info:** SEC-010 (DoH/DoT) ✅ แก้แล้ว, SEC-011 (CAP_NET_RAW) ✅ แก้แล้ว, SEC-013 (log perms) ✅ แก้แล้ว, SEC-014 (HTML escape) ✅ แก้แล้ว (2026-09-17), SEC-015..SEC-020 ✅ แก้แล้ว
 
 **แก้แล้ว (Security Regression Tests SEC-001..SEC-020):**
 - SEC-001: เพิ่ม `_validate_target_ip()` ใน `mtr_agent.py` ใช้ `ipaddress.ip_address()`
@@ -229,9 +235,32 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - **v1.0.0 released** (2026-09-16) — 10 assets: wheel, install.sh, uninstall.sh, Makefile, config.yaml.example, env.example, chk-a.service, logrotate.chk-a
 - **v1.0.1 released** (2026-09-16) — แก้ wheel filename resolution ผ่าน GitHub API, เพิ่ม pip installation fallback
 - **v1.0.2 released** (2026-09-16) — ปรับปรุง pip installation: `ensurepip` พร้อม log output, fallback `get-pip.py`, verification พร้อม log version
-- **Known Issue:** install.sh venv reuse bug — ถ้า venv มีอยู่แล้วจากครั้งที่ล้มเหลว จะข้าม pip installation
-  - **Workaround:** `sudo rm -rf /opt/chk-a/.venv && sudo ./install.sh v1.0.2`
-  - **Fix needed:** เพิ่ม pip verification ใน venv existence check
+
+### Install.sh Fixes (2026-09-17)
+- **v1.0.3** — Fix install.sh venv reuse bug (added pip verification, improved logging)
+- **v1.0.4** — Fix env permission to 0640 so service can read Telegram credentials
+- **v1.0.5** — Ensure env.example is present and not empty after download
+- **v1.0.6** — Fix env file permissions (0640) so service can read credentials
+- **v1.0.7** — Ensure env.example is present and not empty after download
+- **v1.0.8** — Move env.example check to /tmp, remove silent failures, add verification step
+- **v1.0.9** — Fix wheel download for "latest" (correct GitHub API endpoint), add timeouts/progress bars
+- **v1.0.10** — Use dedicated temp dir (mktemp) for downloads, remove existing files before download
+- **v1.0.11** — Change default reporting.output_dir to /var/lib/chk-a/reports to fix read-only filesystem error
+- **v1.0.12** — Fix HTML parsing in Telegram messages (remove auto-escape from TelegramClient, add proper escaping in callers)
+- **v1.0.13** — Support Python 3.10+ (Ubuntu 22.04 LTS), add backports.zoneinfo dependency
+- **v1.0.14** — Add manual daily/monthly report scripts for on-demand reporting
+
+### Manual Report Scripts (2026-09-17)
+- ✅ `scripts/manual_daily_report.py` — รายงานรายวัน on-demand จากเที่ยงคืนถึงตอนนี้
+- ✅ `scripts/manual_monthly_report.py` — รายงานรายเดือน on-demand จากวันที่ 1 ถึงตอนนี้
+- ✅ **แก้แล้ว: ทั้งคู่แสดง Resolver ทั้งหมด** (ลบ hardcoded `[:10]` limits) — 2026-09-17 19:30:00
+- ทั้งคู่สร้างสรุปไทย/อังกฤษ + กราฟ ส่ง Telegram on-demand
+
+### Daily Availability Heatmap สำหรับรายงานรายเดือน (2026-09-17 20:00:00)
+- ✅ เพิ่ม `daily_availability` computation ใน `ml_insights.py::compute_availability()`
+- ✅ เพิ่ม `generate_availability_daily_heatmap()` ใน `graph_generator.py` พร้อมเวอร์ชันไทย
+- ✅ บูรณาการใน `generate_summary_dashboard()` — รายงานรายเดือนมีทั้ง Hourly และ Daily Heatmap
+- ✅ รายงานรายเดือน: กราฟ 18-20 รูป (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
 
 ---
 
@@ -267,13 +296,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.2/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.14/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.2`
+  3. `sudo ./install.sh v1.0.14`
   4. แก้ `/etc/chk-a/env` ใส่ Telegram credentials
-  4. แก้ `/etc/chk-a/config.yaml` ใส่ FQDNs/resolvers
-  5. `sudo systemctl restart chk-a`
+  5. แก้ `/etc/chk-a/config.yaml` ใส่ FQDNs/resolvers
+  6. `sudo systemctl restart chk-a`
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-16 15:30:00*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*
