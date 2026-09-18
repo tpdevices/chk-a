@@ -93,7 +93,11 @@ jobs:
           tar -czf dist/scripts.tar.gz -C dist scripts
           # Create img tarball
           tar -czf dist/img.tar.gz -C dist img
+          # Verify all assets exist
+          echo "=== VERIFY ASSETS ==="
           ls -la dist/
+          tar -tzf dist/scripts.tar.gz | head -5
+          tar -tzf dist/img.tar.gz
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -113,5 +117,6 @@ jobs:
             dist/chk-a.service
             dist/logrotate.chk-a
             dist/scripts.tar.gz
+            dist/img.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
