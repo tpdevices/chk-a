@@ -358,7 +358,10 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
         report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str}"
     )
     all_graphs = th_graphs
-    log.info("Generated %d Thai graph files for daily report", len(all_graphs))
+    log.info("Generated %d Thai graph files for daily report (scheduled)", len(all_graphs))
+    # DEBUG: log all generated graph filenames
+    for g in all_graphs:
+        log.debug("  Daily scheduled graph: %s", g.name)
 
     # Step 3: Send to Telegram (Thai summary + graphs)
     telegram_results = {}

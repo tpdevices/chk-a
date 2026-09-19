@@ -1089,6 +1089,8 @@ class Orchestrator:
             ml_agent = MLAgent(self.config.ml, store)
 
             # Use current time as reference, with fractional lookback to cover from midnight
+            self.logger.info("Startup report: now=%s, today_midnight=%s, hours_since_midnight=%.1f, lookback_fraction=%.4f",
+                             now.isoformat(), today_midnight.isoformat(), hours_since_midnight, lookback_fraction)
             insights = generate_ml_insights(
                 log_path,
                 lookback_fraction,
@@ -1096,6 +1098,8 @@ class Orchestrator:
                 ml_agent=ml_agent,
                 reference_date=now,
             )
+            self.logger.info("Startup report: ML insights loaded, total_resolvers=%d, time_range in insights (check debug logs)",
+                             insights.get("summary", {}).get("total_resolvers", 0))
 
             if not insights.get("summary", {}).get("total_resolvers", 0):
                 self.logger.warning("No data available for today's report (%s)", today_str)
@@ -1114,6 +1118,9 @@ class Orchestrator:
             )
             all_graphs = th_graphs  # Only Thai graphs
             self.logger.info("Generated %d Thai graph files for today's startup report", len(all_graphs))
+            # DEBUG: log all generated graph filenames
+            for g in all_graphs:
+                self.logger.debug("  Startup graph: %s", g.name)
 
             # Send to Telegram
             bot_token = self.config.alert.telegram_bot_token
@@ -1215,6 +1222,9 @@ class Orchestrator:
                 )
                 all_graphs = th_graphs  # Only Thai graphs
                 self.logger.info("Generated %d Thai graph files for missing daily report", len(all_graphs))
+                # DEBUG: log all generated graph filenames
+                for g in all_graphs:
+                    self.logger.debug("  Missing report graph: %s", g.name)
 
                 # Send to Telegram
                 if self.config.reporting.daily_report_telegram_enabled:
