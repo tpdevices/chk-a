@@ -529,31 +529,40 @@ def generate_latency_boxplot(
     lang: str = "en",
     hostname: str | None = None,
 ) -> None:
-    """Generate box plot of latency distributions per resolver."""
+    """Generate box plot of latency distributions per resolver.
+
+    Resolvers are sorted by median latency ASC (fastest on top).
+    """
     if not availability_data:
         return
 
     # We need raw latency data - this is a simplified version using summary stats
     # In practice, you'd pass the raw DataFrame
-    resolvers = []
-    medians = []
-    p25s = []
-    p75s = []
-    mins = []
-    maxs = []
+    resolver_stats = []
 
     for resolver, data in availability_data.items():
         if "median_latency_ms" in data:
-            resolvers.append(resolver)
-            medians.append(data["median_latency_ms"])
-            # Approximate quartiles from available stats
-            p25s.append(data.get("p25_latency_ms", data["median_latency_ms"] * 0.7))
-            p75s.append(data.get("p75_latency_ms", data["median_latency_ms"] * 1.3))
-            mins.append(data.get("min_latency_ms", 0))
-            maxs.append(data.get("max_latency_ms", data["median_latency_ms"] * 2))
+            resolver_stats.append({
+                "resolver": resolver,
+                "median": data["median_latency_ms"],
+                "p25": data.get("p25_latency_ms", data["median_latency_ms"] * 0.7),
+                "p75": data.get("p75_latency_ms", data["median_latency_ms"] * 1.3),
+                "min": data.get("min_latency_ms", 0),
+                "max": data.get("max_latency_ms", data["median_latency_ms"] * 2),
+            })
 
-    if not resolvers:
+    if not resolver_stats:
         return
+
+    # Sort by median latency ASC (fastest on top)
+    resolver_stats.sort(key=lambda x: x["median"])
+
+    resolvers = [s["resolver"] for s in resolver_stats]
+    medians = [s["median"] for s in resolver_stats]
+    p25s = [s["p25"] for s in resolver_stats]
+    p75s = [s["p75"] for s in resolver_stats]
+    mins = [s["min"] for s in resolver_stats]
+    maxs = [s["max"] for s in resolver_stats]
 
     fig, ax = plt.subplots(figsize=(12, max(6, len(resolvers) * 0.35)))
 
@@ -581,6 +590,10 @@ def generate_latency_boxplot(
 
     ax.set_xlabel("Latency (ms)", fontsize=12)
     ax.set_xscale("log")  # Log scale often better for latency
+
+    # Add sort order indicator to title
+    if "median" not in title.lower():
+        title = f"{title}\n(sorted by median latency, fastest first)"
 
     _add_header_footer(fig, ax, title, hostname, lang)
     _apply_thai_fonts(fig, ax, lang)

@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Changed: Improved daily midnight task logging and fallback logic for daily/anomaly/recovery images.
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Changed: Use new complete `config/config.yaml.example` in release assets instead of old `config/chk-a.config.yaml.example`.
 - **2026-09-19 08:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: Telegram report sending now sequential (one-by-one) instead of concurrent. Only Thai-language graphs (suffix -th.png) are sent. Added 0.5s delay between sends to avoid rate limiting. Detailed logging for each graph send result.
+- **2026-09-19 09:00:00** — `src/chk_a/reporting/graph_generator.py` — Changed: `generate_latency_boxplot()` now sorts resolvers by median latency ASC (fastest on top). Added sort indicator subtitle to title. Consistency with "best on top" pattern across all charts.
 
 ---
 
