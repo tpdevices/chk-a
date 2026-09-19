@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: Indentation error in `_send_missing_daily_report()` method (lines 1202-1220). Fixed malformed try/except blocks with duplicate/broken exception handling.
 - **2026-09-19 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: `generate_daily_report()` now uses timezone-aware datetime (Asia/Bangkok) and generates THAI-ONLY graphs for Telegram consistency. Removed English graph generation for daily scheduled report.
 - **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: `_send_today_report_on_startup()` now correctly calculates lookback window from midnight to now using fractional lookback days instead of fixed 24h lookback.
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: `generate_summary_dashboard()` now adds language suffix to filenames (`-th` for Thai, none for English). This allows `telegram_reporter.py` to correctly filter and send only Thai graphs (`-th.png`). Filename format changed from `name-timestamp.png` to `nametimestamp-lang.png`.
 
 ### Added
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Added: Copy `img/` directory to release assets and create `img.tar.gz` for production installation.
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2026-09-19 09:00:00** — `src/chk_a/reporting/graph_generator.py` — Changed: `generate_latency_boxplot()` now sorts resolvers by median latency ASC (fastest on top). Added sort indicator subtitle to title. Consistency with "best on top" pattern across all charts.
 - **2026-09-19 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Changed: `generate_daily_report()` now generates THAI-ONLY graphs for scheduled daily report (consistent with telegram_reporter sequential sending). Removed English graph generation.
 - **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Changed: `_send_today_report_on_startup()` and `_send_missing_daily_report()` now consistent in using THAI-ONLY graphs and proper timezone handling.
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/graph_generator.py` — Changed: `generate_summary_dashboard()` adds language suffix to filenames for filtering. Format: `nametimestamp-lang.png` (e.g., `availability-bar20260919-143000-th.png`). Enables correct Thai-only filtering in telegram_reporter.
 
 ---
 

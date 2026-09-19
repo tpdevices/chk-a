@@ -63,6 +63,12 @@
 **Priority:** Medium — UX improvement for Telegram delivery reliability
 **Status:** COMPLETED 2026-09-19 — Sequential send implemented, Thai-only filtering, rate-limit friendly delays, detailed per-graph logging.
 
+### [x] Fix graph filename suffix for Thai filtering
+**Context:** `telegram_reporter.py` filters for `-th.png` suffix but `generate_summary_dashboard()` didn't add language suffix to filenames.
+**Files:** `src/chk_a/reporting/graph_generator.py` — Added `lang_suffix` to all graph filenames (e.g., `availability-bar20260919-143000-th.png`).
+**Priority:** Critical — enables correct Thai-only filtering
+**Status:** COMPLETED 2026-09-19 — Language suffix added to all generated graph files.
+
 ### [x] Fix orchestrator.py indentation + daily report timezone logic
 **Context:** Indentation error in `_send_missing_daily_report()` breaking tests. Daily report logic in `generate_daily_report()` and startup report used wrong reference_date causing yesterday's data instead of today's.
 **Files:** `src/chk_a/orchestrator.py` (indentation fix + timezone logic), `src/chk_a/reporting/monthly_report.py` (timezone-aware datetime + THAI-only graphs)

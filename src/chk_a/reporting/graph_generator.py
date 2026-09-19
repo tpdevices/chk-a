@@ -847,6 +847,9 @@ def generate_summary_dashboard(
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     generated = []
 
+    # Add language suffix to filename for filtering (e.g., -th.png for Thai)
+    lang_suffix = f"-{lang}" if lang != "en" else ""
+
     availability = ml_insights.get("availability", {})
     integrity = ml_insights.get("integrity", {})
 
@@ -879,46 +882,46 @@ def generate_summary_dashboard(
             base_titles[k] = f"{base_titles[k]}\n{report_date_context}"
 
     # 1. Availability bar chart
-    path = output_dir / f"availability-bar-{timestamp}.png"
+    path = output_dir / f"availability-bar{timestamp}{lang_suffix}.png"
     generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname)
     generated.append(path)
 
     # 2. Availability heatmap (hourly)
-    path = output_dir / f"availability-heatmap-{timestamp}.png"
+    path = output_dir / f"availability-heatmap{timestamp}{lang_suffix}.png"
     generate_availability_heatmap(availability, path, title=base_titles["availability_heatmap"], lang=lang, hostname=hostname)
     generated.append(path)
 
     # 3. Availability daily heatmap (NEW - for monthly reports)
-    path = output_dir / f"availability-daily-heatmap-{timestamp}.png"
+    path = output_dir / f"availability-daily-heatmap{timestamp}{lang_suffix}.png"
     generate_availability_daily_heatmap(availability, path, title=base_titles["availability_daily_heatmap"], lang=lang, hostname=hostname)
     generated.append(path)
 
     # 4. Integrity chart
-    path = output_dir / f"integrity-score-{timestamp}.png"
+    path = output_dir / f"integrity-score{timestamp}{lang_suffix}.png"
     generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname)
     generated.append(path)
 
     # 4. Latency boxplot
-    path = output_dir / f"latency-boxplot-{timestamp}.png"
+    path = output_dir / f"latency-boxplot{timestamp}{lang_suffix}.png"
     generate_latency_boxplot(availability, path, title=base_titles["latency"], lang=lang, hostname=hostname)
     generated.append(path)
 
     # 5. IP stability chart
-    path = output_dir / f"ip-stability-{timestamp}.png"
+    path = output_dir / f"ip-stability{timestamp}{lang_suffix}.png"
     generate_ip_stability_chart(integrity, path, title=base_titles["ip_stability"], lang=lang, hostname=hostname)
     generated.append(path)
 
     # 6. MTR path visualization (if MTR data available)
     mtr_data = ml_insights.get("mtr", {})
     if mtr_data:
-        path = output_dir / f"mtr-path-{timestamp}.png"
+        path = output_dir / f"mtr-path{timestamp}{lang_suffix}.png"
         generate_mtr_path_visualization(mtr_data, path, title=base_titles["mtr_path"], lang=lang, hostname=hostname)
         generated.append(path)
 
     # 7. Path availability chart (ML-based)
     path_availability = ml_insights.get("path_availability", {})
     if path_availability:
-        path = output_dir / f"path-availability-{timestamp}.png"
+        path = output_dir / f"path-availability{timestamp}{lang_suffix}.png"
         generate_path_availability_chart(path_availability, path, title=base_titles["path_availability"], lang=lang, hostname=hostname)
         generated.append(path)
 
