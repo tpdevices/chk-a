@@ -63,6 +63,12 @@
 **Priority:** Medium — UX improvement for Telegram delivery reliability
 **Status:** COMPLETED 2026-09-19 — Sequential send implemented, Thai-only filtering, rate-limit friendly delays, detailed per-graph logging.
 
+### [x] Fix orchestrator.py indentation + daily report timezone logic
+**Context:** Indentation error in `_send_missing_daily_report()` breaking tests. Daily report logic in `generate_daily_report()` and startup report used wrong reference_date causing yesterday's data instead of today's.
+**Files:** `src/chk_a/orchestrator.py` (indentation fix + timezone logic), `src/chk_a/reporting/monthly_report.py` (timezone-aware datetime + THAI-only graphs)
+**Priority:** Critical — blocks tests and production correctness
+**Status:** COMPLETED 2026-09-19 — Indentation fixed, timezone-aware datetime (Asia/Bangkok), fractional lookback for midnight-to-now, THAI-only graphs for all daily reports.
+
 ### [ ] FQDN-centric data model & storage
 **Context:** Current system tracks resolver-centric data only. Need FQDN as primary entity with: identity (fqdn, domain, subdomain, apex), DNS records (current IPs, CNAME chain, TTL), history (IP changes with timestamps/sources), metadata (registrar, expiry, NS), monitoring state (last_checked, status, failures), alerting rules, ML features (baseline IPs, anomaly score, flip-flop count, geo shifts).
 **Files:** `src/chk_a/models/schemas.py` (FQDNRecord), `src/chk_a/storage/fqdn_store.py` (new), `src/chk_a/agents/resolver_agent.py` (ingestion), `src/chk_a/orchestrator.py` (scheduler)

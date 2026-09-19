@@ -182,6 +182,9 @@ class Orchestrator:
         # Check and send yesterday's daily report if missing (on startup)
         await self._send_missing_daily_report()
 
+        # Send today's report from 00:00 to now (on startup)
+        await self._send_today_report_on_startup()
+
         # Tell systemd we are ready to serve (Type=notify / WatchdogSec).
         notify_ready()
 
@@ -1039,111 +1042,202 @@ class Orchestrator:
                 # Wait a bit before retrying
                 await asyncio.sleep(60)
 
-    async def _send_missing_daily_report(self) -> None:
-        """Check if yesterday's daily report was sent; if not, generate and send it.
+    async def _send_today_report_on_startup(self) -> None:
+        """Send today's report from midnight to now on service startup.
         
-        This runs on service startup to ensure we don't miss a daily report
-        if the service was down during the scheduled time (06:00 AM).
+        This provides immediate visibility into today's DNS performance
+        without waiting for the 06:00 AM scheduled report.
         """
         if not self.config.reporting.daily_report_enabled:
-            self.logger.info("Daily report generation disabled in config, skipping startup check")
+            self.logger.info("Daily report generation disabled in config, skipping today's startup report")
             return
 
-        # Determine yesterday's date
-        yesterday = datetime.now(TZ) - timedelta(days=1)
-        yesterday_str = yesterday.strftime("%Y-%m-%d")
-        
-        # Check if we already have a report file for yesterday
-        output_dir = Path(self.config.reporting.output_dir)
-        if not output_dir.exists():
-            self.logger.info("No output directory found, will generate yesterday's report")
-        else:
-            # Look for any report file with yesterday's date
-            found = False
-            for report_file in output_dir.glob(f"*{yesterday_str}*"):
-                if report_file.is_dir():
-                    found = True
-                    break
-            if found:
-                self.logger.info("Yesterday's daily report (%s) already exists, skipping", yesterday_str)
-                return
-        
-        self.logger.info("No daily report found for %s, generating on startup...", yesterday_str)
-        
+        if not self.config.reporting.daily_report_telegram_enabled:
+            self.logger.info("Daily report Telegram disabled in config, skipping today's startup report")
+            return
+
+        # Determine today's date and current time
+        now = datetime.now(TZ)
+        today_str = now.strftime("%Y-%m-%d")
+        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+        self.logger.info("Generating today's report from 00:00 to now (%s)...", today_str)
+
         try:
-            # Generate daily report using yesterday as reference
             lookback_days = self.config.reporting.daily_report_lookback_days
-            yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
             
-            # We need to call generate_daily_report with the correct reference date
-            # The generate_daily_report function uses generate_ml_insights which accepts reference_date
+            # Calculate hours since midnight to determine lookback window
+            hours_since_midnight = (now - today_midnight).total_seconds() / 3600
+            # Use a small lookback that covers from midnight to now (at least 1 hour)
+            # We'll use reference_date=now and let the cutoff be calculated properly
+            # by passing the correct lookback in hours converted to days
+            lookback_fraction = max(hours_since_midnight / 24, 1/24)  # minimum 1 hour
+            
             from .reporting.ml_insights import generate_ml_insights
             from .reporting.graph_generator import generate_summary_dashboard
             from .reporting.telegram_reporter import send_daily_report_telegram
             from .storage.baseline_store import BaselineStore
             from .agents.ml_agent import MLAgent
-            
+
             log_path = self.config.logging.file
             mtr_log_path = ""
             if hasattr(self.config, "mtr") and self.config.mtr.enabled:
                 mtr_log_path = getattr(self.config.mtr, "log_path", "") or ""
-            
+
             # Create MLAgent for baseline-based integrity scoring
             store = BaselineStore(self.config.baseline_store_path)
             ml_agent = MLAgent(self.config.ml, store)
-            
+
+            # Use current time as reference, with fractional lookback to cover from midnight
             insights = generate_ml_insights(
-                log_path, 
-                lookback_days, 
-                mtr_log_path, 
-                ml_agent=ml_agent, 
-                reference_date=yesterday_end
+                log_path,
+                lookback_fraction,
+                mtr_log_path,
+                ml_agent=ml_agent,
+                reference_date=now,
             )
-            
+
             if not insights.get("summary", {}).get("total_resolvers", 0):
-                self.logger.warning("No data available for yesterday's report (%s)", yesterday_str)
+                self.logger.warning("No data available for today's report (%s)", today_str)
                 return
-            
-            # Generate graphs
+
+            # Generate graphs - THAI ONLY (consistent with telegram_reporter)
             timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            report_output_dir = output_dir / f"daily-startup-{timestamp}"
+            output_dir = Path(self.config.reporting.output_dir)
+            report_output_dir = output_dir / f"daily-today-startup-{timestamp}"
             report_output_dir.mkdir(parents=True, exist_ok=True)
-            
-            en_graphs = generate_summary_dashboard(
-                insights, report_output_dir, lang="en", hostname=self.hostname,
-                report_date_context=f"Daily report for :{yesterday_str} (startup)"
-            )
+
+            # Only generate Thai graphs for Telegram (TH-only per user request)
             th_graphs = generate_summary_dashboard(
                 insights, report_output_dir, lang="th", hostname=self.hostname,
-                report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str} (เริ่มต้น)"
+                report_date_context=f"รายงานข้อมูลวันนี้ :{today_str} (00:00-ตอนนี้)"
             )
-            all_graphs = en_graphs + th_graphs
-            self.logger.info("Generated %d graph files for missing daily report", len(all_graphs))
-            
+            all_graphs = th_graphs  # Only Thai graphs
+            self.logger.info("Generated %d Thai graph files for today's startup report", len(all_graphs))
+
             # Send to Telegram
-            if self.config.reporting.daily_report_telegram_enabled:
-                bot_token = self.config.alert.telegram_bot_token
-                chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
-                
-                if bot_token and chat_id:
-                    self.logger.info("Sending missing daily report to Telegram...")
-                    from pydantic import SecretStr
-                    chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
-                    await send_daily_report_telegram(
-                        bot_token=bot_token,
-                        chat_id=SecretStr(chat_id_str),
-                        ml_insights=insights,
-                        graph_paths=all_graphs,
-                        hostname=self.hostname,
-                        lookback_days=lookback_days,
-                    )
-                    self.logger.info("Missing daily report for %s sent to Telegram successfully", yesterday_str)
-                else:
-                    self.logger.warning("Telegram credentials not configured for daily report")
+            bot_token = self.config.alert.telegram_bot_token
+            chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
+
+            if bot_token and chat_id:
+                self.logger.info("Sending today's startup report to Telegram...")
+                from pydantic import SecretStr
+                chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
+                await send_daily_report_telegram(
+                    bot_token=bot_token,
+                    chat_id=SecretStr(chat_id_str),
+                    ml_insights=insights,
+                    graph_paths=all_graphs,
+                    hostname=self.hostname,
+                    lookback_days=lookback_days,
+                )
+                self.logger.info("Today's startup report for %s sent to Telegram successfully", today_str)
             else:
-                self.logger.info("Daily report Telegram disabled in config")
-                
+                self.logger.warning("Telegram credentials not configured for daily report")
+
         except Exception as exc:
-            self.logger.exception("Failed to generate/send missing daily report for %s: %s", yesterday_str, exc)
+            self.logger.exception("Failed to generate/send today's startup report for %s: %s", today_str, exc)
+
+    async def _send_missing_daily_report(self) -> None:
+            """Check if yesterday's daily report was sent; if not, generate and send it.
+
+            This runs on service startup to ensure we don't miss a daily report
+            if the service was down during the scheduled time (06:00 AM).
+            """
+            if not self.config.reporting.daily_report_enabled:
+                self.logger.info("Daily report generation disabled in config, skipping startup check")
+                return
+
+            # Determine yesterday's date
+            yesterday = datetime.now(TZ) - timedelta(days=1)
+            yesterday_str = yesterday.strftime("%Y-%m-%d")
+
+            # Check if we already have a report file for yesterday
+            output_dir = Path(self.config.reporting.output_dir)
+            if not output_dir.exists():
+                self.logger.info("No output directory found, will generate yesterday's report")
+            else:
+                # Look for any report file with yesterday's date
+                found = False
+                for report_file in output_dir.glob(f"*{yesterday_str}*"):
+                    if report_file.is_dir():
+                        found = True
+                        break
+                if found:
+                    self.logger.info("Yesterday's daily report (%s) already exists, skipping", yesterday_str)
+                    return
+
+            self.logger.info("No daily report found for %s, generating on startup...", yesterday_str)
+
+            try:
+                # Generate daily report using yesterday as reference
+                lookback_days = self.config.reporting.daily_report_lookback_days
+                yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
+
+                # We need to call generate_daily_report with the correct reference date
+                # The generate_daily_report function uses generate_ml_insights which accepts reference_date
+                from .reporting.ml_insights import generate_ml_insights
+                from .reporting.graph_generator import generate_summary_dashboard
+                from .reporting.telegram_reporter import send_daily_report_telegram
+                from .storage.baseline_store import BaselineStore
+                from .agents.ml_agent import MLAgent
+
+                log_path = self.config.logging.file
+                mtr_log_path = ""
+                if hasattr(self.config, "mtr") and self.config.mtr.enabled:
+                    mtr_log_path = getattr(self.config.mtr, "log_path", "") or ""
+
+                # Create MLAgent for baseline-based integrity scoring
+                store = BaselineStore(self.config.baseline_store_path)
+                ml_agent = MLAgent(self.config.ml, store)
+
+                insights = generate_ml_insights(
+                    log_path,
+                    lookback_days,
+                    mtr_log_path,
+                    ml_agent=ml_agent,
+                    reference_date=yesterday_end
+                )
+
+                if not insights.get("summary", {}).get("total_resolvers", 0):
+                    self.logger.warning("No data available for yesterday's report (%s)", yesterday_str)
+                    return
+
+                # Generate graphs - THAI ONLY (consistent with telegram_reporter)
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                report_output_dir = output_dir / f"daily-startup-{timestamp}"
+                report_output_dir.mkdir(parents=True, exist_ok=True)
+
+                # Only generate Thai graphs for Telegram (TH-only per user request)
+                th_graphs = generate_summary_dashboard(
+                    insights, report_output_dir, lang="th", hostname=self.hostname,
+                    report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str} (เริ่มต้น)"
+                )
+                all_graphs = th_graphs  # Only Thai graphs
+                self.logger.info("Generated %d Thai graph files for missing daily report", len(all_graphs))
+
+                # Send to Telegram
+                if self.config.reporting.daily_report_telegram_enabled:
+                    bot_token = self.config.alert.telegram_bot_token
+                    chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
+
+                    if bot_token and chat_id:
+                        self.logger.info("Sending missing daily report to Telegram...")
+                        from pydantic import SecretStr
+                        chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
+                        await send_daily_report_telegram(
+                            bot_token=bot_token,
+                            chat_id=SecretStr(chat_id_str),
+                            ml_insights=insights,
+                            graph_paths=all_graphs,
+                            hostname=self.hostname,
+                            lookback_days=lookback_days,
+                        )
+                        self.logger.info("Missing daily report for %s sent to Telegram successfully", yesterday_str)
+                    else:
+                        self.logger.warning("Telegram credentials not configured for daily report")
+
+            except Exception as exc:
+                self.logger.exception("Failed to generate/send missing daily report for %s: %s", yesterday_str, exc)
 
 __all__ = ["Orchestrator"]

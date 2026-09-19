@@ -289,7 +289,7 @@ if __name__ == "__main__":
 
 
 # =============================================================================
-# DAILY REPORT (7:00 AM) - lookback 1 day (yesterday)
+# DAILY REPORT (6:00 AM) - lookback 1 day (yesterday)
 # =============================================================================
 async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     """Generate daily report for yesterday and send to Telegram.
@@ -329,7 +329,11 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     ml_agent = MLAgent(config.ml, store)
 
     # For daily report, use yesterday's end (23:59:59) as reference date to get yesterday's full day data
-    yesterday = datetime.now() - timedelta(days=1)
+    # Use timezone-aware datetime (Asia/Bangkok)
+    from zoneinfo import ZoneInfo
+    TZ = ZoneInfo("Asia/Bangkok")
+    now = datetime.now(TZ)
+    yesterday = now - timedelta(days=1)
     yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
     insights = generate_ml_insights(log_path, lookback, mtr_log_path, ml_agent=ml_agent, reference_date=yesterday_end)
     log.info(
@@ -346,18 +350,15 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Calculate yesterday for title context
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
 
-    en_graphs = generate_summary_dashboard(
-        insights, output_dir, lang="en", hostname=hostname,
-        report_date_context=f"Daily report for :{yesterday}"
-    )
+    # THAI ONLY for Telegram (consistent with telegram_reporter)
     th_graphs = generate_summary_dashboard(
         insights, output_dir, lang="th", hostname=hostname,
-        report_date_context=f"รายงานข้อมูลของวัน :{yesterday}"
+        report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str}"
     )
-    all_graphs = en_graphs + th_graphs
-    log.info("Generated %d graph files for daily report", len(all_graphs))
+    all_graphs = th_graphs
+    log.info("Generated %d Thai graph files for daily report", len(all_graphs))
 
     # Step 3: Send to Telegram (Thai summary + graphs)
     telegram_results = {}

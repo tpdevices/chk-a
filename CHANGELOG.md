@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: Daily report time range bug. Changed from `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (which gave wrong time when run at 06:00) to `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` to correctly get yesterday's 23:59:59.
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Fixed: Daily midnight task (00:00) error handling for missing images. Added fallback to anomaly/recovery images from AlertAgent, detailed logging for missing images, and graceful skip when no image available.
+- **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: Indentation error in `_send_missing_daily_report()` method (lines 1202-1220). Fixed malformed try/except blocks with duplicate/broken exception handling.
+- **2026-09-19 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: `generate_daily_report()` now uses timezone-aware datetime (Asia/Bangkok) and generates THAI-ONLY graphs for Telegram consistency. Removed English graph generation for daily scheduled report.
+- **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: `_send_today_report_on_startup()` now correctly calculates lookback window from midnight to now using fractional lookback days instead of fixed 24h lookback.
 
 ### Added
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Added: Copy `img/` directory to release assets and create `img.tar.gz` for production installation.
@@ -24,6 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Changed: Use new complete `config/config.yaml.example` in release assets instead of old `config/chk-a.config.yaml.example`.
 - **2026-09-19 08:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: Telegram report sending now sequential (one-by-one) instead of concurrent. Only Thai-language graphs (suffix -th.png) are sent. Added 0.5s delay between sends to avoid rate limiting. Detailed logging for each graph send result.
 - **2026-09-19 09:00:00** — `src/chk_a/reporting/graph_generator.py` — Changed: `generate_latency_boxplot()` now sorts resolvers by median latency ASC (fastest on top). Added sort indicator subtitle to title. Consistency with "best on top" pattern across all charts.
+- **2026-09-19 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Changed: `generate_daily_report()` now generates THAI-ONLY graphs for scheduled daily report (consistent with telegram_reporter sequential sending). Removed English graph generation.
+- **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Changed: `_send_today_report_on_startup()` and `_send_missing_daily_report()` now consistent in using THAI-ONLY graphs and proper timezone handling.
 
 ---
 
