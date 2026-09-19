@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.0.15] - 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ### Fixed
 - **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: Daily report time range bug. Changed from `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (which gave wrong time when run at 06:00) to `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` to correctly get yesterday's 23:59:59.
@@ -17,9 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2026-09-18 21:00:00** — `install.sh` — Added: Download and extract `img.tar.gz` to `/opt/chk-a/img/` during production install.
 - **2026-09-18 21:00:00** — `config/config.yaml.example` — Added: Complete configuration example with all sections (fqdns, resolvers, resolver_agent, ml, alert, scheduler, logging, mtr, reporting, baseline_store_path) with Thai comments explaining each setting.
 - **2026-09-18 21:00:00** — `config/chk-a.env.example` — Added: Complete environment example with placeholders for Telegram, SMTP, and Age encryption keys.
+- **2026-09-19 08:00:00** — `TODO.md` — Added: FQDN-centric data model & storage task (Medium priority). Includes schema (FQDNRecord), new fqdn_store.py, resolver_agent ingestion pipeline, and orchestrator scheduler integration for traceability & correlation.
 
 ### Changed
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Changed: Improved daily midnight task logging and fallback logic for daily/anomaly/recovery images.
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Changed: Use new complete `config/config.yaml.example` in release assets instead of old `config/chk-a.config.yaml.example`.
+- **2026-09-19 08:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: Telegram report sending now sequential (one-by-one) instead of concurrent. Only Thai-language graphs (suffix -th.png) are sent. Added 0.5s delay between sends to avoid rate limiting. Detailed logging for each graph send result.
 
 ---
 

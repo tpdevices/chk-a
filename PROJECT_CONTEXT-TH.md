@@ -1,6 +1,6 @@
 # บริบทโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -11,6 +11,7 @@
 **ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
 **พัฒนา:** WSL Ubuntu (172.20.14.199/20)  
 **เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)  
+**เครื่อง Production:** `uptime-host` (internal DNS monitoring)  
 **Service User:** `chk-a` (uid=999)  
 **Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **Timestamp ทั้งหมด:** เวลาท้องถิ่น Asia/Bangkok (+07), รูปแบบ `YYYY-MM-DD HH:MM:SS`
@@ -74,17 +75,19 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 17. **Manual Report Scripts** — `manual_daily_report.py` และ `manual_monthly_report.py` สำหรับรายงาน on-demand (2026-09-17)
 18. **แสดง Resolver ทั้งหมดใน Telegram** — ลบ Top 5/10 limits จากสรุปและการส่งกราฟ (2026-09-17 15:30:00, 19:30:00)
 19. **Daily Availability Heatmap** — เพิ่ม Heatmap แบบวันในเดือน vs resolver สำหรับรายงานรายเดือน (2026-09-17 20:00:00)
+20. **v1.0.15 Release** — แก้ daily report time range bug, daily midnight task image fallback, complete config examples, img/ ใน release assets (2026-09-18)
 
 ---
 
 ## การตั้งค่า (Configuration)
 
-**หลัก:** `/etc/chk-a/config.yaml` (test VM)  
+**หลัก:** `/etc/chk-a/config.yaml` (test VM & production)  
 **อ้างอิง:** `/opt/chk-a/config.example.yaml`
 
 Section สำคัญ:
 - `fqdns` — รายการ FQDN พร้อม `min_consensus` และ `expected_ips` (optional)
 - `resolvers` — Resolver endpoints (`name`, `address` เป็น `IP:port`, `weight`, `timeout_ms`)
+- `resolver_agent` — `max_concurrent`, `default_timeout_ms` (auto-tuned)
 - `ml` — `baseline_decay`, `anomaly_threshold`, `min_samples_before_alert`
 - `alert` — Telegram credentials, dedup window, rate limit, log paths, daily image config, dedup cache path
 - `scheduler` — `min_interval_sec` (30), `max_interval_sec` (180), `jitter`
@@ -92,7 +95,7 @@ Section สำคัญ:
 - `reporting` — Monthly/daily schedules, output dir, Telegram/email config, graph inclusion
 - `baseline_store_path` — `/var/lib/chk-a/baselines.json`
 
-**Secrets:** `/etc/chk-a/env` — เก็บ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_CHAT_ID` (test VM)
+**Secrets:** `/etc/chk-a/env` — เก็บ `TELEGRAM_BOT_TOKEN` และ `TELEGRAM_CHAT_ID` (test VM & production)
 
 ---
 
@@ -264,6 +267,31 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ---
 
+## v1.0.15 Release (2026-09-18)
+
+### แก้ไข (Fixed)
+- **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — แก้: Daily report time range bug. เปลี่ยนจาก `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (ซึ่งให้เวลาผิดตอนรัน 06:00) เป็น `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` เพื่อให้ได้เวลา 23:59:59 ของเมื่อวานถูกต้อง
+- **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — แก้: Daily midnight task (00:00) error handling สำหรับภาพหาย. เพิ่ม fallback ใช้ anomaly/recovery images จาก AlertAgent, logging รายละเอียดเมื่อภาพหาย, และ skip gracefully
+
+### เพิ่ม (Added)
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — เพิ่ม: Copy `img/` directory ไปเป็น release assets และสร้าง `img.tar.gz` สำหรับการติดตั้ง production
+- **2026-09-18 21:00:00** — `install.sh` — เพิ่ม: ดาวน์โหลดและ extract `img.tar.gz` ไป `/opt/chk-a/img/` ระหว่างติดตั้ง production
+- **2026-09-18 21:00:00** — `config/config.yaml.example` — เพิ่ม: ตัวอย่าง config ครบทุก section (fqdns, resolvers, resolver_agent, ml, alert, scheduler, logging, mtr, reporting, baseline_store_path) พร้อมคำอธิบายไทยทุก setting
+- **2026-09-18 21:00:00** — `config/chk-a.env.example` — เพิ่ม: ตัวอย่าง environment ครบ พร้อม placeholder สำหรับ Telegram, SMTP, และ Age encryption keys
+
+### เปลี่ยนแปลง (Changed)
+- **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — เปลี่ยน: ปรับปรุง daily midnight task logging และ fallback logic สำหรับ daily/anomaly/recovery images
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — เปลี่ยน: ใช้ `config/config.yaml.example` ใหม่ครบถ้วนใน release assets แทน `config/chk-a.config.yaml.example` เก่า
+
+### การ Deploy Production v1.0.15 (2026-09-18)
+- ✅ **สร้าง Release v1.0.15** — GitHub Release พร้อม assets ครบ รวมถึง `img.tar.gz`
+- ✅ **Production `uptime-host` ติดตั้ง v1.0.15 แล้ว** — โฟลเดอร์ `img/` ถูก deploy ไป `/opt/chk-a/img/`
+- ✅ **Production config อัปเดตแล้ว** — เพิ่ม `reporting` section, `mtr` section, `daily_image_path`, `resolver_agent: {}`
+- ✅ **00:00 Daily image ทำงานยืนยันแล้ว** — ได้รับข้อความ Telegram พร้อม `sleepy.jpg` + hostname + day separators
+- ✅ **06:00 Daily report รอตรวจสอบ** — รอบถัดไปที่กำหนด
+
+---
+
 ## AI Model Config (สำหรับ cyber-security-review)
 
 **Available Providers:** NVIDIA (primary), 9router/OpenRouter/AnyAPI/Aihubmix (gateways), Ollama-Local, Poolside.AI
@@ -296,13 +324,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.14/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.15/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.14`
+  3. `sudo ./install.sh v1.0.15`
   4. แก้ `/etc/chk-a/env` ใส่ Telegram credentials
   5. แก้ `/etc/chk-a/config.yaml` ใส่ FQDNs/resolvers
   6. `sudo systemctl restart chk-a`
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*

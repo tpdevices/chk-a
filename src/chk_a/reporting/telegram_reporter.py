@@ -457,7 +457,7 @@ async def send_monthly_report_telegram(
     pdf_paths: dict[str, Path] | None = None,
     lang: str = "th",
 ) -> dict[str, bool]:
-    """Send monthly report summary and graphs to Telegram.
+    """Send monthly report summary and graphs to Telegram (sequential, Thai-only graphs).
 
     Returns dict with send results for each component.
     """
@@ -465,32 +465,40 @@ async def send_monthly_report_telegram(
     results = {}
 
     try:
-        tasks = []
-        keys = []
-
-        # Summary message
+        # Summary message (Thai)
         summary_text = create_telegram_summary(ml_insights, lang)
-        tasks.append(reporter.send_message(summary_text))
-        keys.append("summary")
+        success = await reporter.send_message(summary_text)
+        results["summary"] = success
+        if not success:
+            log.warning("Failed to send summary, continuing with graphs...")
 
-        # Graphs (send all)
-        for i, graph_path in enumerate(graph_paths):
+        # Filter Thai-only graphs (suffix -th.png)
+        thai_graphs = [p for p in graph_paths if p.name.endswith("-th.png")]
+        log.info("Sending %d Thai graphs sequentially", len(thai_graphs))
+
+        # Graphs (send sequentially, one by one, wait for success)
+        for i, graph_path in enumerate(thai_graphs):
             caption = graph_path.stem.replace("-", " ").title()
-            tasks.append(reporter.send_photo(graph_path, caption))
-            keys.append(f"graph_{i}")
+            success = await reporter.send_photo(graph_path, caption)
+            results[f"graph_{i}"] = success
+            if success:
+                log.info("Graph %d/%d sent successfully: %s", i + 1, len(thai_graphs), graph_path.name)
+            else:
+                log.warning("Graph %d/%d failed: %s (continuing...)", i + 1, len(thai_graphs), graph_path.name)
+            # Small delay to avoid rate limiting
+            await asyncio.sleep(0.5)
 
         # PDFs if provided (optional - can be large)
         if pdf_paths:
             for lang_code, pdf_path in pdf_paths.items():
-                tasks.append(
-                    reporter.send_document(pdf_path, f"Monthly Report ({lang_code.upper()})")
-                )
-                keys.append(f"pdf_{lang_code}")
+                success = await reporter.send_document(pdf_path, f"Monthly Report ({lang_code.upper()})")
+                results[f"pdf_{lang_code}"] = success
+                if success:
+                    log.info("PDF sent successfully: %s", pdf_path.name)
+                else:
+                    log.warning("PDF failed: %s", pdf_path.name)
+                await asyncio.sleep(0.5)
 
-        # Send all concurrently
-        send_results = await asyncio.gather(*tasks, return_exceptions=True)
-        for key, result in zip(keys, send_results):
-            results[key] = result if isinstance(result, bool) else False
     finally:
         await reporter.close()
 
@@ -505,29 +513,34 @@ async def send_daily_report_telegram(
     hostname: str,
     lookback_days: int = 1,
 ) -> dict[str, bool]:
-    """Send daily report summary and graphs to Telegram (Thai, concise)."""
+    """Send daily report summary and graphs to Telegram (sequential, Thai-only graphs)."""
     reporter = TelegramReporter(bot_token, chat_id)
     results = {}
 
     try:
-        tasks = []
-        keys = []
-
         # Create daily summary (Thai, concise)
         summary_text = create_daily_telegram_summary(ml_insights, hostname, lookback_days)
-        tasks.append(reporter.send_message(summary_text))
-        keys.append("summary")
+        success = await reporter.send_message(summary_text)
+        results["summary"] = success
+        if not success:
+            log.warning("Failed to send summary, continuing with graphs...")
 
-        # Graphs (send all)
-        for i, graph_path in enumerate(graph_paths):
+        # Filter Thai-only graphs (suffix -th.png)
+        thai_graphs = [p for p in graph_paths if p.name.endswith("-th.png")]
+        log.info("Sending %d Thai graphs sequentially", len(thai_graphs))
+
+        # Graphs (send sequentially, one by one, wait for success)
+        for i, graph_path in enumerate(thai_graphs):
             caption = graph_path.stem.replace("-", " ").title()
-            tasks.append(reporter.send_photo(graph_path, caption))
-            keys.append(f"graph_{i}")
+            success = await reporter.send_photo(graph_path, caption)
+            results[f"graph_{i}"] = success
+            if success:
+                log.info("Graph %d/%d sent successfully: %s", i + 1, len(thai_graphs), graph_path.name)
+            else:
+                log.warning("Graph %d/%d failed: %s (continuing...)", i + 1, len(thai_graphs), graph_path.name)
+            # Small delay to avoid rate limiting
+            await asyncio.sleep(0.5)
 
-        # Send all concurrently
-        send_results = await asyncio.gather(*tasks, return_exceptions=True)
-        for key, result in zip(keys, send_results):
-            results[key] = result if isinstance(result, bool) else False
     finally:
         await reporter.close()
 

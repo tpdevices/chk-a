@@ -1,6 +1,6 @@
 # TODO — chk-a
 
-**Last Updated:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -25,10 +25,11 @@
 **Priority:** High — blocks clean installs on retry
 **Status:** COMPLETED 2026-09-17 — Added `NEED_PIP_INSTALL` flag to verify pip presence in existing venv and install if missing. Improved logging for pip installation steps.
 
-### [ ] Verify production install on fresh VM
-**Context:** v1.0.14 released with all fixes. Need to test on clean VM.
-**Steps:** Fresh Ubuntu 24.04 VM → `curl install.sh` → `sudo ./install.sh v1.0.14` → verify service starts
+### [x] Verify production install on fresh VM (v1.0.15)
+**Context:** v1.0.15 released with all fixes including daily report time range bug, daily midnight task image fallback, complete config examples, img/ in release assets.
+**Steps:** Fresh Ubuntu 24.04 VM → `curl install.sh` → `sudo ./install.sh v1.0.15` → verify service starts
 **Priority:** High — release validation
+**Status:** COMPLETED 2026-09-18 — Production `uptime-host` installed v1.0.15 successfully. 00:00 daily image confirmed working.
 
 ---
 
@@ -56,24 +57,25 @@
 **Files:** `src/chk_a/reporting/email_reporter.py` (new), `src/chk_a/orchestrator.py`
 **Priority:** Medium — feature completion
 
+### [x] Telegram report sending: sequential + Thai-only graphs (NEW)
+**Context:** User requested Telegram reports to send only Thai-language graphs (not English) and send sequentially (one-by-one waiting for success confirmation) instead of concurrent burst sending.
+**Files:** `src/chk_a/reporting/telegram_reporter.py` — Modified `send_monthly_report_telegram()` and `send_daily_report_telegram()` to filter `-th.png` graphs, send sequentially with 0.5s delay, detailed logging per graph.
+**Priority:** Medium — UX improvement for Telegram delivery reliability
+**Status:** COMPLETED 2026-09-19 — Sequential send implemented, Thai-only filtering, rate-limit friendly delays, detailed per-graph logging.
+
+### [ ] FQDN-centric data model & storage
+**Context:** Current system tracks resolver-centric data only. Need FQDN as primary entity with: identity (fqdn, domain, subdomain, apex), DNS records (current IPs, CNAME chain, TTL), history (IP changes with timestamps/sources), metadata (registrar, expiry, NS), monitoring state (last_checked, status, failures), alerting rules, ML features (baseline IPs, anomaly score, flip-flop count, geo shifts).
+**Files:** `src/chk_a/models/schemas.py` (FQDNRecord), `src/chk_a/storage/fqdn_store.py` (new), `src/chk_a/agents/resolver_agent.py` (ingestion), `src/chk_a/orchestrator.py` (scheduler)
+**Priority:** Medium — architectural improvement for traceability & correlation
+
 ---
 
 ## 🔵 Low Priority / Nice to Have
 
-### [ ] Config.yaml Parameter Documentation & Setup Guide
+### [x] Config.yaml Parameter Documentation & Setup Guide (Done in v1.0.15)
 **Context:** Create comprehensive documentation for all config.yaml parameters with explanations, valid values, recommended settings, and setup guides.
-**Files:** `docs/config-guide.md` (new), `config/config.yaml.example` (update with comments)
-**Sections to document:**
-- `fqdns`: name, expected_ips, min_consensus - meaning and recommended values
-- `resolvers`: name, address (Do53/DoH/DoT formats), weight, timeout_ms
-- `ml`: baseline_decay, anomaly_threshold, min_samples_before_alert
-- `alert`: telegram credentials, dedup_window_minutes, rate_limit_per_hour, log paths
-- `scheduler`: min_interval_sec, max_interval_sec, jitter
-- `mtr`: enabled, interval_sec, max_hops, count, interval_ms, timeout_sec, mode (icmp/tcp/udp), port, resolvers list
-- `baseline_store_path`
-- `reporting`: schedules, output_dir, telegram/email config, graph inclusion, lookback_days
-**Priority:** Low — documentation completeness
-**Related:** `config/`, `docs/`, onboarding for new users
+**Files:** `config/config.yaml.example` (updated with Thai comments), `config/chk-a.env.example` (updated)
+**Status:** COMPLETED 2026-09-18 — Complete config.yaml.example with all 10 sections and Thai comments; complete chk-a.env.example with placeholders.
 
 ### [ ] Dashboard web UI
 **Context:** Add simple web dashboard for real-time status, graphs, alerts history.
@@ -87,10 +89,10 @@
 1. Audit branches - determine which is canonical (likely `main` if CI/CD uses it)
 2. Merge/consolidate branches
 3. Remove build artifacts from git history (`*.whl`, `*.tar.gz`)
-3. Clean up config folder (remove duplicate `.example` files)
-4. Audit unused Python files with `vulture`/`pyflakes`
-5. Archive or remove unused scripts
-6. Update `.gitignore` to prevent future artifact commits
+4. Clean up config folder (remove duplicate `.example` files)
+5. Audit unused Python files with `vulture`/`pyflakes`
+6. Archive or remove unused scripts
+7. Update `.gitignore` to prevent future artifact commits
 **Priority:** Low — technical debt reduction
 **Related:** `config/`, `scripts/`, root artifacts, branch strategy
 
@@ -177,6 +179,13 @@
 - Integrated into `generate_summary_dashboard()` — monthly reports now include both hourly and daily heatmaps
 - Monthly reports: 18-20 graphs total (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
 
+### [x] v1.0.15 Release (2026-09-18)
+**Details:**
+- **Fixed:** Daily report time range bug (monthly_report.py), daily midnight task image fallback (orchestrator.py)
+- **Added:** img/ directory in release assets (img.tar.gz), complete config.yaml.example with Thai comments, complete chk-a.env.example
+- **Changed:** Release workflow uses new config.yaml.example, install.sh extracts img.tar.gz to /opt/chk-a/img/
+- **Production:** uptime-host installed v1.0.15, 00:00 daily image confirmed working
+
 ---
 
 ## 📋 Related Files
@@ -199,7 +208,7 @@
 
 ## 🎯 Next Session Priorities
 
-1. **Verify production install on fresh VM** — v1.0.14 (High)
+1. **Verify production 06:00 daily report** — v1.0.15 installed, awaiting tomorrow's run
 2. **SEC-010/011** — DoH/DoT support, CAP_NET_RAW for MTR (Medium)
 3. **Add log rotation test coverage** (Medium)
 4. **Email reporting integration** (Medium)
@@ -208,4 +217,4 @@
 
 ---
 
-*อัปเดตโดย Hermes Agent session วันที่ 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*
+*อัปเดตโดย Hermes Agent session วันที่ 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*

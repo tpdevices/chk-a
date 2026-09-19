@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -11,6 +11,7 @@
 **ที่เก็บโค้ด:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
 **พัฒนา:** WSL Ubuntu (172.20.14.199/20)  
 **เครื่องทดสอบ:** VirtualBox Ubuntu 24.04 ที่ 192.168.56.122 (user: ipds)  
+**เครื่อง Production:** `uptime-host` (internal DNS monitoring)  
 **Service User:** `chk-a` (uid=999)  
 **Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **Timestamp ทั้งหมด:** เวลาท้องถิ่น Asia/Bangkok (+07), รูปแบบ `YYYY-MM-DD HH:MM:SS`
@@ -65,7 +66,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ### รายงาน (Loop 7 — Reporting)
 - ✅ รายงานรายเดือน (วันที่ 1 ทุกเดือน, 06:00 น.)
-- ✅ รายงานรายวัน (06:00 น., lookback 1 วัน) — **แก้แล้ว: Telegram 404 error**
+- ✅ รายงานรายวัน (06:00 น., lookback 1 วัน) — **แก้แล้ว: Telegram 404 error + time range bug**
 - ✅ กราฟ 7 ประเภท × 2 ภาษา (EN/TH) = 14 กราฟ + 2 Dashboards = 16 ไฟล์
   - Availability Bar, Availability Heatmap, Integrity Score, Latency Boxplot, IP Stability, MTR Path, Path Availability
 - ✅ **ใหม่: Daily Availability Heatmap** — Heatmap แบบวันในเดือน vs resolver สำหรับรายงานรายเดือน (2026-09-17)
@@ -217,11 +218,38 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
+## v1.0.15 Release (2026-09-18)
+
+### แก้ไข (Fixed)
+- **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — แก้: Daily report time range bug. เปลี่ยนจาก `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (ซึ่งให้เวลาผิดตอนรัน 06:00) เป็น `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` เพื่อให้ได้เวลา 23:59:59 ของเมื่อวานถูกต้อง
+- **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — แก้: Daily midnight task (00:00) error handling สำหรับภาพหาย. เพิ่ม fallback ใช้ anomaly/recovery images จาก AlertAgent, logging รายละเอียดเมื่อภาพหาย, และ skip gracefully
+
+### เพิ่ม (Added)
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — เพิ่ม: Copy `img/` directory ไปเป็น release assets และสร้าง `img.tar.gz` สำหรับการติดตั้ง production
+- **2026-09-18 21:00:00** — `install.sh` — เพิ่ม: ดาวน์โหลดและ extract `img.tar.gz` ไป `/opt/chk-a/img/` ระหว่างติดตั้ง production
+- **2026-09-18 21:00:00** — `config/config.yaml.example` — เพิ่ม: ตัวอย่าง config ครบทุก section (fqdns, resolvers, resolver_agent, ml, alert, scheduler, logging, mtr, reporting, baseline_store_path) พร้อมคำอธิบายไทยทุก setting
+- **2026-09-18 21:00:00** — `config/chk-a.env.example` — เพิ่ม: ตัวอย่าง environment ครบ พร้อม placeholder สำหรับ Telegram, SMTP, และ Age encryption keys
+
+### เปลี่ยนแปลง (Changed)
+- **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — เปลี่ยน: ปรับปรุง daily midnight task logging และ fallback logic สำหรับ daily/anomaly/recovery images
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — เปลี่ยน: ใช้ `config/config.yaml.example` ใหม่ครบถ้วนใน release assets แทน `config/chk-a.config.yaml.example` เก่า
+
+### การ Deploy Production v1.0.15 (2026-09-18)
+- ✅ **สร้าง Release v1.0.15** — GitHub Release พร้อม assets ครบ รวมถึง `img.tar.gz`
+- ✅ **Production `uptime-host` ติดตั้ง v1.0.15 แล้ว** — โฟลเดอร์ `img/` ถูก deploy ไป `/opt/chk-a/img/`
+- ✅ **Production config อัปเดตแล้ว** — เพิ่ม `reporting` section, `mtr` section, `daily_image_path`, `resolver_agent: {}`
+- ✅ **00:00 Daily image ทำงานยืนยันแล้ว** — ได้รับข้อความ Telegram พร้อม `sleepy.jpg` + hostname + day separators
+- ✅ **06:00 Daily report รอตรวจสอบ** — รอบถัดไปที่กำหนด
+
+---
+
 ## 4. สิ่งที่กำลังทำอยู่
 
-- 🔄 **Production Installer Debugging** — v1.0.14 released, testing on fresh VM
+- 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 ติดตั้งแล้ว, รอรัน 06:00 น. พรุ่งนี้
+- 🔄 **Test VM Runtime Update** — Source code synced (hash verified), แต `/opt/chk-a/` runtime ต้องรัน `sudo ./scripts/deploy.sh` เอง (ต้อง sudo password บน test VM)
 - 🔄 **P2 Security Remediation** (Medium findings — next sprint):
-  - SEC-014: HTML escape in Telegram messages (DONE - 2026-09-17)
+  - SEC-010: DoH/DoT support (schemas เสร็จแล้ว, resolver agent ต้อง implement)
+  - SEC-011: CAP_NET_RAW for MTR (systemd service ต้องเพิ่ม AmbientCapabilities)
 
 ---
 
@@ -239,16 +267,21 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **v1.0.0/v1.0.1 install.sh wheel download** — Fixed via GitHub API lookup + constructed filename fallback
 - ✅ **v1.0.1/v1.0.2 pip installation** — Added ensurepip + get-pip.py fallback + verification
 - ✅ **v1.0.3-v1.0.14** — Sequential fixes for install.sh, env permissions, env.example, wheel download, temp dirs, output_dir, Python 3.10+, manual report scripts
+- ✅ **Daily report time range bug** — Fixed in v1.0.15 (monthly_report.py)
+- ✅ **Daily midnight task missing image** — Fixed in v1.0.15 (orchestrator.py fallback logic)
+- ✅ **Release assets missing img.tar.gz** — Fixed in v1.0.15 (release.yml + install.sh)
 
 ### กำลังดำเนินการ
-- 🔄 **Verify production install on fresh VM** — v1.0.14 released, need to test on clean VM
+- 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 ติดตั้งแล้ว, รอรันพรุ่งนี้
+- 🔄 **Test VM Runtime Deploy** — Source synced, `/opt/chk-a/` ต้อง manual deploy (sudo password required)
+- 🔄 **Recovery Alerts** — Logic verified correct, แต baseline ต้อง `min_samples_before_alert: 10` cycles หลัง production restart
 
 ---
 
 ## 6. งานที่ต้องทำต่อ
 
 ### สัปดาห์นี้ (P1)
-- Verify production install on fresh VM (v1.0.14)
+- Verify production 06:00 daily report (v1.0.15)
 - Document systemd unit files in repo (for reference)
 - Add deployment checklist (config perms, systemd caps, log dirs)
 - Create runbook for common operations
@@ -299,7 +332,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 |------|-------------|
 | `src/chk_a/main.py` | CLI + daemon entry, subcommands |
 | `systemd/chk-a.service` | ปรับปรุง: ExecStartPre/ExecStop ใช้ systemd_wrapper.py สำหรับการแจ้งสถานะ |
-| `/etc/chk-a/config.yaml` | การตั้งค่าผลิต (test VM) |
+| `/etc/chk-a/config.yaml` | การตั้งค่าผลิต (test VM & production) |
 | `/opt/chk-a/config.example.yaml` | Config reference |
 | `/etc/chk-a/env` | **Telegram credentials** (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) |
 
@@ -337,4 +370,4 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*

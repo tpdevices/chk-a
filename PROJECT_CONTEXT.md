@@ -1,6 +1,6 @@
 # Project Context — chk-a
 
-**Last Updated:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -11,6 +11,7 @@
 **Repository:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
 **Development:** WSL Ubuntu (172.20.14.199/20)  
 **Test Target:** VirtualBox Ubuntu 24.04 at 192.168.56.122 (user: ipds)  
+**Production:** `uptime-host` (internal DNS monitoring)  
 **Service User:** `chk-a` (uid=999)  
 **Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **All timestamps:** Local Asia/Bangkok (+07), format `YYYY-MM-DD HH:MM:SS`
@@ -74,17 +75,19 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 17. **Manual Report Scripts** — `manual_daily_report.py` and `manual_monthly_report.py` for on-demand reporting (2026-09-17)
 18. **All Resolvers Displayed in Telegram** — Removed Top 5/10 limits from summaries and graph sending (2026-09-17 15:30:00, 19:30:00)
 19. **Daily Availability Heatmap** — Added day-of-month vs resolver heatmap for monthly reports (2026-09-17 20:00:00)
+20. **v1.0.15 Release** — Fixed daily report time range bug, daily midnight task image fallback, complete config examples, img/ in release assets (2026-09-18)
 
 ---
 
 ## Configuration
 
-**Primary:** `/etc/chk-a/config.yaml` (test VM)  
+**Primary:** `/etc/chk-a/config.yaml` (test VM & production)  
 **Reference:** `/opt/chk-a/config.example.yaml`
 
 Key Sections:
 - `fqdns` — List of FQDNs with `min_consensus` and `expected_ips` (optional)
 - `resolvers` — Resolver endpoints (`name`, `address` as `IP:port`, `weight`, `timeout_ms`)
+- `resolver_agent` — `max_concurrent`, `default_timeout_ms` (auto-tuned)
 - `ml` — `baseline_decay`, `anomaly_threshold`, `min_samples_before_alert`
 - `alert` — Telegram credentials, dedup window, rate limit, log paths, daily image config, dedup cache path
 - `scheduler` — `min_interval_sec` (30), `max_interval_sec` (180), `jitter`
@@ -92,7 +95,7 @@ Key Sections:
 - `reporting` — Monthly/daily schedules, output dir, Telegram/email config, graph inclusion
 - `baseline_store_path` — `/var/lib/chk-a/baselines.json`
 
-**Secrets:** `/etc/chk-a/env` — Stores `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (test VM)
+**Secrets:** `/etc/chk-a/env` — Stores `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` (test VM & production)
 
 ---
 
@@ -262,6 +265,12 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - ✅ Integrated into `generate_summary_dashboard()` — monthly reports now include both hourly and daily heatmaps
 - ✅ Monthly reports: 18-20 graphs total (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
 
+### v1.0.15 Release (2026-09-18)
+- **Fixed:** Daily report time range bug (monthly_report.py), daily midnight task image fallback (orchestrator.py)
+- **Added:** img/ directory in release assets (img.tar.gz), complete config.yaml.example with Thai comments, complete chk-a.env.example
+- **Changed:** Release workflow uses new config.yaml.example, install.sh extracts img.tar.gz to /opt/chk-a/img/
+- **Production:** uptime-host installed v1.0.15, 00:00 daily image confirmed working
+
 ---
 
 ## AI Model Config (for cyber-security-review)
@@ -296,13 +305,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.14/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.15/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.14`
+  3. `sudo ./install.sh v1.0.15`
   4. Edit `/etc/chk-a/env` with Telegram credentials
   5. Edit `/etc/chk-a/config.yaml` with FQDNs/resolvers
   6. `sudo systemctl restart chk-a`
 
 ---
 
-*Created by Hermes Agent session on 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*
+*Created by Hermes Agent session on 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*

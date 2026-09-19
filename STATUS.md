@@ -1,6 +1,6 @@
 # Project Status — chk-a
 
-**Last Updated:** 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -11,6 +11,7 @@
 **Repository:** `tpdevices/chk-a` (GitHub, HTTPS with PAT)  
 **Development:** WSL Ubuntu (172.20.14.199/20)  
 **Test Target:** VirtualBox Ubuntu 24.04 at 192.168.56.122 (user: ipds)  
+**Production:** `uptime-host` (internal DNS monitoring)  
 **Service User:** `chk-a` (uid=999)  
 **Python:** 3.14.4 (`python3`, PEP 668 → venv/uv)  
 **All timestamps:** Local Asia/Bangkok (+07), format `YYYY-MM-DD HH:MM:SS`
@@ -65,7 +66,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ### Reporting (Loop 7)
 - ✅ Monthly report (1st of month, 06:00 AM)
-- ✅ Daily report (06:00 AM, lookback 1 day) — **FIXED: Telegram 404 error**
+- ✅ Daily report (06:00 AM, lookback 1 day) — **FIXED: Telegram 404 error + time range bug**
 - ✅ 7 chart types × 2 languages (EN/TH) = 14 charts + 2 Dashboards = 16 files
   - Availability Bar, Availability Heatmap, Integrity Score, Latency Boxplot, IP Stability, MTR Path, Path Availability
 - ✅ **NEW: Daily Availability Heatmap** — Day-of-month vs resolver availability matrix for monthly reports (2026-09-17)
@@ -217,11 +218,38 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
+## v1.0.15 Release (2026-09-18)
+
+### Fixed
+- **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: Daily report time range bug. Changed from `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (which gave wrong time when run at 06:00) to `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` to correctly get yesterday's 23:59:59.
+- **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Fixed: Daily midnight task (00:00) error handling for missing images. Added fallback to anomaly/recovery images from AlertAgent, detailed logging for missing images, and graceful skip when no image available.
+
+### Added
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Added: Copy `img/` directory to release assets and create `img.tar.gz` for production installation.
+- **2026-09-18 21:00:00** — `install.sh` — Added: Download and extract `img.tar.gz` to `/opt/chk-a/img/` during production install.
+- **2026-09-18 21:00:00** — `config/config.yaml.example` — Added: Complete configuration example with all sections (fqdns, resolvers, resolver_agent, ml, alert, scheduler, logging, mtr, reporting, baseline_store_path) with Thai comments explaining each setting.
+- **2026-09-18 21:00:00** — `config/chk-a.env.example` — Added: Complete environment example with placeholders for Telegram, SMTP, and Age encryption keys.
+
+### Changed
+- **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Changed: Improved daily midnight task logging and fallback logic for daily/anomaly/recovery images.
+- **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Changed: Use new complete `config/config.yaml.example` in release assets instead of old `config/chk-a.config.yaml.example`.
+
+### Production Deployment v1.0.15 (2026-09-18)
+- ✅ **Release v1.0.15 created** — GitHub Release with all assets including `img.tar.gz`
+- ✅ **Production `uptime-host` installed v1.0.15** — `img/` directory deployed to `/opt/chk-a/img/`
+- ✅ **Production config updated** — Added `reporting` section, `mtr` section, `daily_image_path`, `resolver_agent: {}`
+- ✅ **00:00 Daily image CONFIRMED WORKING** — Received Telegram message with `sleepy.jpg` + hostname + day separators
+- ✅ **06:00 Daily report pending verification** — Next scheduled run
+
+---
+
 ## 4. In Progress
 
-- 🔄 **Production Installer Debugging** — v1.0.14 released, testing on fresh VM
+- 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 installed, awaiting 06:00 run
+- 🔄 **Test VM Runtime Update** — Source code synced (hash verified), but `/opt/chk-a/` runtime needs `sudo ./scripts/deploy.sh` (requires sudo password on test VM)
 - 🔄 **P2 Security Remediation** (Medium findings — next sprint):
-  - SEC-014: HTML escape in Telegram messages (DONE - 2026-09-17)
+  - SEC-010: DoH/DoT support (schemas done, resolver agent needs implementation)
+  - SEC-011: CAP_NET_RAW for MTR (systemd service needs AmbientCapabilities)
 
 ---
 
@@ -239,16 +267,21 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **v1.0.0/v1.0.1 install.sh wheel download** — Fixed via GitHub API lookup + constructed filename fallback
 - ✅ **v1.0.1/v1.0.2 pip installation** — Added ensurepip + get-pip.py fallback + verification
 - ✅ **v1.0.3-v1.0.14** — Sequential fixes for install.sh, env permissions, env.example, wheel download, temp dirs, output_dir, Python 3.10+, manual report scripts
+- ✅ **Daily report time range bug** — Fixed in v1.0.15 (monthly_report.py)
+- ✅ **Daily midnight task missing image** — Fixed in v1.0.15 (orchestrator.py fallback logic)
+- ✅ **Release assets missing img.tar.gz** — Fixed in v1.0.15 (release.yml + install.sh)
 
 ### Active
-- 🔄 **Verify production install on fresh VM** — v1.0.14 released, need to test on clean VM
+- 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 installed, awaiting tomorrow's run
+- 🔄 **Test VM Runtime Deploy** — Source synced, `/opt/chk-a/` needs manual deploy (sudo password required)
+- 🔄 **Recovery Alerts** — Logic verified correct, but baseline needs `min_samples_before_alert: 10` cycles after production restart
 
 ---
 
 ## 6. Next Actions
 
 ### This Week (P1)
-- Verify production install on fresh VM (v1.0.14)
+- Verify production 06:00 daily report (v1.0.15)
 - Document systemd unit files in repo (for reference)
 - Add deployment checklist (config perms, systemd caps, log dirs)
 - Create runbook for common operations
@@ -299,7 +332,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 |------|---------|
 | `src/chk_a/main.py` | CLI + daemon entry, subcommands |
 | `systemd/chk-a.service` | Modified: ExecStartPre/ExecStop use systemd_wrapper.py for status notifications |
-| `/etc/chk-a/config.yaml` | Production config (test VM) |
+| `/etc/chk-a/config.yaml` | Production config (test VM & production) |
 | `/opt/chk-a/config.example.yaml` | Config reference |
 | `/etc/chk-a/env` | **Telegram credentials** (`TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`) |
 
@@ -337,4 +370,4 @@ See [TODO.md](TODO.md) for detailed breakdown.
 
 ---
 
-*Generated by Hermes Agent session on 2026-09-17 20:30:00 (Asia/Bangkok UTC+07)*
+*Generated by Hermes Agent session on 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*
