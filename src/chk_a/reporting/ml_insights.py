@@ -247,7 +247,7 @@ def _load_mtr_data(mtr_log_path: str, lookback_days: int) -> dict[str, Any]:
 
 def _load_recent_checks(
     log_path: str,
-    lookback_days: int,
+    lookback_days: float,
     reference_date: datetime | None = None,
 ) -> pd.DataFrame:
     """Load check results from ``log_path`` that fall within the last *lookback_days*.
@@ -258,8 +258,8 @@ def _load_recent_checks(
 
     Args:
         log_path: Path to the JSONL log file.
-        lookback_days: Number of days to look back from reference_date.
-        reference_date: Reference datetime for the lookback window. Defaults to now.
+        lookback_days: Number of days to look back from reference_date (can be fractional).
+        reference_date: Reference datetime for the lookback window. Defaults to now (Asia/Bangkok).
     """
     if reference_date is None:
         reference_date = datetime.now()
@@ -272,31 +272,33 @@ def _load_recent_checks(
         reference_date = reference_date.replace(tzinfo=default_tz)
 
     cutoff = reference_date - timedelta(days=lookback_days)
+    log.debug("_load_recent_checks: reference_date=%s, lookback_days=%s, cutoff=%s",
+              reference_date.isoformat(), lookback_days, cutoff.isoformat())
     records: list[dict] = []
     path = Path(log_path)
-    
+
     # Determine log directory and base filename for rotated files
     log_dir = path.parent
     log_name = path.name  # e.g., "checks.jsonl"
-    
+
     # Collect all log files to read: current + rotated files within lookback window
     log_files = []
-    
+
     # 1. Current log file
     if path.is_file():
         log_files.append((path, "r", None))  # (path, mode, opener)
-    
+
     # 2. Rotated files with dateext pattern: checks.jsonl-YYYYMMDD.bz2 or .gz
     #    and numbered backups: checks.jsonl.1.gz, checks.jsonl.2.gz, etc.
     if log_dir.is_dir():
         for rotated_path in log_dir.iterdir():
             if rotated_path.name == log_name:
                 continue  # skip current log
-            
+
             # Check if it's a rotated version of our log file
             if not rotated_path.name.startswith(log_name + "-") and not rotated_path.name.startswith(log_name + "."):
                 continue
-            
+
             # Determine opener based on extension
             opener = None
             mode = "r"
@@ -308,7 +310,7 @@ def _load_recent_checks(
                 import gzip
                 opener = gzip.open
                 mode = "rt"
-            
+
             # For dateext files (checks.jsonl-YYYYMMDD.bz2), extract date and check if in range
             if rotated_path.name.startswith(log_name + "-"):
                 # Try to extract date from filename: checks.jsonl-20260914.bz2
@@ -328,10 +330,10 @@ def _load_recent_checks(
             else:
                 # Numbered backup (checks.jsonl.1.gz, etc.) - include and filter by timestamp
                 log_files.append((rotated_path, mode, opener))
-    
+
     # Sort files by modification time (newest first) for consistent processing
     log_files.sort(key=lambda x: x[0].stat().st_mtime, reverse=True)
-    
+
     # Process all collected log files
     for file_path, mode, opener in log_files:
         if not file_path.is_file():
@@ -341,7 +343,7 @@ def _load_recent_checks(
                 fh = opener(file_path, mode, encoding="utf-8")
             else:
                 fh = file_path.open(mode, encoding="utf-8")
-            
+
             with fh:
                 for line in fh:
                     line = line.strip()
@@ -355,12 +357,19 @@ def _load_recent_checks(
                             continue
                         ts_str = rec.get("timestamp", "")
                         ts = datetime.fromisoformat(ts_str)
-                        # Handle timezone comparison: if ts is naive but cutoff is aware,
-                        # assume ts is in the same timezone as cutoff for comparison.
-                        # Don't modify the stored timestamp string (let pandas parse it).
+                        # Handle timezone comparison: log timestamps are in Asia/Bangkok local time (naive or aware).
+                        # Ensure both are timezone-aware in the same timezone for comparison.
                         compare_ts = ts
-                        if compare_ts.tzinfo is None and cutoff.tzinfo is not None:
-                            compare_ts = compare_ts.replace(tzinfo=cutoff.tzinfo)
+                        if compare_ts.tzinfo is None:
+                            # Log timestamps are stored in local time (Asia/Bangkok) without tzinfo
+                            compare_ts = compare_ts.replace(tzinfo=default_tz)
+                        elif compare_ts.tzinfo != cutoff.tzinfo:
+                            # Convert to cutoff's timezone if different
+                            compare_ts = compare_ts.astimezone(cutoff.tzinfo)
+
+                        log.debug("  record ts=%s, compare_ts=%s, cutoff=%s, include=%s",
+                                  ts.isoformat(), compare_ts.isoformat(), cutoff.isoformat(), compare_ts >= cutoff)
+
                         if compare_ts >= cutoff:
                             records.append(rec)
                     except Exception as exc:  # pragma: no cover - defensive
@@ -371,9 +380,18 @@ def _load_recent_checks(
     if not records:
         return pd.DataFrame()
     df = pd.DataFrame(records)
-    # Ensure timestamp is datetime - handle mixed naive and timezone-aware ISO8601 timestamps
-    # utc=True converts all to UTC, then tz_localize(None) drops timezone for consistent naive comparison
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", utc=True).dt.tz_localize(None)
+    # Parse timestamps: keep them in local time (Asia/Bangkok) for consistent comparison
+    # Log timestamps are stored in local time (may be naive or aware).
+    # We parse without utc=True, then ensure tz-aware in Asia/Bangkok.
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", utc=False)
+    # If timestamps are naive, localize to Asia/Bangkok
+    if df["timestamp"].dt.tz is None:
+        df["timestamp"] = df["timestamp"].dt.tz_localize(default_tz)
+    else:
+        # Convert to Asia/Bangkok if different timezone
+        df["timestamp"] = df["timestamp"].dt.tz_convert(default_tz)
+    log.debug("_load_recent_checks: loaded %d records, time range %s to %s",
+              len(df), df["timestamp"].min(), df["timestamp"].max())
     return df
 
 

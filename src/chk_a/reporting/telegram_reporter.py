@@ -472,9 +472,11 @@ async def send_monthly_report_telegram(
         if not success:
             log.warning("Failed to send summary, continuing with graphs...")
 
-        # Filter Thai-only graphs (suffix -th.png)
-        thai_graphs = [p for p in graph_paths if p.name.endswith("-th.png")]
-        log.info("Sending %d Thai graphs sequentially", len(thai_graphs))
+        # Filter Thai-only graphs (suffix -th.png or stem ending with -th)
+        thai_graphs = [p for p in graph_paths if p.name.endswith("-th.png") or p.stem.endswith("-th")]
+        log.info("Sending %d Thai graphs sequentially (filtered from %d total)", len(thai_graphs), len(graph_paths))
+        if len(thai_graphs) != len(graph_paths):
+            log.debug("Filtered out non-Thai graphs: %s", [p.name for p in graph_paths if not (p.name.endswith("-th.png") or p.stem.endswith("-th"))])
 
         # Graphs (send sequentially, one by one, wait for success)
         for i, graph_path in enumerate(thai_graphs):
@@ -525,9 +527,11 @@ async def send_daily_report_telegram(
         if not success:
             log.warning("Failed to send summary, continuing with graphs...")
 
-        # Filter Thai-only graphs (suffix -th.png)
-        thai_graphs = [p for p in graph_paths if p.name.endswith("-th.png")]
-        log.info("Sending %d Thai graphs sequentially", len(thai_graphs))
+        # Filter Thai-only graphs (suffix -th.png or stem ending with -th)
+        thai_graphs = [p for p in graph_paths if p.name.endswith("-th.png") or p.stem.endswith("-th")]
+        log.info("Sending %d Thai graphs sequentially (filtered from %d total)", len(thai_graphs), len(graph_paths))
+        if len(thai_graphs) != len(graph_paths):
+            log.debug("Filtered out non-Thai graphs: %s", [p.name for p in graph_paths if not (p.name.endswith("-th.png") or p.stem.endswith("-th"))])
 
         # Graphs (send sequentially, one by one, wait for success)
         for i, graph_path in enumerate(thai_graphs):
