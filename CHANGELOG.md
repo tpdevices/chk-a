@@ -6,6 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.23] - 2026-09-20 15:40:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-20 15:40:00** — `src/chk_a/orchestrator.py` — Fixed: Service startup report now sends Thai-only graphs with today's data (00:00 to now) and daily availability heatmap showing month context (Sep 1 to today). Uses dual data loading (today + month) merged before graph generation.
+- **2026-09-20 15:40:00** — `src/chk_a/orchestrator.py` — Fixed: Startup report runs as background task (`asyncio.create_task`) to avoid blocking service startup and systemd timeout (90s).
+
+### Added
+- **2026-09-20 15:40:00** — `src/chk_a/orchestrator.py` — Added: Month data loading for daily availability heatmap in startup report. Merges `daily_availability` from month insights (Sep 1 to now) into today insights.
+- **2026-09-20 15:40:00** — `src/chk_a/orchestrator.py` — Added: Background task handling for startup report with proper shutdown wait in `Orchestrator.shutdown()`.
+
+### Changed
+- **2026-09-20 15:40:00** — `src/chk_a/orchestrator.py` — Changed: `_send_today_report_on_startup()` now uses `today_end` (23:59:59) as reference date with fractional lookback for today data, and separate `month_lookback` for month data (Sep 1 to now).
+
+---
+
 ## [1.0.22] - 2026-09-20 14:30:00 (Asia/Bangkok UTC+07)
 
 ### Fixed

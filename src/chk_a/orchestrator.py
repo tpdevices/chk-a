@@ -182,8 +182,8 @@ class Orchestrator:
         # Check and send yesterday's daily report if missing (on startup)
         await self._send_missing_daily_report()
 
-        # Send today's report from 00:00 to now (on startup)
-        await self._send_today_report_on_startup()
+        # Send today's report from 00:00 to now (on startup) - run in background to avoid blocking startup
+        self._startup_report_task = asyncio.create_task(self._send_today_report_on_startup())
 
         # Tell systemd we are ready to serve (Type=notify / WatchdogSec).
         notify_ready()
@@ -229,6 +229,10 @@ class Orchestrator:
             self.ml.storage.save()
         with contextlib.suppress(Exception):
             await self.alert.telegram.close()
+        # Wait for startup report task if running
+        if hasattr(self, '_startup_report_task') and self._startup_report_task:
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._startup_report_task
 
     # -- one cycle ---------------------------------------------------------
     async def run_cycle(self) -> None:
@@ -1043,107 +1047,132 @@ class Orchestrator:
                 await asyncio.sleep(60)
 
     async def _send_today_report_on_startup(self) -> None:
-        """Send today's report from midnight to now on service startup.
-        
-        This provides immediate visibility into today's DNS performance
-        without waiting for the 06:00 AM scheduled report.
-        """
-        if not self.config.reporting.daily_report_enabled:
-            self.logger.info("Daily report generation disabled in config, skipping today's startup report")
-            return
+            """Send today's report from midnight to now on service startup.
 
-        if not self.config.reporting.daily_report_telegram_enabled:
-            self.logger.info("Daily report Telegram disabled in config, skipping today's startup report")
-            return
-
-        # Determine today's date and current time
-        now = datetime.now(TZ)
-        today_str = now.strftime("%Y-%m-%d")
-        today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
-
-        self.logger.info("Generating today's report from 00:00 to now (%s)...", today_str)
-
-        try:
-            lookback_days = self.config.reporting.daily_report_lookback_days
-            
-            # Calculate hours since midnight to determine lookback window
-            hours_since_midnight = (now - today_midnight).total_seconds() / 3600
-            # Use a small lookback that covers from midnight to now (at least 1 hour)
-            # We'll use reference_date=now and let the cutoff be calculated properly
-            # by passing the correct lookback in hours converted to days
-            lookback_fraction = max(hours_since_midnight / 24, 1/24)  # minimum 1 hour
-            
-            from .reporting.ml_insights import generate_ml_insights
-            from .reporting.graph_generator import generate_summary_dashboard
-            from .reporting.telegram_reporter import send_daily_report_telegram
-            from .storage.baseline_store import BaselineStore
-            from .agents.ml_agent import MLAgent
-
-            log_path = self.config.logging.file
-            mtr_log_path = ""
-            if hasattr(self.config, "mtr") and self.config.mtr.enabled:
-                mtr_log_path = getattr(self.config.mtr, "log_path", "") or ""
-
-            # Create MLAgent for baseline-based integrity scoring
-            store = BaselineStore(self.config.baseline_store_path)
-            ml_agent = MLAgent(self.config.ml, store)
-
-            # Use current time as reference, with fractional lookback to cover from midnight
-            self.logger.info("Startup report: now=%s, today_midnight=%s, hours_since_midnight=%.1f, lookback_fraction=%.4f",
-                             now.isoformat(), today_midnight.isoformat(), hours_since_midnight, lookback_fraction)
-            insights = generate_ml_insights(
-                log_path,
-                lookback_fraction,
-                mtr_log_path,
-                ml_agent=ml_agent,
-                reference_date=now,
-            )
-            self.logger.info("Startup report: ML insights loaded, total_resolvers=%d, time_range in insights (check debug logs)",
-                             insights.get("summary", {}).get("total_resolvers", 0))
-
-            if not insights.get("summary", {}).get("total_resolvers", 0):
-                self.logger.warning("No data available for today's report (%s)", today_str)
+            This provides immediate visibility into today's DNS performance
+            without waiting for the 06:00 AM scheduled report.
+            """
+            if not self.config.reporting.daily_report_enabled:
+                self.logger.info("Daily report generation disabled in config, skipping today's startup report")
                 return
 
-            # Generate graphs - THAI ONLY (consistent with telegram_reporter)
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            output_dir = Path(self.config.reporting.output_dir)
-            report_output_dir = output_dir / f"daily-today-startup-{timestamp}"
-            report_output_dir.mkdir(parents=True, exist_ok=True)
+            if not self.config.reporting.daily_report_telegram_enabled:
+                self.logger.info("Daily report Telegram disabled in config, skipping today's startup report")
+                return
 
-            # Only generate Thai graphs for Telegram (TH-only per user request)
-            th_graphs = generate_summary_dashboard(
-                insights, report_output_dir, lang="th", hostname=self.hostname,
-                report_date_context=f"รายงานข้อมูลวันนี้ :{today_str} (00:00-ตอนนี้)"
-            )
-            all_graphs = th_graphs  # Only Thai graphs
-            self.logger.info("Generated %d Thai graph files for today's startup report", len(all_graphs))
-            # DEBUG: log all generated graph filenames
-            for g in all_graphs:
-                self.logger.debug("  Startup graph: %s", g.name)
+            # Determine today's date and current time
+            now = datetime.now(TZ)
+            today_str = now.strftime("%Y-%m-%d")
+            today_midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+            today_end = today_midnight.replace(hour=23, minute=59, second=59, microsecond=0)
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-            # Send to Telegram
-            bot_token = self.config.alert.telegram_bot_token
-            chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
+            self.logger.info("Generating today's report from 00:00 to now (%s)...", today_str)
 
-            if bot_token and chat_id:
-                self.logger.info("Sending today's startup report to Telegram...")
-                from pydantic import SecretStr
-                chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
-                await send_daily_report_telegram(
-                    bot_token=bot_token,
-                    chat_id=SecretStr(chat_id_str),
-                    ml_insights=insights,
-                    graph_paths=all_graphs,
-                    hostname=self.hostname,
-                    lookback_days=lookback_days,
+            try:
+                # Calculate hours since midnight to determine lookback window
+                hours_since_midnight = (now - today_midnight).total_seconds() / 3600
+                # Use fractional lookback from midnight to now (minimum 1 hour)
+                lookback_fraction = max(hours_since_midnight / 24, 1/24)
+
+                # Month lookback for daily heatmap (Sep 1 to now)
+                month_lookback = (now - month_start).days + hours_since_midnight / 24.0
+
+                from .reporting.ml_insights import generate_ml_insights
+                from .reporting.graph_generator import generate_summary_dashboard
+                from .reporting.telegram_reporter import send_daily_report_telegram
+                from .storage.baseline_store import BaselineStore
+                from .agents.ml_agent import MLAgent
+
+                log_path = self.config.logging.file
+                mtr_log_path = ""
+                if hasattr(self.config, "mtr") and self.config.mtr.enabled:
+                    mtr_log_path = getattr(self.config.mtr, "log_path", "") or ""
+
+                # Create MLAgent for baseline-based integrity scoring
+                store = BaselineStore(self.config.baseline_store_path)
+                ml_agent = MLAgent(self.config.ml, store)
+
+                # 1. Today insights: midnight to now (fractional lookback)
+                self.logger.info("Startup report (today): now=%s, today_midnight=%s, today_end=%s, hours_since_midnight=%.1f, lookback_fraction=%.4f",
+                                 now.isoformat(), today_midnight.isoformat(), today_end.isoformat(), hours_since_midnight, lookback_fraction)
+                insights_today = generate_ml_insights(
+                    log_path,
+                    lookback_fraction,
+                    mtr_log_path,
+                    ml_agent=ml_agent,
+                    reference_date=today_end,
                 )
-                self.logger.info("Today's startup report for %s sent to Telegram successfully", today_str)
-            else:
-                self.logger.warning("Telegram credentials not configured for daily report")
 
-        except Exception as exc:
-            self.logger.exception("Failed to generate/send today's startup report for %s: %s", today_str, exc)
+                # 2. Month insights: Sep 1 to now (for daily heatmap)
+                self.logger.info("Startup report (month): month_start=%s, now=%s, month_lookback=%.4f",
+                                 month_start.isoformat(), now.isoformat(), month_lookback)
+                insights_month = generate_ml_insights(
+                    log_path,
+                    month_lookback,
+                    mtr_log_path,
+                    ml_agent=ml_agent,
+                    reference_date=now,
+                )
+
+                # 3. Merge: use today's insights but replace daily_availability with month's
+                availability_today = insights_today.get("availability", {})
+                availability_month = insights_month.get("availability", {})
+
+                for resolver, data in availability_today.items():
+                    if resolver in availability_month:
+                        data["daily_availability"] = availability_month[resolver].get("daily_availability", {})
+
+                # Use merged insights
+                insights = insights_today
+                insights["availability"] = availability_today
+
+                self.logger.info("Startup report: ML insights loaded (merged), total_resolvers=%d",
+                                 insights.get("summary", {}).get("total_resolvers", 0))
+
+                if not insights.get("summary", {}).get("total_resolvers", 0):
+                    self.logger.warning("No data available for today's report (%s)", today_str)
+                    return
+
+                # Generate graphs - THAI ONLY (consistent with telegram_reporter)
+                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+                output_dir = Path(self.config.reporting.output_dir)
+                report_output_dir = output_dir / f"daily-today-startup-{timestamp}"
+                report_output_dir.mkdir(parents=True, exist_ok=True)
+
+                # Only generate Thai graphs for Telegram (TH-only per user request)
+                th_graphs = generate_summary_dashboard(
+                    insights, report_output_dir, lang="th", hostname=self.hostname,
+                    report_date_context=f"รายงานข้อมูลวันนี้ :{today_str} (00:00-ตอนนี้)"
+                )
+                all_graphs = th_graphs  # Only Thai graphs
+                self.logger.info("Generated %d Thai graph files for today's startup report", len(all_graphs))
+                # DEBUG: log all generated graph filenames
+                for g in all_graphs:
+                    self.logger.debug("  Startup graph: %s", g.name)
+
+                # Send to Telegram
+                bot_token = self.config.alert.telegram_bot_token
+                chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
+
+                if bot_token and chat_id:
+                    self.logger.info("Sending today's startup report to Telegram...")
+                    from pydantic import SecretStr
+                    chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
+                    await send_daily_report_telegram(
+                        bot_token=bot_token,
+                        chat_id=SecretStr(chat_id_str),
+                        ml_insights=insights,
+                        graph_paths=all_graphs,
+                        hostname=self.hostname,
+                        lookback_days=lookback_fraction,
+                    )
+                    self.logger.info("Today's startup report for %s sent to Telegram successfully", today_str)
+                else:
+                    self.logger.warning("Telegram credentials not configured for daily report")
+
+            except Exception as exc:
+                self.logger.exception("Failed to generate/send today's startup report for %s: %s", today_str, exc)
 
     async def _send_missing_daily_report(self) -> None:
             """Check if yesterday's daily report was sent; if not, generate and send it.
