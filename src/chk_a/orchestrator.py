@@ -1209,9 +1209,8 @@ class Orchestrator:
                 # Generate daily report using yesterday as reference
                 lookback_days = self.config.reporting.daily_report_lookback_days
                 yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
+                month_start = yesterday.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-                # We need to call generate_daily_report with the correct reference date
-                # The generate_daily_report function uses generate_ml_insights which accepts reference_date
                 from .reporting.ml_insights import generate_ml_insights
                 from .reporting.graph_generator import generate_summary_dashboard
                 from .reporting.telegram_reporter import send_daily_report_telegram
@@ -1227,13 +1226,43 @@ class Orchestrator:
                 store = BaselineStore(self.config.baseline_store_path)
                 ml_agent = MLAgent(self.config.ml, store)
 
-                insights = generate_ml_insights(
+                # 1. Yesterday insights: full day (lookback_days from config)
+                self.logger.info("Missing report (yesterday): yesterday=%s, yesterday_end=%s, lookback_days=%d",
+                                 yesterday_str, yesterday_end.isoformat(), lookback_days)
+                insights_yesterday = generate_ml_insights(
                     log_path,
                     lookback_days,
                     mtr_log_path,
                     ml_agent=ml_agent,
-                    reference_date=yesterday_end
+                    reference_date=yesterday_end,
                 )
+
+                # 2. Month insights: Sep 1 to yesterday_end (for daily heatmap)
+                month_lookback = (yesterday_end - month_start).days + 1  # inclusive
+                self.logger.info("Missing report (month): month_start=%s, yesterday_end=%s, month_lookback=%d",
+                                 month_start.isoformat(), yesterday_end.isoformat(), month_lookback)
+                insights_month = generate_ml_insights(
+                    log_path,
+                    float(month_lookback),
+                    mtr_log_path,
+                    ml_agent=ml_agent,
+                    reference_date=yesterday_end,
+                )
+
+                # 3. Merge: use yesterday's insights but replace daily_availability with month's
+                availability_yesterday = insights_yesterday.get("availability", {})
+                availability_month = insights_month.get("availability", {})
+
+                for resolver, data in availability_yesterday.items():
+                    if resolver in availability_month:
+                        data["daily_availability"] = availability_month[resolver].get("daily_availability", {})
+
+                # Use merged insights
+                insights = insights_yesterday
+                insights["availability"] = availability_yesterday
+
+                self.logger.info("Missing report: ML insights loaded (merged), total_resolvers=%d",
+                                 insights.get("summary", {}).get("total_resolvers", 0))
 
                 if not insights.get("summary", {}).get("total_resolvers", 0):
                     self.logger.warning("No data available for yesterday's report (%s)", yesterday_str)

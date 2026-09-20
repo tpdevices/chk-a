@@ -847,7 +847,8 @@ def generate_summary_dashboard(
 ) -> list[Path]:
     """Generate all graphs and return list of generated file paths."""
     output_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    now = datetime.now()
+    timestamp = now.strftime("%Y%m%d-%H%M%S")
     generated = []
 
     # Add language suffix to filename for filtering (e.g., -th.png for Thai)
@@ -896,7 +897,30 @@ def generate_summary_dashboard(
 
     # 3. Availability daily heatmap (NEW - for monthly reports)
     path = output_dir / f"availability-daily-heatmap{timestamp}{lang_suffix}.png"
-    generate_availability_daily_heatmap(availability, path, title=base_titles["availability_daily_heatmap"], lang=lang, hostname=hostname)
+    # Check if daily_availability has month-range data (more than 1 day)
+    has_month_data = False
+    for resolver_data in availability.values():
+        daily = resolver_data.get("daily_availability", {})
+        if len(daily) > 1:
+            has_month_data = True
+            break
+    
+    if has_month_data:
+        # Use month-context title for daily heatmap
+        if lang == "th":
+            daily_heatmap_title = f"Heatmap ความพร้อมใช้งานรายวัน (วันที่ 1 ถึง {now.day})"
+            if report_date_context:
+                daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
+        else:
+            daily_heatmap_title = f"Daily Availability Heatmap (Days 1 to {now.day})"
+            if report_date_context:
+                daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
+    else:
+        daily_heatmap_title = base_titles["availability_daily_heatmap"]
+        if report_date_context:
+            daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
+    
+    generate_availability_daily_heatmap(availability, path, title=daily_heatmap_title, lang=lang, hostname=hostname)
     generated.append(path)
 
     # 4. Integrity chart

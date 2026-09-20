@@ -6,7 +6,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.23] - 2026-09-20 15:40:00 (Asia/Bangkok UTC+07)
+## [1.0.25] - 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-20 17:30:00** — `src/chk_a/orchestrator.py` — Fixed: Missing daily report on startup now merges month data (Sep 1 to yesterday) for daily availability heatmap, instead of only yesterday's data.
+- **2026-09-20 17:30:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: Daily availability heatmap title now shows correct day range format "Days 1 to N" (English) / "วันที่ 1 ถึง N" (Thai) instead of "Month: 1st to DD MMM".
+
+### Added
+- **2026-09-20 17:30:00** — `src/chk_a/orchestrator.py` — Added: Month data loading for missing daily report. Merges `daily_availability` from month insights (Sep 1 to yesterday) into yesterday insights.
+
+### Changed
+- **2026-09-20 17:30:00** — `src/chk_a/reporting/graph_generator.py` — Changed: Daily heatmap title format from "Month: 1st to DD MMM" to "Days 1 to N" / "วันที่ 1 ถึง N" for clarity.
+
+---
+
+## [1.0.24] - 2026-09-20 15:40:00 (Asia/Bangkok UTC+07)
 
 ### Fixed
 - **2026-09-20 15:40:00** — `src/chk_a/orchestrator.py` — Fixed: Service startup report now sends Thai-only graphs with today's data (00:00 to now) and daily availability heatmap showing month context (Sep 1 to today). Uses dual data loading (today + month) merged before graph generation.
