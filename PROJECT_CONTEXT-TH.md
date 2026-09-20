@@ -1,6 +1,6 @@
 # บริบทโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -76,6 +76,12 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 18. **แสดง Resolver ทั้งหมดใน Telegram** — ลบ Top 5/10 limits จากสรุปและการส่งกราฟ (2026-09-17 15:30:00, 19:30:00)
 19. **Daily Availability Heatmap** — เพิ่ม Heatmap แบบวันในเดือน vs resolver สำหรับรายงานรายเดือน (2026-09-17 20:00:00)
 20. **v1.0.15 Release** — แก้ daily report time range bug, daily midnight task image fallback, complete config examples, img/ ใน release assets (2026-09-18)
+21. **v1.0.16 Release** — Telegram sequential send + Thai-only graphs (2026-09-19)
+22. **v1.0.17 Release** — Latency boxplot sort by median ASC (fastest on top) (2026-09-19)
+23. **v1.0.18 Release** — Timezone fix for daily reports + robust Thai filtering (2026-09-19)
+24. **v1.0.19 Release** — Graph filename suffix for Thai filtering + consistent daily reports (2026-09-19)
+25. **v1.0.20 Release** — Timezone fix for daily reports + robust Thai filtering (2026-09-19)
+26. **v1.0.21 Release** — Debug logging for daily reports + robust Thai filtering (2026-09-19)
 
 ---
 
@@ -201,7 +207,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 ### การแก้ไข Telegram Reporter (2026-09-13)
 - **Root Cause:** `TelegramReporter` ใช้ `Authorization: Bearer *** header แต่ Telegram Bot API กำหนดให้ใช้ token ใน URL path (`/bot<token>/method`)
 - **Impact:** รายงานรายวัน 06:00 น. ล้มเหลว 404 Not Found; รูปภาพเที่ยงคืนทำงานเพราะใช้ `TelegramClient` (token ใน URL)
-- **Fix:** อัปเดต `TelegramReporter` ให้ใช้ token ใน URL path (เหมือน `TelegramClient`)
+- **Fix:** อัปเดต `TelegramReporter` ให้ใช้ token ใน URL path (เหมือนกับ `TelegramClient`)
 - **Files Changed:** `src/chk_a/reporting/telegram_reporter.py`, `tests/test_security_regressions.py`
 - **Circuit Breaker:** รีคัฟเวอร์อัตโนมัติหลัง 60 วินาที (HALF_OPEN → CLOSED)
 
@@ -292,6 +298,26 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ---
 
+## v1.0.16 Release (2026-09-19)
+- Telegram sequential send + Thai-only graphs
+
+## v1.0.17 Release (2026-09-19)
+- Latency boxplot sort by median ASC (fastest on top)
+
+## v1.0.18 Release (2026-09-19)
+- Timezone fix for daily reports + robust Thai filtering
+
+## v1.0.19 Release (2026-09-19)
+- Graph filename suffix for Thai filtering + consistent daily reports
+
+## v1.0.20 Release (2026-09-19)
+- Timezone fix for daily reports + robust Thai filtering
+
+## v1.0.21 Release (2026-09-19)
+- Debug logging for daily reports + robust Thai filtering
+
+---
+
 ## AI Model Config (สำหรับ cyber-security-review)
 
 **Available Providers:** NVIDIA (primary), 9router/OpenRouter/AnyAPI/Aihubmix (gateways), Ollama-Local, Poolside.AI
@@ -333,4 +359,4 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)*

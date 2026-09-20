@@ -201,7 +201,7 @@ def _score_path_health(path_results: dict[str, dict[str, Any]]) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _load_mtr_data(mtr_log_path: str, lookback_days: int) -> dict[str, Any]:
+def _load_mtr_data(mtr_log_path: str, lookback_days: float) -> dict[str, Any]:
     """Load MTR results from JSON log file.
 
     MTR results are stored as JSONL with one MTRResult per line.
@@ -746,7 +746,7 @@ def _compute_integrity_isolation_forest(df: pd.DataFrame) -> dict[str, dict[str,
 
 def generate_ml_insights(
     log_path: str,
-    lookback_days: int = 30,
+    lookback_days: float = 30.0,
     mtr_log_path: str = "",
     ml_agent: "MLAgent | None" = None,
     reference_date: datetime | None = None,

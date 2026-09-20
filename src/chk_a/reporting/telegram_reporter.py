@@ -515,7 +515,7 @@ async def send_daily_report_telegram(
     ml_insights: dict[str, Any],
     graph_paths: list[Path],
     hostname: str,
-    lookback_days: int = 1,
+    lookback_days: float = 1.0,
 ) -> dict[str, bool]:
     """Send daily report summary and graphs to Telegram (sequential, Thai-only graphs)."""
     reporter = TelegramReporter(bot_token, chat_id)
@@ -558,7 +558,7 @@ async def send_daily_report_telegram(
 def create_daily_telegram_summary(
     ml_insights: dict[str, Any],
     hostname: str,
-    lookback_days: int = 1,
+    lookback_days: float = 1.0,
 ) -> str:
     """Create a concise Thai daily summary for Telegram."""
     summary = ml_insights.get("summary", {})

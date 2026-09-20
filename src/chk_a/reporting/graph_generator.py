@@ -591,6 +591,9 @@ def generate_latency_boxplot(
     ax.set_xlabel("Latency (ms)", fontsize=12)
     ax.set_xscale("log")  # Log scale often better for latency
 
+    # Invert y-axis so fastest (lowest median) is at top (matching availability bar chart)
+    ax.invert_yaxis()
+
     # Add sort order indicator to title
     if "median" not in title.lower():
         title = f"{title}\n(sorted by median latency, fastest first)"

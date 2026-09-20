@@ -1,6 +1,6 @@
 # Project Context — chk-a
 
-**Last Updated:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -76,6 +76,12 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 18. **All Resolvers Displayed in Telegram** — Removed Top 5/10 limits from summaries and graph sending (2026-09-17 15:30:00, 19:30:00)
 19. **Daily Availability Heatmap** — Added day-of-month vs resolver heatmap for monthly reports (2026-09-17 20:00:00)
 20. **v1.0.15 Release** — Fixed daily report time range bug, daily midnight task image fallback, complete config examples, img/ in release assets (2026-09-18)
+21. **v1.0.16 Release** — Telegram sequential send + Thai-only graphs (2026-09-19)
+22. **v1.0.17 Release** — Latency boxplot sort by median ASC (fastest on top) (2026-09-19)
+23. **v1.0.18 Release** — Timezone fix for daily reports + robust Thai filtering (2026-09-19)
+24. **v1.0.19 Release** — Graph filename suffix for Thai filtering + consistent daily reports (2026-09-19)
+25. **v1.0.20 Release** — Timezone fix for daily reports + robust Thai filtering (2026-09-19)
+26. **v1.0.21 Release** — Debug logging for daily reports + robust Thai filtering (2026-09-19)
 
 ---
 
@@ -271,6 +277,24 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 - **Changed:** Release workflow uses new config.yaml.example, install.sh extracts img.tar.gz to /opt/chk-a/img/
 - **Production:** uptime-host installed v1.0.15, 00:00 daily image confirmed working
 
+### v1.0.16 Release (2026-09-19)
+- Telegram sequential send + Thai-only graphs
+
+### v1.0.17 Release (2026-09-19)
+- Latency boxplot sort by median ASC (fastest on top)
+
+### v1.0.18 Release (2026-09-19)
+- Timezone fix for daily reports + robust Thai filtering
+
+### v1.0.19 Release (2026-09-19)
+- Graph filename suffix for Thai filtering + consistent daily reports
+
+### v1.0.20 Release (2026-09-19)
+- Timezone fix for daily reports + robust Thai filtering
+
+### v1.0.21 Release (2026-09-19)
+- Debug logging for daily reports + robust Thai filtering
+
 ---
 
 ## AI Model Config (for cyber-security-review)
@@ -314,4 +338,4 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ---
 
-*Created by Hermes Agent session on 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*
+*Created by Hermes Agent session on 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)*

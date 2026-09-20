@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -246,10 +246,8 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 ## 4. สิ่งที่กำลังทำอยู่
 
 - 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 ติดตั้งแล้ว, รอรัน 06:00 น. พรุ่งนี้
-- 🔄 **Test VM Runtime Update** — Source code synced (hash verified), แต `/opt/chk-a/` runtime ต้องรัน `sudo ./scripts/deploy.sh` เอง (ต้อง sudo password บน test VM)
-- 🔄 **P2 Security Remediation** (Medium findings — next sprint):
-  - SEC-010: DoH/DoT support (schemas เสร็จแล้ว, resolver agent ต้อง implement)
-  - SEC-011: CAP_NET_RAW for MTR (systemd service ต้องเพิ่ม AmbientCapabilities)
+- 🔄 **Test VM Runtime Update** — Source code synced (hash verified), แต่ `/opt/chk-a/` runtime ต้องรัน `sudo ./scripts/deploy.sh` เอง (ต้อง sudo password บน test VM)
+- 🔄 **Daily startup report fix: Thai-only graphs + today's data (00:00 to now)** — v1.0.21 debug logging deployed, awaiting production logs
 
 ---
 
@@ -275,6 +273,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 ติดตั้งแล้ว, รอรันพรุ่งนี้
 - 🔄 **Test VM Runtime Deploy** — Source synced, `/opt/chk-a/` ต้อง manual deploy (sudo password required)
 - 🔄 **Recovery Alerts** — Logic verified correct, แต baseline ต้อง `min_samples_before_alert: 10` cycles หลัง production restart
+- 🔄 **Daily startup report: Thai-only graphs + today's data (00:00 to now)** — v1.0.21 debug logging deployed; awaiting production logs to identify exact failure point
 
 ---
 
@@ -282,11 +281,13 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ### สัปดาห์นี้ (P1)
 - Verify production 06:00 daily report (v1.0.15)
+- Deploy v1.0.21 to test VM and verify startup report fix
 - Document systemd unit files in repo (for reference)
 - Add deployment checklist (config perms, systemd caps, log dirs)
 - Create runbook for common operations
 
 ### Sprint นี้ (P2)
+- Fix daily startup report: Thai-only graphs + today's data (00:00 to now) — **Critical**
 - SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR
 - Add log rotation test coverage
 - Email reporting integration
@@ -370,4 +371,4 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)*

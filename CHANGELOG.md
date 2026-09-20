@@ -6,6 +6,95 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.22] - 2026-09-20 14:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-20 14:30:00** — `scripts/manual_daily_report.py` — Fixed: Manual daily report now correctly generates single report with Thai-only graphs. Uses `send_daily_report_telegram()` which filters Thai-only (`-th.png`) and sends sequentially.
+- **2026-09-20 14:30:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: Latency boxplot now correctly sorts by median latency ASC (fastest on top) by adding `ax.invert_yaxis()`. Cloudflare (~15ms) now at top, SDNS (~266ms) at bottom.
+- **2026-09-20 14:30:00** — `scripts/manual_daily_report.py` — Fixed: Daily availability heatmap now shows month context (Sep 1 to today) instead of only today's data, by merging today insights with month insights for `daily_availability`.
+
+### Added
+- **2026-09-20 14:30:00** — `scripts/manual_daily_report.py` — Added: Dual data loading — today data (midnight to now) for hourly heatmap/latency/integrity, and month data (Sep 1 to now) for daily availability heatmap. Merged before graph generation.
+- **2026-09-20 14:30:00** — `src/chk_a/reporting/ml_insights.py` — Added: `generate_ml_insights()` and `_load_mtr_data()` now accept `float` for `lookback_days` to support fractional lookback (e.g., hours since midnight).
+- **2026-09-20 14:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Added: `send_daily_report_telegram()` and `create_daily_telegram_summary()` now accept `float` for `lookback_days`.
+
+### Changed
+- **2026-09-20 14:30:00** — `scripts/manual_daily_report.py` — Changed: Replaced custom Telegram sending logic with `send_daily_report_telegram()` to leverage Thai-only filtering and sequential sending with 0.5s delay.
+- **2026-09-20 14:30:00** — `src/chk_a/reporting/ml_insights.py` — Changed: `lookback_days` parameter type from `int` to `float` for fractional day support.
+- **2026-09-20 14:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: `lookback_days` parameter type from `int` to `float` for consistency.
+
+---
+
+## [1.0.21] - 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-19 06:50:00** — `src/chk_a/reporting/telegram_reporter.py` — Fixed: Added warning log when non-Thai graphs are filtered out and debug log for all received graph paths. This helps identify which English graphs are leaking through the Thai-only filter.
+- **2026-09-19 06:50:00** — `src/chk_a/orchestrator.py` — Fixed: Added debug logging for startup report time parameters (now, today_midnight, hours_since_midnight, lookback_fraction) and generated graph filenames.
+- **2026-09-19 06:50:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: Added debug logging for scheduled daily report graph filenames.
+
+### Added
+- **2026-09-19 06:50:00** — `src/chk_a/reporting/telegram_reporter.py` — Added: Warning log `FILTERED OUT non-Thai graphs (N): [...]` when English graphs are detected and filtered out.
+- **2026-09-19 06:50:00** — `src/chk_a/orchestrator.py` — Added: Debug logs for startup report time calculation and graph filenames.
+- **2026-09-19 06:50:00** — `src/chk_a/reporting/monthly_report.py` — Added: Debug logs for scheduled daily report graph filenames.
+
+### Changed
+- **2026-09-19 06:50:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: Thai filter now robustly checks both `-th.png` suffix and `-th` stem. Added warning log when non-Thai graphs are filtered out.
+- **2026-09-19 06:50:00** — `src/chk_a/orchestrator.py` — Changed: Enhanced debug logging for `_send_today_report_on_startup()` and `_send_missing_daily_report()`.
+
+---
+
+## [1.0.20] - 2026-09-19 10:00:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` now properly handles timezone-aware comparisons. Parse timestamps without `utc=True`, keep in Asia/Bangkok local time, proper tz-aware comparison between log timestamps and cutoff. Supports fractional `lookback_days` for midnight-to-now reports.
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/telegram_reporter.py` — Fixed: Robust Thai filtering now checks both `-th.png` suffix and `-th` stem. Added warning log when non-Thai graphs are filtered out.
+
+### Changed
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/ml_insights.py` — Changed: `_load_recent_checks()` timezone handling rewritten. Debug logging added for verification.
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: Thai filter now checks both `-th.png` suffix and `-th` stem. Warning log when non-Thai graphs filtered.
+
+---
+
+## [1.0.19] - 2026-09-19 09:00:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: `generate_summary_dashboard()` now adds language suffix to filenames (`-th` for Thai, none for English). This allows `telegram_reporter.py` to correctly filter and send only Thai graphs (`-th.png`). Filename format changed from `name-timestamp.png` to `nametimestamp-lang.png`.
+
+### Added
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/graph_generator.py` — Added: Language suffix (`lang_suffix`) to all generated graph filenames (e.g., `availability-bar20260919-143000-th.png`).
+
+### Changed
+- **2026-09-19 10:00:00** — `src/chk_a/reporting/graph_generator.py` — Changed: `generate_summary_dashboard()` adds language suffix to filenames for filtering. Format: `nametimestamp-lang.png` (e.g., `availability-bar20260919-143000-th.png`). Enables correct Thai-only filtering in telegram_reporter.
+
+---
+
+## [1.0.18] - 2026-09-19 09:00:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: Indentation error in `_send_missing_daily_report()` method (lines 1202-1220). Fixed malformed try/except blocks with duplicate/broken exception handling.
+- **2026-09-19 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: `generate_daily_report()` now uses timezone-aware datetime (Asia/Bangkok) and generates THAI-ONLY graphs for Telegram consistency. Removed English graph generation for daily scheduled report.
+- **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: `_send_today_report_on_startup()` now correctly calculates lookback window from midnight to now using fractional lookback days instead of fixed 24h lookback.
+
+### Changed
+- **2026-09-19 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Changed: `generate_daily_report()` now generates THAI-ONLY graphs for scheduled daily report (consistent with telegram_reporter sequential sending). Removed English graph generation.
+- **2026-09-19 09:30:00** — `src/chk_a/orchestrator.py` — Changed: `_send_today_report_on_startup()` and `_send_missing_daily_report()` now consistent in using THAI-ONLY graphs and proper timezone handling.
+
+---
+
+## [1.0.17] - 2026-09-19 09:00:00 (Asia/Bangkok UTC+07)
+
+### Changed
+- **2026-09-19 09:00:00** — `src/chk_a/reporting/graph_generator.py` — Changed: `generate_latency_boxplot()` now sorts resolvers by median latency ASC (fastest on top). Added sort indicator subtitle to title. Consistency with "best on top" pattern across all charts.
+
+---
+
+## [1.0.16] - 2026-09-19 08:30:00 (Asia/Bangkok UTC+07)
+
+### Changed
+- **2026-09-19 08:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Changed: Telegram report sending now sequential (one-by-one) instead of concurrent. Only Thai-language graphs (suffix -th.png) are sent. Added 0.5s delay between sends to avoid rate limiting. Detailed logging for each graph send result.
+
+---
+
 ## [1.0.15] - 2026-09-18 23:55:00 (Asia/Bangkok UTC+07)
 
 ### Fixed
