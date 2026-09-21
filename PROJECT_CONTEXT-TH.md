@@ -1,6 +1,6 @@
 # บริบทโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -82,6 +82,10 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 24. **v1.0.19 Release** — Graph filename suffix for Thai filtering + consistent daily reports (2026-09-19)
 25. **v1.0.20 Release** — Timezone fix for daily reports + robust Thai filtering (2026-09-19)
 26. **v1.0.21 Release** — Debug logging for daily reports + robust Thai filtering (2026-09-19)
+27. **v1.0.22 Release** — Manual daily report fixes: Thai-only filter, latency boxplot sort, daily heatmap month context (2026-09-20)
+28. **v1.0.23 Release** — Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task (2026-09-20)
+29. **v1.0.24 Release** — Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version (2026-09-20)
+30. **v1.0.25 Release** — Missing daily report month merge + daily heatmap title format (Days 1 to N / วันที่ 1 ถึง N) (2026-09-20)
 
 ---
 
@@ -299,22 +303,36 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 ---
 
 ## v1.0.16 Release (2026-09-19)
-- Telegram sequential send + Thai-only graphs
+- ✅ Telegram sequential send + Thai-only graphs
 
 ## v1.0.17 Release (2026-09-19)
-- Latency boxplot sort by median ASC (fastest on top)
+- ✅ Latency boxplot sort by median ASC (fastest on top)
 
 ## v1.0.18 Release (2026-09-19)
-- Timezone fix for daily reports + robust Thai filtering
+- ✅ Timezone fix for daily reports + robust Thai filtering
 
 ## v1.0.19 Release (2026-09-19)
-- Graph filename suffix for Thai filtering + consistent daily reports
+- ✅ Graph filename suffix for Thai filtering + consistent daily reports
 
 ## v1.0.20 Release (2026-09-19)
-- Timezone fix for daily reports + robust Thai filtering
+- ✅ Timezone fix for daily reports + robust Thai filtering
 
 ## v1.0.21 Release (2026-09-19)
-- Debug logging for daily reports + robust Thai filtering
+- ✅ Debug logging for daily reports + robust Thai filtering
+
+## v1.0.22 Release (2026-09-20)
+- ✅ Manual daily report fixes: Thai-only filter, latency boxplot sort, daily heatmap month context
+
+## v1.0.23 Release (2026-09-20)
+- ✅ Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task
+
+## v1.0.24 Release (2026-09-20)
+- ✅ Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version
+
+## v1.0.25 Release (2026-09-20 17:30:00)
+- ✅ Missing daily report on startup now merges month data (Sep 1 to yesterday) for daily availability heatmap
+- ✅ Daily heatmap title format: "Days 1 to N" (EN) / "วันที่ 1 ถึง N" (TH) — clearer than "Month: 1st to DD MMM"
+- ✅ Month start fix: Both missing & today reports use `month_start = day 1`
 
 ---
 
@@ -350,13 +368,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.15/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.25/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.15`
+  3. `sudo ./install.sh v1.0.25`
   4. แก้ `/etc/chk-a/env` ใส่ Telegram credentials
   5. แก้ `/etc/chk-a/config.yaml` ใส่ FQDNs/resolvers
   6. `sudo systemctl restart chk-a`
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*

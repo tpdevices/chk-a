@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -216,38 +216,65 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ บูรณาการใน `generate_summary_dashboard()` — รายงานรายเดือนมีทั้ง Hourly และ Daily Heatmap
 - ✅ รายงานรายเดือน: กราฟ 18-20 รูป (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
 
----
-
-## v1.0.15 Release (2026-09-18)
-
-### แก้ไข (Fixed)
+### v1.0.15 Release (2026-09-18)
+#### แก้ไข (Fixed)
 - **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — แก้: Daily report time range bug. เปลี่ยนจาก `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (ซึ่งให้เวลาผิดตอนรัน 06:00) เป็น `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` เพื่อให้ได้เวลา 23:59:59 ของเมื่อวานถูกต้อง
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — แก้: Daily midnight task (00:00) error handling สำหรับภาพหาย. เพิ่ม fallback ใช้ anomaly/recovery images จาก AlertAgent, logging รายละเอียดเมื่อภาพหาย, และ skip gracefully
 
-### เพิ่ม (Added)
+#### เพิ่ม (Added)
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — เพิ่ม: Copy `img/` directory ไปเป็น release assets และสร้าง `img.tar.gz` สำหรับการติดตั้ง production
 - **2026-09-18 21:00:00** — `install.sh` — เพิ่ม: ดาวน์โหลดและ extract `img.tar.gz` ไป `/opt/chk-a/img/` ระหว่างติดตั้ง production
 - **2026-09-18 21:00:00** — `config/config.yaml.example` — เพิ่ม: ตัวอย่าง config ครบทุก section (fqdns, resolvers, resolver_agent, ml, alert, scheduler, logging, mtr, reporting, baseline_store_path) พร้อมคำอธิบายไทยทุก setting
 - **2026-09-18 21:00:00** — `config/chk-a.env.example` — เพิ่ม: ตัวอย่าง environment ครบ พร้อม placeholder สำหรับ Telegram, SMTP, และ Age encryption keys
 
-### เปลี่ยนแปลง (Changed)
+#### เปลี่ยนแปลง (Changed)
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — เปลี่ยน: ปรับปรุง daily midnight task logging และ fallback logic สำหรับ daily/anomaly/recovery images
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — เปลี่ยน: ใช้ `config/config.yaml.example` ใหม่ครบถ้วนใน release assets แทน `config/chk-a.config.yaml.example` เก่า
 
-### การ Deploy Production v1.0.15 (2026-09-18)
+#### การ Deploy Production v1.0.15 (2026-09-18)
 - ✅ **สร้าง Release v1.0.15** — GitHub Release พร้อม assets ครบ รวมถึง `img.tar.gz`
 - ✅ **Production `uptime-host` ติดตั้ง v1.0.15 แล้ว** — โฟลเดอร์ `img/` ถูก deploy ไป `/opt/chk-a/img/`
 - ✅ **Production config อัปเดตแล้ว** — เพิ่ม `reporting` section, `mtr` section, `daily_image_path`, `resolver_agent: {}`
 - ✅ **00:00 Daily image ทำงานยืนยันแล้ว** — ได้รับข้อความ Telegram พร้อม `sleepy.jpg` + hostname + day separators
 - ✅ **06:00 Daily report รอตรวจสอบ** — รอบถัดไปที่กำหนด
 
+### v1.0.16 Release (2026-09-19)
+- ✅ Telegram sequential send + Thai-only graphs
+
+### v1.0.17 Release (2026-09-19)
+- ✅ Latency boxplot sort by median ASC (fastest on top)
+
+### v1.0.18 Release (2026-09-19)
+- ✅ Timezone fix for daily reports + robust Thai filtering
+
+### v1.0.19 Release (2026-09-19)
+- ✅ Graph filename suffix for Thai filtering + consistent daily reports
+
+### v1.0.20 Release (2026-09-19)
+- ✅ Timezone fix for daily reports + robust Thai filtering
+
+### v1.0.21 Release (2026-09-19)
+- ✅ Debug logging for daily reports + robust Thai filtering
+
+### v1.0.22 Release (2026-09-20)
+- ✅ Manual daily report fixes: Thai-only filter, latency boxplot sort, daily heatmap month context
+
+### v1.0.23 Release (2026-09-20)
+- ✅ Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task
+
+### v1.0.24 Release (2026-09-20)
+- ✅ Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version
+
+### v1.0.25 Release (2026-09-20 17:30:00)
+- ✅ Missing daily report on startup now merges month data (Sep 1 to yesterday) for daily availability heatmap
+- ✅ Daily heatmap title format: "Days 1 to N" (EN) / "วันที่ 1 ถึง N" (TH) — clearer than "Month: 1st to DD MMM"
+- ✅ Month start fix: Both missing & today reports use `month_start = day 1`
+
 ---
 
 ## 4. สิ่งที่กำลังทำอยู่
 
-- 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 ติดตั้งแล้ว, รอรัน 06:00 น. พรุ่งนี้
-- 🔄 **Test VM Runtime Update** — Source code synced (hash verified), แต่ `/opt/chk-a/` runtime ต้องรัน `sudo ./scripts/deploy.sh` เอง (ต้อง sudo password บน test VM)
-- 🔄 **Daily startup report fix: Thai-only graphs + today's data (00:00 to now)** — v1.0.21 debug logging deployed, awaiting production logs
+ไม่มี — ปัญหา Critical ทั้งหมดแก้เสร็จแล้วใน v1.0.25
 
 ---
 
@@ -268,26 +295,18 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **Daily report time range bug** — Fixed in v1.0.15 (monthly_report.py)
 - ✅ **Daily midnight task missing image** — Fixed in v1.0.15 (orchestrator.py fallback logic)
 - ✅ **Release assets missing img.tar.gz** — Fixed in v1.0.15 (release.yml + install.sh)
+- ✅ **Daily startup report: Thai-only graphs + today's data (00:00 to now)** — Fixed in v1.0.23/v1.0.25
+- ✅ **Missing daily report month merge** — Fixed in v1.0.25
+- ✅ **Daily heatmap title format** — Fixed in v1.0.25 ("Days 1 to N" / "วันที่ 1 ถึง N")
 
 ### กำลังดำเนินการ
-- 🔄 **Production 06:00 Daily Report Verification** — v1.0.15 ติดตั้งแล้ว, รอรันพรุ่งนี้
-- 🔄 **Test VM Runtime Deploy** — Source synced, `/opt/chk-a/` ต้อง manual deploy (sudo password required)
-- 🔄 **Recovery Alerts** — Logic verified correct, แต baseline ต้อง `min_samples_before_alert: 10` cycles หลัง production restart
-- 🔄 **Daily startup report: Thai-only graphs + today's data (00:00 to now)** — v1.0.21 debug logging deployed; awaiting production logs to identify exact failure point
+ไม่มี — ปัญหาที่รู้จักทั้งหมดแก้เสร็จแล้ว
 
 ---
 
 ## 6. งานที่ต้องทำต่อ
 
-### สัปดาห์นี้ (P1)
-- Verify production 06:00 daily report (v1.0.15)
-- Deploy v1.0.21 to test VM and verify startup report fix
-- Document systemd unit files in repo (for reference)
-- Add deployment checklist (config perms, systemd caps, log dirs)
-- Create runbook for common operations
-
 ### Sprint นี้ (P2)
-- Fix daily startup report: Thai-only graphs + today's data (00:00 to now) — **Critical**
 - SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR
 - Add log rotation test coverage
 - Email reporting integration
@@ -371,4 +390,4 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*

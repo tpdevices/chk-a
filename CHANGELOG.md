@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.26] - 2026-09-21 06:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-21 06:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: Scheduled daily report (06:00 AM) now merges month data (1st to yesterday) for daily availability heatmap, instead of only yesterday's data. Consistent with startup report behavior.
+
+### Changed
+- **2026-09-21 06:30:00** — `pyproject.toml` — Bumped version to 1.0.26.
+
+---
+
 ## [1.0.25] - 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)
 
 ### Fixed

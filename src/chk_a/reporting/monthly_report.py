@@ -335,9 +335,45 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     now = datetime.now(TZ)
     yesterday = now - timedelta(days=1)
     yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
-    insights = generate_ml_insights(log_path, lookback, mtr_log_path, ml_agent=ml_agent, reference_date=yesterday_end)
+    month_start = yesterday.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    # 1. Yesterday insights: full day (lookback_days from config)
+    log.info("Daily report (yesterday): yesterday=%s, yesterday_end=%s, lookback_days=%d",
+             yesterday.strftime("%Y-%m-%d"), yesterday_end.isoformat(), lookback)
+    insights_yesterday = generate_ml_insights(
+        log_path,
+        lookback,
+        mtr_log_path,
+        ml_agent=ml_agent,
+        reference_date=yesterday_end,
+    )
+
+    # 2. Month insights: 1st to yesterday_end (for daily heatmap)
+    month_lookback = (yesterday_end - month_start).days + 1  # inclusive
+    log.info("Daily report (month): month_start=%s, yesterday_end=%s, month_lookback=%d",
+             month_start.isoformat(), yesterday_end.isoformat(), month_lookback)
+    insights_month = generate_ml_insights(
+        log_path,
+        float(month_lookback),
+        mtr_log_path,
+        ml_agent=ml_agent,
+        reference_date=yesterday_end,
+    )
+
+    # 3. Merge: use yesterday's insights but replace daily_availability with month's
+    availability_yesterday = insights_yesterday.get("availability", {})
+    availability_month = insights_month.get("availability", {})
+
+    for resolver, data in availability_yesterday.items():
+        if resolver in availability_month:
+            data["daily_availability"] = availability_month[resolver].get("daily_availability", {})
+
+    # Use merged insights
+    insights = insights_yesterday
+    insights["availability"] = availability_yesterday
+
     log.info(
-        "Daily ML insights generated: %d resolvers, %.2f%% overall availability",
+        "Daily ML insights generated (merged): %d resolvers, %.2f%% overall availability",
         insights["summary"]["total_resolvers"],
         insights["summary"]["overall_availability_pct"],
     )

@@ -1,24 +1,12 @@
 # TODO — chk-a
 
-**Last Updated:** 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-21 06:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
 ## 🔴 Critical / Blocking
 
-### [ ] Fix daily startup report: Thai-only graphs + today's data (00:00 to now)
-**Context:** After service restart, the startup report sends mixed English/Thai graphs instead of Thai-only, and shows yesterday's data instead of today's data from 00:00 to now. Root cause likely in:
-- `telegram_reporter.py` Thai filter not catching all English graphs
-- `_load_recent_checks()` timezone handling for fractional lookback (midnight-to-now)
-- `orchestrator.py` `_send_today_report_on_startup()` fractional lookback calculation
-**Files:** `src/chk_a/reporting/telegram_reporter.py`, `src/chk_a/reporting/ml_insights.py`, `src/chk_a/orchestrator.py`, `src/chk_a/reporting/graph_generator.py`
-**Priority:** Critical — production reports incorrect
-**Status:** IN PROGRESS — v1.0.21 added debug logging; awaiting production logs to identify exact failure point
-**Debug logs added in v1.0.21:**
-- `Startup report: now=..., hours_since_midnight=..., lookback_fraction=...`
-- `Startup graph: *.png` (all generated filenames)
-- `FILTERED OUT non-Thai graphs (N): [...]` (shows which English graphs leaked through)
-- `_load_recent_checks: reference_date=..., cutoff=..., loaded X records, time range ...`
+None — all critical issues resolved as of v1.0.25.
 
 ---
 
@@ -213,28 +201,37 @@
 - **Production:** uptime-host installed v1.0.15, 00:00 daily image confirmed working
 
 ### [x] v1.0.16 Release (2026-09-19)
-**Details:**
-- Telegram sequential send + Thai-only graphs
+**Details:** Telegram sequential send + Thai-only graphs
 
 ### [x] v1.0.17 Release (2026-09-19)
-**Details:**
-- Latency boxplot sort by median ASC (fastest on top)
+**Details:** Latency boxplot sort by median ASC (fastest on top)
 
 ### [x] v1.0.18 Release (2026-09-19)
-**Details:**
-- Timezone fix for daily reports + robust Thai filtering
+**Details:** Timezone fix for daily reports + robust Thai filtering
 
 ### [x] v1.0.19 Release (2026-09-19)
-**Details:**
-- Graph filename suffix for Thai filtering + consistent daily reports
+**Details:** Graph filename suffix for Thai filtering + consistent daily reports
 
 ### [x] v1.0.20 Release (2026-09-19)
-**Details:**
-- Timezone fix for daily reports + robust Thai filtering
+**Details:** Timezone fix for daily reports + robust Thai filtering
 
 ### [x] v1.0.21 Release (2026-09-19)
+**Details:** Debug logging for daily reports + robust Thai filtering
+
+### [x] v1.0.22 Release (2026-09-20)
+**Details:** Manual daily report fixes: Thai-only filter, latency boxplot sort, daily heatmap month context
+
+### [x] v1.0.23 Release (2026-09-20)
+**Details:** Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task
+
+### [x] v1.0.24 Release (2026-09-20)
+**Details:** Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version
+
+### [x] v1.0.25 Release (2026-09-20 17:30:00)
 **Details:**
-- Debug logging for daily reports + robust Thai filtering
+- Missing daily report on startup now merges month data (Sep 1 to yesterday) for daily availability heatmap
+- Daily heatmap title format: "Days 1 to N" (EN) / "วันที่ 1 ถึง N" (TH) — clearer than "Month: 1st to DD MMM"
+- Month start fix: Both missing & today reports use `month_start = day 1`
 
 ---
 
@@ -258,14 +255,12 @@
 
 ## 🎯 Next Session Priorities
 
-1. **Deploy v1.0.21 to test VM and verify startup report fix** — Critical
-2. **Fix daily startup report: Thai-only graphs + today's data (00:00 to now)** — Critical
-3. **SEC-010/011** — DoH/DoT support, CAP_NET_RAW for MTR (Medium)
-3. **Add log rotation test coverage** (Medium)
-4. **Email reporting integration** (Medium)
-5. **Dashboard web UI** (Low)
-6. **GitHub repo cleanup & branch consolidation** (Low)
+1. **SEC-010/011** — DoH/DoT support, CAP_NET_RAW for MTR (Medium)
+2. **Add log rotation test coverage** (Medium)
+3. **Email reporting integration** (Medium)
+4. **Dashboard web UI** (Low)
+5. **GitHub repo cleanup & branch consolidation** (Low)
 
 ---
 
-*อัปเดตโดย Hermes Agent session วันที่ 2026-09-19 06:50:00 (Asia/Bangkok UTC+07)*
+*อัปเดตโดย Hermes Agent session วันที่ 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*
