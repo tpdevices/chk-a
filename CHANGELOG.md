@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.29] - 2026-09-21 11:00:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-21 11:00:00** — `src/chk_a/main.py` — Fixed: MTR CLI target validation auto-appends `:53` for bare IP/hostname, allowing CLI to accept bare IP/hostname as target argument without manual port specification.
+
+### Changed
+- **2026-09-21 11:00:00** — `pyproject.toml` — Bumped version to 1.0.29.
+
+---
+
 ## [1.0.28] - 2026-09-21 10:30:00 (Asia/Bangkok UTC+07)
 
 ### Fixed
