@@ -200,9 +200,17 @@ async def cmd_mtr(config: AppConfig, logger: Any, args: argparse.Namespace) -> i
     port = args.port
 
     # Create a dummy resolver config for the target
+    # MTR CLI target is just an IP/hostname, but ResolverConfig requires IP:port format
+    # Append :53 as dummy port for validation (MTR doesn't use DNS port)
     from .models.schemas import ResolverConfig
 
-    dummy_resolver = ResolverConfig(name="target", address=target)
+    # If target doesn't have a port, append :53 for validation
+    if ":" not in target and not target.startswith(("http://", "https://", "tls://")):
+        dummy_address = f"{target}:53"
+    else:
+        dummy_address = target
+
+    dummy_resolver = ResolverConfig(name="target", address=dummy_address)
 
     agent = MTRAgent(
         resolvers=[dummy_resolver],
