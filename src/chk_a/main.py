@@ -114,8 +114,12 @@ def cmd_show_baseline(config: AppConfig, logger: Any) -> int:
 
 async def cmd_test_telegram(config: AppConfig, logger: Any) -> int:
     """Send a test message via Telegram and report success/failure."""
-    telegram = TelegramClient(config.alert.telegram_bot_token, logger_name="chk_a.cli")
-    if not config.alert.telegram_bot_token or not config.alert.telegram_chat_id:
+    # Extract secret values from SecretStr
+    bot_token = config.alert.telegram_bot_token.get_secret_value() if config.alert.telegram_bot_token else ""
+    chat_id = config.alert.telegram_chat_id.get_secret_value() if config.alert.telegram_chat_id else ""
+    
+    telegram = TelegramClient(bot_token, logger_name="chk_a.cli")
+    if not bot_token or not chat_id:
         print(
             "TELEGRAM ERROR: telegram_bot_token / telegram_chat_id not set "
             "(check config or /etc/chk-a/env)",
@@ -124,7 +128,7 @@ async def cmd_test_telegram(config: AppConfig, logger: Any) -> int:
         await telegram.close()
         return 1
     ok = await telegram.send_message(
-        config.alert.telegram_chat_id,
+        chat_id,
         "<b>chk-a</b> test message — monitoring is wired correctly. ✅",
         "HTML",
     )
@@ -138,9 +142,12 @@ async def cmd_test_telegram(config: AppConfig, logger: Any) -> int:
 
 async def cmd_test_daily_image(config: AppConfig, logger: Any) -> int:
     """Send the daily image via Telegram and report success/failure."""
-    telegram = TelegramClient(config.alert.telegram_bot_token, logger_name="chk_a.cli")
-    chat_id = config.alert.daily_image_chat_id or config.alert.telegram_chat_id
-    if not config.alert.telegram_bot_token or not chat_id:
+    # Extract secret values from SecretStr
+    bot_token = config.alert.telegram_bot_token.get_secret_value() if config.alert.telegram_bot_token else ""
+    chat_id = (config.alert.daily_image_chat_id.get_secret_value() if config.alert.daily_image_chat_id else "") or (config.alert.telegram_chat_id.get_secret_value() if config.alert.telegram_chat_id else "")
+    
+    telegram = TelegramClient(bot_token, logger_name="chk_a.cli")
+    if not bot_token or not chat_id:
         print(
             "TELEGRAM ERROR: telegram_bot_token / chat_id not set "
             "(check config or /etc/chk-a/env)",

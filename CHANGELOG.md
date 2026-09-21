@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.28] - 2026-09-21 10:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-21 10:30:00** — `src/chk_a/__init__.py` — Fixed: Version detection now works both when installed as package and when running as module (`-m chk_a.main`). Added fallback to read from `pyproject.toml`.
+- **2026-09-21 10:30:00** — `src/chk_a/main.py` — Fixed: CLI commands `test-telegram` and `test-daily-image` now properly extract secret values from `SecretStr` before passing to `TelegramClient`, fixing "Object of type SecretStr is not JSON serializable" error.
+
+### Changed
+- **2026-09-21 10:30:00** — `pyproject.toml` — Bumped version to 1.0.28.
+
+---
+
 ## [1.0.27] - 2026-09-21 08:00:00 (Asia/Bangkok UTC+07)
 
 ### Added
