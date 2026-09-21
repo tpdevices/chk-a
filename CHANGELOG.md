@@ -6,13 +6,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.29] - 2026-09-21 11:00:00 (Asia/Bangkok UTC+07)
+## [1.0.29] - 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
 
 ### Fixed
 - **2026-09-21 11:00:00** — `src/chk_a/main.py` — Fixed: MTR CLI target validation auto-appends `:53` for bare IP/hostname, allowing CLI to accept bare IP/hostname as target argument without manual port specification.
+- **2026-09-21 15:30:00** — Test VM Python cache issue: Python `.pyc` cache in `/opt/chk-a/.venv/lib/python3.14/site-packages/chk_a/__pycache__/` was serving stale `__init__.py` (v0.1.0). Cleared cache with `sudo find /opt/chk-a/.venv -name '*.pyc' -path '*/chk_a/*' -delete` to serve updated `__version__` (1.0.29).
 
 ### Changed
 - **2026-09-21 11:00:00** — `pyproject.toml` — Bumped version to 1.0.29.
+- **2026-09-21 15:30:00** — Updated documentation: Added cache clearing step to Test VM deployment guide.
 
 ---
 

@@ -1,6 +1,6 @@
 # TODO — chk-a
 
-**Last Updated:** 2026-09-21 11:00:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -233,6 +233,27 @@ None — all critical issues resolved as of v1.0.25.
 - Daily heatmap title format: "Days 1 to N" (EN) / "วันที่ 1 ถึง N" (TH) — clearer than "Month: 1st to DD MMM"
 - Month start fix: Both missing & today reports use `month_start = day 1`
 
+### [x] v1.0.26 Release (2026-09-21 06:30:00)
+**Details:**
+- Fixed: Scheduled daily report (06:00 AM) now merges month data (1st to yesterday) for daily availability heatmap, instead of only yesterday's data. Consistent with startup report behavior.
+
+### [x] v1.0.27 Release (2026-09-21 08:00:00)
+**Details:**
+- Version display across all reports:
+  - Graphs: Version shown in footer center (`vX.Y.Z`) via `_add_header_footer()` in `graph_generator.py`
+  - Telegram Monthly Summary: Version at end of message via `create_telegram_summary()` in `telegram_reporter.py`
+  - Telegram Daily Summary: Version at end of message via `create_daily_telegram_summary()` in `telegram_reporter.py`
+  - Dashboard/Reports: Version passed through `generate_summary_dashboard()` to all 8 chart types
+
+### [x] v1.0.28 Release (2026-09-21 10:30:00)
+**Details:**
+- Fixed: Version detection now works both when installed as package and when running as module (`-m chk_a.main`). Added fallback to read from `pyproject.toml`.
+- Fixed: CLI commands `test-telegram` and `test-daily-image` now properly extract secret values from `SecretStr` before passing to `TelegramClient`, fixing "Object of type SecretStr is not JSON serializable" error.
+
+### [x] v1.0.29 Release (2026-09-21 11:00:00)
+**Details:**
+- Fixed: MTR CLI target validation auto-appends `:53` for bare IP/hostname, allowing CLI to accept bare IP/hostname as target argument without manual port specification.
+
 ---
 
 ## 📋 Related Files
@@ -263,4 +284,4 @@ None — all critical issues resolved as of v1.0.25.
 
 ---
 
-*อัปเดตโดย Hermes Agent session วันที่ 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*
+*อัปเดตโดย Hermes Agent session วันที่ 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)*
