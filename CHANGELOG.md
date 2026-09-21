@@ -6,6 +6,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.27] - 2026-09-21 08:00:00 (Asia/Bangkok UTC+07)
+
+### Added
+- **2026-09-21 08:00:00** — Version display across all reports:
+  - Graphs: Version shown in footer center (`vX.Y.Z`) via `_add_header_footer()` in `graph_generator.py`
+  - Telegram Monthly Summary: Version at end of message via `create_telegram_summary()` in `telegram_reporter.py`
+  - Telegram Daily Summary: Version at end of message via `create_daily_telegram_summary()` in `telegram_reporter.py`
+  - Dashboard/Reports: Version passed through `generate_summary_dashboard()` to all 8 chart types
+
+### Changed
+- **2026-09-21 08:00:00** — `src/chk_a/__init__.py` — `__version__` now reads from `importlib.metadata` (package version) instead of hardcoded
+- **2026-09-21 08:00:00** — `src/chk_a/reporting/monthly_report.py` — Monthly & scheduled daily reports pass version to graphs and Telegram
+- **2026-09-21 08:00:00** — `src/chk_a/orchestrator.py` — Startup & missing daily reports pass version to graphs and Telegram
+- **2026-09-21 08:00:00** — `pyproject.toml` — Bumped version to 1.0.27
+
+---
+
 ## [1.0.26] - 2026-09-21 06:30:00 (Asia/Bangkok UTC+07)
 
 ### Fixed

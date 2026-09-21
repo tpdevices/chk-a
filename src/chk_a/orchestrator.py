@@ -38,6 +38,7 @@ from .agents.ml_agent import MLAgent
 from .agents.mtr_agent import MTRAgent
 from .agents.resolver_agent import ResolverAgent
 from .config.loader import AppConfig
+from . import __version__ as chk_a_version
 from .models.schemas import (
     AnomalyEvent,
     CheckResult,
@@ -1143,7 +1144,8 @@ class Orchestrator:
                 # Only generate Thai graphs for Telegram (TH-only per user request)
                 th_graphs = generate_summary_dashboard(
                     insights, report_output_dir, lang="th", hostname=self.hostname,
-                    report_date_context=f"รายงานข้อมูลวันนี้ :{today_str} (00:00-ตอนนี้)"
+                    report_date_context=f"รายงานข้อมูลวันนี้ :{today_str} (00:00-ตอนนี้)",
+                    version=chk_a_version,
                 )
                 all_graphs = th_graphs  # Only Thai graphs
                 self.logger.info("Generated %d Thai graph files for today's startup report", len(all_graphs))
@@ -1166,6 +1168,7 @@ class Orchestrator:
                         graph_paths=all_graphs,
                         hostname=self.hostname,
                         lookback_days=lookback_fraction,
+                        version=chk_a_version,
                     )
                     self.logger.info("Today's startup report for %s sent to Telegram successfully", today_str)
                 else:
@@ -1276,7 +1279,8 @@ class Orchestrator:
                 # Only generate Thai graphs for Telegram (TH-only per user request)
                 th_graphs = generate_summary_dashboard(
                     insights, report_output_dir, lang="th", hostname=self.hostname,
-                    report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str} (เริ่มต้น)"
+                    report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str} (เริ่มต้น)",
+                    version=chk_a_version,
                 )
                 all_graphs = th_graphs  # Only Thai graphs
                 self.logger.info("Generated %d Thai graph files for missing daily report", len(all_graphs))
@@ -1300,6 +1304,7 @@ class Orchestrator:
                             graph_paths=all_graphs,
                             hostname=self.hostname,
                             lookback_days=lookback_days,
+                            version=chk_a_version,
                         )
                         self.logger.info("Missing daily report for %s sent to Telegram successfully", yesterday_str)
                     else:

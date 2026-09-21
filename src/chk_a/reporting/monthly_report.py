@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from ..config.loader import AppConfig
+from .. import __version__ as chk_a_version
 
 # Late import to avoid circular dependency
 from ..agents.ml_agent import MLAgent
@@ -91,12 +92,14 @@ class MonthlyReportGenerator:
         # Generate English graphs with date context in title
         en_graphs = generate_summary_dashboard(
             insights, graphs_dir, lang="en", hostname=self.hostname,
-            report_date_context=f"Monthly report for :{lastmonth}"
+            report_date_context=f"Monthly report for :{lastmonth}",
+            version=chk_a_version,
         )
         # Generate Thai graphs (separate files for Thai labels)
         th_graphs = generate_summary_dashboard(
             insights, graphs_dir, lang="th", hostname=self.hostname,
-            report_date_context=f"รายงานข้อมูลของเดือน :{lastmonth}"
+            report_date_context=f"รายงานข้อมูลของเดือน :{lastmonth}",
+            version=chk_a_version,
         )
 
         all_graphs = en_graphs + th_graphs
@@ -149,6 +152,7 @@ class MonthlyReportGenerator:
             graph_paths=graph_paths,
             pdf_paths=pdf_paths,
             lang="th",  # Thai summary for Telegram
+            version=chk_a_version,
         )
         return results
 
@@ -391,7 +395,8 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     # THAI ONLY for Telegram (consistent with telegram_reporter)
     th_graphs = generate_summary_dashboard(
         insights, output_dir, lang="th", hostname=hostname,
-        report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str}"
+        report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str}",
+        version=chk_a_version,
     )
     all_graphs = th_graphs
     log.info("Generated %d Thai graph files for daily report (scheduled)", len(all_graphs))
@@ -416,6 +421,7 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
                 graph_paths=all_graphs,
                 hostname=hostname,
                 lookback_days=lookback,
+                version=chk_a_version,
             )
         else:
             log.warning("Telegram credentials not configured for daily report - skipping")

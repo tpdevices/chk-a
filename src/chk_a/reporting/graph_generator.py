@@ -150,24 +150,28 @@ def _add_header_footer(
     title: str,
     hostname: str | None = None,
     lang: str = "en",
+    version: str | None = None,
 ) -> None:
     """Add standardized header (title) and footer (hostname + last update) to figure.
 
     Footer language follows lang parameter: Thai for lang='th', English for lang='en'.
-    Left: hostname, Right: timestamp
-    Title supports newline (\\n) for multi-line headers.
+    Left: hostname, Center: version, Right: timestamp
+    Title supports newline (\n) for multi-line headers.
     """
     hostname = hostname or "unknown-host"
     timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    version_str = f"v{version}" if version else ""
 
-    # Footer language follows lang parameter - split left/right
+    # Footer language follows lang parameter - split left/center/right
     if lang == "th":
         left_text = f"ตรวจสอบจากเครื่อง : \"{hostname}\""
+        center_text = version_str
         right_text = f"อัปเดตล่าสุด : {timestamp}"
         font_props = THAI_FONT if THAI_FONT else None
         title_font = THAI_FONT_TITLE if THAI_FONT else None
     else:
         left_text = f"Checked from host : \"{hostname}\""
+        center_text = version_str
         right_text = f"Last Update : {timestamp}"
         font_props = None
         title_font = None
@@ -189,6 +193,16 @@ def _add_header_footer(
         color=COLORS["dark"],
         fontproperties=font_props,
     )
+
+    # Center footer - version (bottom-center)
+    if center_text:
+        fig.text(
+            0.5, 0.025, center_text,
+            ha="center", va="bottom",
+            fontsize=8, fontweight="normal",
+            color=COLORS["dark"],
+            fontproperties=font_props,
+        )
 
     # Right footer - timestamp (bottom-right)
     fig.text(
@@ -301,6 +315,7 @@ def generate_availability_bar_chart(
     title: str = "Resolver Availability (%)",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate horizontal bar chart of resolver availability."""
     if not availability_data:
@@ -344,7 +359,7 @@ def generate_availability_bar_chart(
     # Invert y-axis so best is at top
     ax.invert_yaxis()
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -355,6 +370,7 @@ def generate_availability_heatmap(
     title: str = "Hourly Availability Heatmap",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate heatmap of hourly availability per resolver."""
     if not availability_data:
@@ -398,7 +414,7 @@ def generate_availability_heatmap(
                 color = "white" if val < 50 else "black"
                 ax.text(h, i, f"{val:.0f}%", ha="center", va="center", fontsize=7, color=color)
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -409,6 +425,7 @@ def generate_availability_daily_heatmap(
     title: str = "Daily Availability Heatmap",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate heatmap of daily availability per resolver (for monthly reports)."""
     if not availability_data:
@@ -463,7 +480,7 @@ def generate_availability_daily_heatmap(
                 color = "white" if val < 50 else "black"
                 ax.text(j, i, f"{val:.0f}%", ha="center", va="center", fontsize=7, color=color)
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -474,6 +491,7 @@ def generate_integrity_chart(
     title: str = "Resolver Integrity Score (ML-based)",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate horizontal bar chart of ML-based integrity scores."""
     if not integrity_data:
@@ -517,7 +535,7 @@ def generate_integrity_chart(
     ax.legend(loc="lower right")
     ax.invert_yaxis()
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -528,6 +546,7 @@ def generate_latency_boxplot(
     title: str = "Resolver Latency Distribution (ms)",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate box plot of latency distributions per resolver.
 
@@ -598,7 +617,7 @@ def generate_latency_boxplot(
     if "median" not in title.lower():
         title = f"{title}\n(sorted by median latency, fastest first)"
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -609,6 +628,7 @@ def generate_ip_stability_chart(
     title: str = "Resolver IP Stability & Diversity",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate scatter plot of IP stability vs unique IP count."""
     if not integrity_data:
@@ -656,7 +676,7 @@ def generate_ip_stability_chart(
     )
     ax.legend(loc="lower right")
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -667,6 +687,7 @@ def generate_mtr_path_visualization(
     title: str = "MTR Network Path Visualization",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate a visual representation of MTR network path with loss% and latency per hop.
 
@@ -755,7 +776,7 @@ def generate_mtr_path_visualization(
     ax.legend(loc="lower right")
 
     ax.invert_yaxis()
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -766,6 +787,7 @@ def generate_path_availability_chart(
     title: str = "Network Path Availability (ML-based)",
     lang: str = "en",
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Generate horizontal bar chart of network path availability with ML health scores.
 
@@ -833,7 +855,7 @@ def generate_path_availability_chart(
     # Invert y-axis so best is at top
     ax.invert_yaxis()
 
-    _add_header_footer(fig, ax, title, hostname, lang)
+    _add_header_footer(fig, ax, title, hostname, lang, version)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -844,6 +866,7 @@ def generate_summary_dashboard(
     lang: str = "en",
     hostname: str | None = None,
     report_date_context: str | None = None,
+    version: str | None = None,
 ) -> list[Path]:
     """Generate all graphs and return list of generated file paths."""
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -887,12 +910,12 @@ def generate_summary_dashboard(
 
     # 1. Availability bar chart
     path = output_dir / f"availability-bar{timestamp}{lang_suffix}.png"
-    generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname)
+    generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname, version=version)
     generated.append(path)
 
     # 2. Availability heatmap (hourly)
     path = output_dir / f"availability-heatmap{timestamp}{lang_suffix}.png"
-    generate_availability_heatmap(availability, path, title=base_titles["availability_heatmap"], lang=lang, hostname=hostname)
+    generate_availability_heatmap(availability, path, title=base_titles["availability_heatmap"], lang=lang, hostname=hostname, version=version)
     generated.append(path)
 
     # 3. Availability daily heatmap (NEW - for monthly reports)
@@ -920,36 +943,36 @@ def generate_summary_dashboard(
         if report_date_context:
             daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
     
-    generate_availability_daily_heatmap(availability, path, title=daily_heatmap_title, lang=lang, hostname=hostname)
+    generate_availability_daily_heatmap(availability, path, title=daily_heatmap_title, lang=lang, hostname=hostname, version=version)
     generated.append(path)
 
     # 4. Integrity chart
     path = output_dir / f"integrity-score{timestamp}{lang_suffix}.png"
-    generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname)
+    generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname, version=version)
     generated.append(path)
 
     # 4. Latency boxplot
     path = output_dir / f"latency-boxplot{timestamp}{lang_suffix}.png"
-    generate_latency_boxplot(availability, path, title=base_titles["latency"], lang=lang, hostname=hostname)
+    generate_latency_boxplot(availability, path, title=base_titles["latency"], lang=lang, hostname=hostname, version=version)
     generated.append(path)
 
     # 5. IP stability chart
     path = output_dir / f"ip-stability{timestamp}{lang_suffix}.png"
-    generate_ip_stability_chart(integrity, path, title=base_titles["ip_stability"], lang=lang, hostname=hostname)
+    generate_ip_stability_chart(integrity, path, title=base_titles["ip_stability"], lang=lang, hostname=hostname, version=version)
     generated.append(path)
 
     # 6. MTR path visualization (if MTR data available)
     mtr_data = ml_insights.get("mtr", {})
     if mtr_data:
         path = output_dir / f"mtr-path{timestamp}{lang_suffix}.png"
-        generate_mtr_path_visualization(mtr_data, path, title=base_titles["mtr_path"], lang=lang, hostname=hostname)
+        generate_mtr_path_visualization(mtr_data, path, title=base_titles["mtr_path"], lang=lang, hostname=hostname, version=version)
         generated.append(path)
 
     # 7. Path availability chart (ML-based)
     path_availability = ml_insights.get("path_availability", {})
     if path_availability:
         path = output_dir / f"path-availability{timestamp}{lang_suffix}.png"
-        generate_path_availability_chart(path_availability, path, title=base_titles["path_availability"], lang=lang, hostname=hostname)
+        generate_path_availability_chart(path_availability, path, title=base_titles["path_availability"], lang=lang, hostname=hostname, version=version)
         generated.append(path)
 
     log.info("Generated %d graphs in %s", len(generated), output_dir)
@@ -961,6 +984,7 @@ def generate_availability_bar_chart_th(
     availability_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of availability bar chart."""
     generate_availability_bar_chart(
@@ -969,6 +993,7 @@ def generate_availability_bar_chart_th(
         title="ความพร้อมใช้งานของ Resolver (%)",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -976,6 +1001,7 @@ def generate_availability_heatmap_th(
     availability_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of availability heatmap."""
     generate_availability_heatmap(
@@ -984,6 +1010,7 @@ def generate_availability_heatmap_th(
         title="Heatmap ความพร้อมใช้งานรายชั่วโมง",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -991,6 +1018,7 @@ def generate_availability_daily_heatmap_th(
     availability_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of daily availability heatmap."""
     generate_availability_daily_heatmap(
@@ -999,6 +1027,7 @@ def generate_availability_daily_heatmap_th(
         title="Heatmap ความพร้อมใช้งานรายวัน",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -1006,6 +1035,7 @@ def generate_integrity_chart_th(
     integrity_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of integrity chart."""
     generate_integrity_chart(
@@ -1014,6 +1044,7 @@ def generate_integrity_chart_th(
         title="คะแนนความสมบูรณ์ของ Resolver (ML-based)",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -1021,6 +1052,7 @@ def generate_latency_boxplot_th(
     availability_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of latency boxplot."""
     generate_latency_boxplot(
@@ -1029,6 +1061,7 @@ def generate_latency_boxplot_th(
         title="การกระจายตัวของ Latency (ms)",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -1036,6 +1069,7 @@ def generate_ip_stability_chart_th(
     integrity_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of IP stability chart."""
     generate_ip_stability_chart(
@@ -1044,6 +1078,7 @@ def generate_ip_stability_chart_th(
         title="ความเสถียรและความหลากหลายของ IP",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -1051,15 +1086,17 @@ def generate_summary_dashboard_th(
     ml_insights: dict[str, Any],
     output_dir: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> list[Path]:
     """Thai version of summary dashboard."""
-    return generate_summary_dashboard(ml_insights, output_dir, lang="th", hostname=hostname)
+    return generate_summary_dashboard(ml_insights, output_dir, lang="th", hostname=hostname, version=version)
 
 
 def generate_mtr_path_visualization_th(
     mtr_data: dict[str, Any],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of MTR path visualization."""
     generate_mtr_path_visualization(
@@ -1068,6 +1105,7 @@ def generate_mtr_path_visualization_th(
         title="การแสดงเส้นทางเครือข่าย MTR",
         lang="th",
         hostname=hostname,
+        version=version,
     )
 
 
@@ -1075,6 +1113,7 @@ def generate_path_availability_chart_th(
     path_availability_data: dict[str, dict[str, Any]],
     output_path: Path,
     hostname: str | None = None,
+    version: str | None = None,
 ) -> None:
     """Thai version of path availability chart."""
     generate_path_availability_chart(
@@ -1083,4 +1122,5 @@ def generate_path_availability_chart_th(
         title="ความพร้อมใช้งานของเส้นทางเครือข่าย (ML-based)",
         lang="th",
         hostname=hostname,
+        version=version,
     )

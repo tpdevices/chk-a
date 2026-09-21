@@ -324,7 +324,7 @@ class TelegramReporter:
             return False
 
 
-def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> str:
+def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th", version: str | None = None) -> str:
     """Create a concise Thai summary for Telegram (not full report)."""
     summary = ml_insights.get("summary", {})
     availability = ml_insights.get("availability", {})
@@ -333,6 +333,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
 
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
     lookback = ml_insights.get("lookback_days", 30)
+    version_str = f"v{version}" if version else ""
 
     if lang == "th":
         lines = [
@@ -389,6 +390,8 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th") -> st
 
         lines.append("📎 ไฟล์ PDF เต็มรูปแบบ (EN/TH) ส่งทางอีเมล")
         lines.append("📈 กราฟแนบในข้อความนี้")
+        if version_str:
+            lines.append(f"🏷️ <b>chk-a version: {version_str}</b>")
 
         return "\n".join(lines)
 
@@ -456,6 +459,7 @@ async def send_monthly_report_telegram(
     graph_paths: list[Path],
     pdf_paths: dict[str, Path] | None = None,
     lang: str = "th",
+    version: str | None = None,
 ) -> dict[str, bool]:
     """Send monthly report summary and graphs to Telegram (sequential, Thai-only graphs).
 
@@ -466,7 +470,7 @@ async def send_monthly_report_telegram(
 
     try:
         # Summary message (Thai)
-        summary_text = create_telegram_summary(ml_insights, lang)
+        summary_text = create_telegram_summary(ml_insights, lang, version)
         success = await reporter.send_message(summary_text)
         results["summary"] = success
         if not success:
@@ -516,6 +520,7 @@ async def send_daily_report_telegram(
     graph_paths: list[Path],
     hostname: str,
     lookback_days: float = 1.0,
+    version: str | None = None,
 ) -> dict[str, bool]:
     """Send daily report summary and graphs to Telegram (sequential, Thai-only graphs)."""
     reporter = TelegramReporter(bot_token, chat_id)
@@ -523,7 +528,7 @@ async def send_daily_report_telegram(
 
     try:
         # Create daily summary (Thai, concise)
-        summary_text = create_daily_telegram_summary(ml_insights, hostname, lookback_days)
+        summary_text = create_daily_telegram_summary(ml_insights, hostname, lookback_days, version)
         success = await reporter.send_message(summary_text)
         results["summary"] = success
         if not success:
@@ -559,6 +564,7 @@ def create_daily_telegram_summary(
     ml_insights: dict[str, Any],
     hostname: str,
     lookback_days: float = 1.0,
+    version: str | None = None,
 ) -> str:
     """Create a concise Thai daily summary for Telegram."""
     summary = ml_insights.get("summary", {})
@@ -570,6 +576,7 @@ def create_daily_telegram_summary(
     from datetime import timedelta
 
     yesterday = (datetime.now() - timedelta(days=lookback_days)).strftime("%d/%m/%Y")
+    version_str = f"v{version}" if version else ""
 
     lines = [
         f"📅 <b>chk-a รายงานรายวัน ({yesterday})</b>",
@@ -636,6 +643,8 @@ def create_daily_telegram_summary(
         lines.append("")
 
     lines.append("📈 กราฟแนบด้านล่าง (Availability / Path / Integrity / Anomaly)")
+    if version_str:
+        lines.append(f"🏷️ <b>chk-a version: {version_str}</b>")
 
     return "\n".join(lines)
 
