@@ -12,7 +12,25 @@ def _get_version() -> str:
     except Exception:
         pass
     
-    # Method 2: Read from pyproject.toml (works in development)
+    # Method 2: Read from .dist-info/METADATA directly (installed package)
+    try:
+        from pathlib import Path
+        import sys
+        # Check site-packages for chk_a-*.dist-info/METADATA
+        for path in sys.path:
+            dist_info_dirs = Path(path).glob("chk_a-*.dist-info")
+            for dist_info in dist_info_dirs:
+                metadata_file = dist_info / "METADATA"
+                if metadata_file.exists():
+                    content = metadata_file.read_text()
+                    import re
+                    match = re.search(r"^Version:\s*(.+)$", content, re.MULTILINE)
+                    if match:
+                        return match.group(1).strip()
+    except Exception:
+        pass
+    
+    # Method 3: Read from pyproject.toml (development)
     try:
         from pathlib import Path
         pyproject_path = Path(__file__).parent.parent.parent / "pyproject.toml"
