@@ -6,6 +6,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.34] - 2026-09-22 16:30:00 (Asia/Bangkok UTC+07)
+
+### Changed
+- **2026-09-22 16:15:00** — `src/chk_a/reporting/graph_generator.py` — Modernized graph styling with colorblind-safe palette (viridis heatmap, semantic colors), clean aesthetics (no top/right spines, subtle grid), higher DPI (200), colorblind-safe categorical palette, Thai font improvements (bold weight, adjusted sizes). Footer version now in primary blue color.
+
+### Changed
+- **2026-09-22 16:25:00** — `pyproject.toml` — Bumped version to 1.0.34.
+
+---
+
 ## [1.0.32] - 2026-09-22 16:00:00 (Asia/Bangkok UTC+07)
 
 ### Added
