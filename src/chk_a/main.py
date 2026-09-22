@@ -45,6 +45,7 @@ def build_agents(config: AppConfig, logger: Any) -> dict[str, Any]:
     import platform
 
     hostname = platform.node()
+    from chk_a import __version__ as chk_a_version
     alert = AlertAgent(
         config.alert,
         logger,
@@ -52,6 +53,7 @@ def build_agents(config: AppConfig, logger: Any) -> dict[str, Any]:
         alert_log_path=config.alert.alert_log_path,
         alert_text_log_path=config.alert.alert_text_log_path,
         hostname=hostname,
+        version=chk_a_version,
     )
     mtr = MTRAgent(
         config.resolvers,

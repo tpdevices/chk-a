@@ -41,7 +41,7 @@ def _html_escape(value: Any) -> str:
     return html.escape(str(value))
 
 
-def _format_html(event: AnomalyEvent) -> str:
+def _format_html(event: AnomalyEvent, version: str | None = None) -> str:
     """Render the anomaly as HTML with Majority vs Outliers view."""
     d = event.details
     all_results = d.get("all_results", [])
@@ -235,6 +235,9 @@ def _format_html(event: AnomalyEvent) -> str:
             f"<b>Time:</b> {event.timestamp.strftime('%Y-%m-%d %H:%M:%S')}",
         ]
     )
+    # Add version footer if available
+    if version:
+        lines.append(f"🏷️ <b>chk-a v{version}</b>")
     return "\n".join(lines)
 
 
@@ -249,6 +252,7 @@ class AlertAgent:
         alert_log_path: str | None = None,
         alert_text_log_path: str | None = None,
         hostname: str | None = None,
+        version: str | None = None,
         # Image paths for anomaly/recovery notifications
         anomaly_image_path: str = "img/priority.jpg",
         recovery_image_path: str = "img/ok.jpg",
@@ -259,6 +263,7 @@ class AlertAgent:
         self.alert_log_path = alert_log_path or config.alert_log_path
         self.alert_text_log_path = alert_text_log_path or config.alert_text_log_path
         self.hostname = hostname or platform.node()
+        self.version = version
         # Image paths for anomaly/recovery notifications
         self.anomaly_image_path = Path(anomaly_image_path)
         self.recovery_image_path = Path(recovery_image_path)
@@ -544,7 +549,7 @@ class AlertAgent:
                     return False
 
                 # 3. Format + send with image.
-                text = _format_html(event)
+                text = _format_html(event, version=self.version)
 
                 # Select image based on event type
                 if event.type == "recovery":

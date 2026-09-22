@@ -8,6 +8,8 @@ report, including:
 - Latency distribution (box plots)
 - IP stability / diversity charts
 - MTR path visualization
+
+Modern styling with colorblind-safe palettes, high DPI, and clean aesthetics.
 """
 
 from __future__ import annotations
@@ -21,6 +23,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from matplotlib.axes import Axes
+import matplotlib.font_manager as fm
 import numpy as np
 import seaborn as sns
 
@@ -28,39 +31,126 @@ matplotlib.use("Agg")  # Non-interactive backend
 
 log = logging.getLogger(__name__)
 
-# Style configuration
-plt.style.use("seaborn-v0_8-whitegrid")
-sns.set_palette("husl")
+# ============================================================================
+# MODERN STYLE CONFIGURATION
+# ============================================================================
 
-# Color palette
+# Modern color palette - colorblind-safe, professional
 COLORS = {
-    "primary": "#2E86AB",
-    "secondary": "#A23B72",
-    "success": "#27AE60",
-    "warning": "#F39C12",
-    "danger": "#E74C3C",
-    "info": "#3498DB",
-    "light": "#ECF0F1",
-    "dark": "#2C3E50",
+    # Primary brand colors
+    "primary": "#2563EB",      # Blue-600
+    "primary_light": "#3B82F6", # Blue-500
+    "primary_dark": "#1D4ED8",  # Blue-700
+    # Semantic colors (colorblind-safe)
+    "success": "#059669",      # Emerald-600
+    "success_light": "#10B981", # Emerald-500
+    "warning": "#D97706",      # Amber-600
+    "warning_light": "#F59E0B", # Amber-500
+    "danger": "#DC2626",       # Red-600
+    "danger_light": "#EF4444",  # Red-500
+    "info": "#0891B2",         # Cyan-600
+    # Neutrals
+    "dark": "#111827",         # Gray-900
+    "dark_muted": "#374151",    # Gray-700
+    "medium": "#6B7280",       # Gray-500
+    "light": "#F3F4F6",        # Gray-100
+    "lighter": "#F9FAFB",      # Gray-50
+    "white": "#FFFFFF",
+    # Grid & borders
+    "grid": "#E5E7EB",         # Gray-200
+    "border": "#D1D5DB",       # Gray-300
 }
 
-# Thai font support (bundled with package)
+# Heatmap colormaps (colorblind-safe)
+HEATMAP_CMAP = "viridis"       # Perceptually uniform, colorblind-safe
+HEATMAP_CMAP_DIVERGING = "RdYlGn"  # For availability (red-yellow-green is standard)
+
+# Modern matplotlib rcParams
+MODERN_RCPARAMS = {
+    # Fonts
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Inter", "Sarabun", "Noto Sans Thai", "Loma", "DejaVu Sans", "Arial"],
+    "font.size": 11,
+    # Figure
+    "figure.facecolor": COLORS["white"],
+    "figure.edgecolor": "none",
+    "figure.dpi": 150,
+    "savefig.dpi": 200,
+    "savefig.facecolor": COLORS["white"],
+    "savefig.edgecolor": "none",
+    "savefig.bbox": "tight",
+    "savefig.pad_inches": 0.1,
+    # Axes
+    "axes.facecolor": COLORS["white"],
+    "axes.edgecolor": COLORS["border"],
+    "axes.linewidth": 0.8,
+    "axes.grid": True,
+    "axes.grid.axis": "both",
+    "axes.grid.which": "major",
+    "axes.axisbelow": True,
+    "axes.titlesize": 14,
+    "axes.titleweight": "600",
+    "axes.titlecolor": COLORS["dark"],
+    "axes.labelsize": 11,
+    "axes.labelweight": "500",
+    "axes.labelcolor": COLORS["dark_muted"],
+    "axes.spines.top": False,
+    "axes.spines.right": False,
+    "axes.spines.left": True,
+    "axes.spines.bottom": True,
+    # Grid
+    "grid.color": COLORS["grid"],
+    "grid.linewidth": 0.6,
+    "grid.linestyle": "-",
+    "grid.alpha": 1.0,
+    # Ticks
+    "xtick.color": COLORS["medium"],
+    "ytick.color": COLORS["medium"],
+    "xtick.labelsize": 9,
+    "ytick.labelsize": 9,
+    "xtick.major.size": 0,
+    "ytick.major.size": 0,
+    # Legend
+    "legend.frameon": True,
+    "legend.framealpha": 0.95,
+    "legend.facecolor": COLORS["white"],
+    "legend.edgecolor": COLORS["border"],
+    "legend.fancybox": True,
+    "legend.fontsize": 9,
+    "legend.title_fontsize": 10,
+    # Lines
+    "lines.linewidth": 2,
+    "lines.markersize": 6,
+    # Animation (not used but good defaults)
+    "animation.html": "none",
+}
+
+# Apply modern style
+plt.style.use("seaborn-v0_8-whitegrid")
+for key, value in MODERN_RCPARAMS.items():
+    matplotlib.rcParams[key] = value
+
+# Seaborn palette for categorical data
+sns.set_palette("colorblind")  # Colorblind-safe categorical palette
+
+# ============================================================================
+# THAI FONT SUPPORT (bundled with package)
+# ============================================================================
+
 try:
-    import matplotlib.font_manager as fm
-    from pathlib import Path
     from importlib import resources
 
     # Use bundled Loma fonts from package
     thai_fonts = []
     font_dir = None
-    
+
     # Modern importlib.resources approach (Python 3.9+)
     try:
         font_dir = resources.files("chk_a.fonts")
         thai_fonts = [f for f in font_dir.iterdir() if f.name.startswith("Loma") and f.name.endswith(".otf")]
     except Exception:
         pass
-    
+
     # Fallback for older Python / pkg_resources
     if not thai_fonts:
         try:
@@ -71,34 +161,28 @@ try:
             pass
 
     if thai_fonts:
-        # Get the font path - handle both regular files and zip-contained resources
-        # resources.as_file() is a context manager - the path is only valid within the block.
-        # To avoid this issue, try to get the path directly if it's a real file,
-        # otherwise use the context manager and create FontProperties inside it.
         font_path = None
         try:
-            # Try direct path access (works for unzipped packages)
             font_path = str(Path(thai_fonts[0]))
             if not Path(font_path).exists():
                 raise ValueError("Path does not exist")
         except Exception:
-            # Fall back to context manager for zip-contained resources
             with resources.as_file(thai_fonts[0]) as p:
                 font_path = str(p)
-                # Create FontProperties inside the context so they're valid
                 THAI_FONT = fm.FontProperties(fname=font_path)
-                THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=9)
-                THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=11)
-                THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=13)
+                THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=8)
+                THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=10)
+                THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=12)
                 THAI_FONT_TITLE = fm.FontProperties(fname=font_path, size=14, weight="bold")
+                THAI_FONT_BOLD = fm.FontProperties(fname=font_path, size=11, weight="bold")
                 log.info(f"Using bundled Thai font: {thai_fonts[0].name}")
         else:
-            # Path is valid outside context manager
             THAI_FONT = fm.FontProperties(fname=font_path)
-            THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=9)
-            THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=11)
-            THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=13)
+            THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=8)
+            THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=10)
+            THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=12)
             THAI_FONT_TITLE = fm.FontProperties(fname=font_path, size=14, weight="bold")
+            THAI_FONT_BOLD = fm.FontProperties(fname=font_path, size=11, weight="bold")
             log.info(f"Using bundled Thai font: {thai_fonts[0].name}")
     else:
         # Fallback to system fonts
@@ -109,10 +193,11 @@ try:
         ]
         if system_thai_fonts:
             THAI_FONT = fm.FontProperties(fname=system_thai_fonts[0])
-            THAI_FONT_SMALL = fm.FontProperties(fname=system_thai_fonts[0], size=9)
-            THAI_FONT_NORMAL = fm.FontProperties(fname=system_thai_fonts[0], size=11)
-            THAI_FONT_LARGE = fm.FontProperties(fname=system_thai_fonts[0], size=13)
+            THAI_FONT_SMALL = fm.FontProperties(fname=system_thai_fonts[0], size=8)
+            THAI_FONT_NORMAL = fm.FontProperties(fname=system_thai_fonts[0], size=10)
+            THAI_FONT_LARGE = fm.FontProperties(fname=system_thai_fonts[0], size=12)
             THAI_FONT_TITLE = fm.FontProperties(fname=system_thai_fonts[0], size=14, weight="bold")
+            THAI_FONT_BOLD = fm.FontProperties(fname=system_thai_fonts[0], size=11, weight="bold")
             log.info(f"Using system Thai font: {system_thai_fonts[0]}")
         else:
             THAI_FONT = None
@@ -120,6 +205,7 @@ try:
             THAI_FONT_NORMAL = None
             THAI_FONT_LARGE = None
             THAI_FONT_TITLE = None
+            THAI_FONT_BOLD = None
             log.warning("No Thai font found - Thai text may not render correctly")
 except Exception as e:
     log.warning(f"Could not load Thai font: {e}")
@@ -128,17 +214,20 @@ except Exception as e:
     THAI_FONT_NORMAL = None
     THAI_FONT_LARGE = None
     THAI_FONT_TITLE = None
+    THAI_FONT_BOLD = None
 
 
-def _get_font_props(size: int = 11, weight: str = "normal", lang: str = "en"):
+def _get_font_props(size: int = 10, weight: str = "normal", lang: str = "en"):
     """Get appropriate font properties for the given language."""
     if lang == "th" and THAI_FONT:
-        if size <= 9:
+        if size <= 8:
             return THAI_FONT_SMALL
-        elif size <= 12:
+        elif size <= 10:
             return THAI_FONT_NORMAL
-        elif size <= 13:
+        elif size <= 12:
             return THAI_FONT_LARGE
+        elif weight == "bold":
+            return THAI_FONT_BOLD
         else:
             return THAI_FONT_TITLE
     return {"fontsize": size, "fontweight": weight}
@@ -156,10 +245,10 @@ def _add_header_footer(
 
     Footer language follows lang parameter: Thai for lang='th', English for lang='en'.
     Left: hostname, Center: version, Right: timestamp
-    Title supports newline (\n) for multi-line headers.
+    Title supports newline (\\n) for multi-line headers.
     """
     hostname = hostname or "unknown-host"
-    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     version_str = f"v{version}" if version else ""
 
     # Footer language follows lang parameter - split left/center/right
@@ -178,43 +267,43 @@ def _add_header_footer(
 
     # Title (header) - centered at top, supports newline
     fig.text(
-        0.5, 0.95, title,
+        0.5, 0.94, title,
         ha="center", va="top",
-        fontsize=14, fontweight="bold",
+        fontsize=14, fontweight="600",
         color=COLORS["dark"],
         fontproperties=title_font,
     )
 
     # Left footer - hostname (bottom-left)
     fig.text(
-        0.02, 0.025, left_text,
+        0.015, 0.015, left_text,
         ha="left", va="bottom",
-        fontsize=8, fontweight="normal",
-        color=COLORS["dark"],
+        fontsize=7, fontweight="normal",
+        color=COLORS["medium"],
         fontproperties=font_props,
     )
 
     # Center footer - version (bottom-center)
     if center_text:
         fig.text(
-            0.5, 0.025, center_text,
+            0.5, 0.015, center_text,
             ha="center", va="bottom",
-            fontsize=8, fontweight="normal",
-            color=COLORS["dark"],
+            fontsize=7, fontweight="500",
+            color=COLORS["primary"],
             fontproperties=font_props,
         )
 
     # Right footer - timestamp (bottom-right)
     fig.text(
-        0.98, 0.025, right_text,
+        0.985, 0.015, right_text,
         ha="right", va="bottom",
-        fontsize=8, fontweight="normal",
-        color=COLORS["dark"],
+        fontsize=7, fontweight="normal",
+        color=COLORS["medium"],
         fontproperties=font_props,
     )
 
     # Adjust layout to make room for header and footer
-    fig.subplots_adjust(top=0.88, bottom=0.1)
+    fig.subplots_adjust(top=0.86, bottom=0.08)
 
 
 def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
@@ -237,7 +326,7 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
         "Degraded (70%)": "ลดประสิทธิภาพ (70%)",
         "Availability (%)": "ความพร้อมใช้งาน (%)",
         "Resolvers": "Resolver",
-        "Hour of Day (UTC)": "ชั่วโมง (UTC)",
+        "Hour of Day (Local)": "ชั่วโมงในวัน (เวลาท้องถิ่น)",
         "Resolver Latency Distribution (ms)": "การกระจายความหน่วงของ Resolver (มิลลิวินาที)",
         "Resolver IP Stability & Diversity": "ความเสถียรและความหลากหลายของ IP Resolver",
         "MTR Network Path Visualization": "การแสดงเส้นทางเครือข่าย MTR",
@@ -259,7 +348,6 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
     # Tick labels
     for label in ax.get_xticklabels():
         label.set_fontproperties(THAI_FONT_SMALL)
-        # Also translate tick label text if in translation map
         text = label.get_text()
         if text in thai_translations:
             label.set_text(thai_translations[text])
@@ -282,14 +370,12 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
     for text in ax.texts:
         text.set_fontproperties(THAI_FONT_SMALL)
         txt = text.get_text()
-        # Try to translate simple patterns
         for eng, thai in thai_translations.items():
             if eng in txt:
                 txt = txt.replace(eng, thai)
         text.set_text(txt)
 
     # Figure-level texts (header/footer already handled separately)
-    # But also apply to any other fig.text elements
     for text in fig.texts:
         if text.get_position()[1] > 0.85 or text.get_position()[1] < 0.05:
             # Skip header/footer (already set with Thai font)
@@ -302,9 +388,9 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
         text.set_text(txt)
 
 
-def _save_figure(fig: plt.Figure, output_path: Path, dpi: int = 300) -> None:
+def _save_figure(fig: plt.Figure, output_path: Path, dpi: int = 200) -> None:
     """Save figure with tight layout and logging."""
-    fig.savefig(output_path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    fig.savefig(output_path, dpi=dpi, bbox_inches="tight", facecolor=COLORS["white"])
     plt.close(fig)
     log.debug("Saved graph: %s", output_path)
 
