@@ -6,6 +6,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.32] - 2026-09-22 16:00:00 (Asia/Bangkok UTC+07)
+
+### Added
+- **2026-09-22 15:30:00** — `src/chk_a/storage/fqdn_store.py` — Added: FQDN-centric data model (`FQDNRecord`) and storage (`FQDNStore`) with identity (fqdn, domain, subdomain, apex), DNS records (current IPs, CNAME chain, TTL), history (IP changes with timestamps/sources), metadata (registrar, expiry, NS), monitoring state (last_checked, status, failures), alerting rules, ML features (baseline IPs, anomaly score, flip-flop count, geo shifts).
+- **2026-09-22 15:45:00** — `tests/test_fqdn_store.py` — Added: Comprehensive tests for FQDNRecord and FQDNStore (25 tests) covering creation, domain extraction, IP change history, monitoring state transitions, baseline/anomaly updates, serialization, persistence, queries (by domain, status, anomaly, recent changes), path traversal protection, corrupt/empty file handling.
+
+### Changed
+- **2026-09-22 15:50:00** — `pyproject.toml` — Bumped version to 1.0.32.
+
+---
+
+## [1.0.31] - 2026-09-22 15:30:00 (Asia/Bangkok UTC+07)
+
+### Added
+- **2026-09-22 15:00:00** — `tests/test_email_sender.py` — Added: Comprehensive email reporting tests (12 tests) covering EmailSender class (STARTTLS/implicit TLS, auth/no-auth, missing attachments, exception handling), create_email_body() function (English/Thai languages, missing summary), and MonthlyReportGenerator integration.
+
+### Changed
+- **2026-09-22 15:20:00** — `pyproject.toml` — Bumped version to 1.0.31.
+
+---
+
+## [1.0.30] - 2026-09-22 14:45:00 (Asia/Bangkok UTC+07)
+
+### Added
+- **2026-09-22 10:30:00** — `tests/test_resolver_agent.py` — Added: `test_doh_resolver_resolves()` mocking aiohttp DoH query with DNS wireformat response (SEC-010).
+- **2026-09-22 11:15:00** — `tests/test_security_regressions.py` — Added: `TestSEC011_MTRCapNetRaw` class with 3 tests verifying systemd CAP_NET_RAW capability, MTRConfig ICMP mode support, and MTRAgent ICMP privileges (SEC-011).
+- **2026-09-22 12:00:00** — `tests/test_reporting.py` — Added: Comprehensive log rotation tests for `_load_recent_checks()` covering plain JSONL, date-stamped `.bz2` rotated files, numbered `.gz` backups, mixed timezone timestamps, fractional lookback, malformed lines, non-CheckResult log lines, empty/nonexistent files, and edge cases.
+
+### Fixed
+- **2026-09-22 10:45:00** — `src/chk_a/reporting/ml_insights.py` — Fixed: `_load_recent_checks()` timestamp parsing to correctly handle mixed naive and timezone-aware timestamps, preserving local time (Asia/Bangkok) for naive timestamps while converting aware timestamps to Asia/Bangkok.
+- **2026-09-22 11:30:00** — `tests/test_ml_agent.py` — Fixed: 4 test functions replacing `tmp_path` pytest fixture with `_make_temp_path()` helper from conftest.py for baseline path consistency.
+- **2026-09-22 11:45:00** — `tests/test_loop7.py` — Fixed: 2 test functions replacing `tmp_path` pytest fixture with `_make_temp_path()` helper.
+- **2026-09-22 12:30:00** — `tests/test_integration_pipeline.py` — Fixed: 7 integration tests replacing `tmp_path` pytest fixture with `_make_temp_path()` helper and corrected fixture dependencies for baseline_store path sharing.
+
+### Changed
+- **2026-09-22 14:30:00** — `pyproject.toml` — Bumped version to 1.0.30.
+
+---
+
 ## [1.0.29] - 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
 
 ### Fixed

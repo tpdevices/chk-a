@@ -230,6 +230,9 @@ class Orchestrator:
             self.ml.storage.save()
         with contextlib.suppress(Exception):
             await self.alert.telegram.close()
+        # Close resolver agent DoH sessions
+        with contextlib.suppress(Exception):
+            await self.resolver.close()
         # Wait for startup report task if running
         if hasattr(self, '_startup_report_task') and self._startup_report_task:
             with contextlib.suppress(asyncio.CancelledError):

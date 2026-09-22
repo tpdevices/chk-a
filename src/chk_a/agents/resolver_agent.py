@@ -316,5 +316,12 @@ class ResolverAgent:
             error=error,
         )
 
+    async def close(self) -> None:
+        """Close all aiohttp sessions for DoH resolvers."""
+        for session in self._doh_sessions.values():
+            if not session.closed:
+                await session.close()
+        self._doh_sessions.clear()
+
 
 __all__ = ["ResolverAgent", "ResolverHealth"]

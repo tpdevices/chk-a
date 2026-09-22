@@ -186,7 +186,6 @@ class MonthlyReportGenerator:
             smtp_port=smtp_port,
             username=username,
             password=password,
-            use_tls=use_tls,
         )
 
         # Create email bodies

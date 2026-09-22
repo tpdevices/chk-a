@@ -379,17 +379,24 @@ def _load_recent_checks(
 
     if not records:
         return pd.DataFrame()
+    # Parse timestamps individually to handle mixed timezones (naive + aware)
+    # Naive timestamps are stored in local time (Asia/Bangkok)
+    # Timezone-aware timestamps should be converted to Asia/Bangkok
+    for rec in records:
+        ts_str = rec.get("timestamp", "")
+        try:
+            ts = datetime.fromisoformat(ts_str)
+            if ts.tzinfo is None:
+                # Naive timestamp - assume it's already in local time (Asia/Bangkok)
+                ts = ts.replace(tzinfo=default_tz)
+            else:
+                # Timezone-aware - convert to Asia/Bangkok
+                ts = ts.astimezone(default_tz)
+            rec["timestamp"] = ts
+        except Exception:
+            # If parsing fails, use reference_date as fallback
+            rec["timestamp"] = reference_date
     df = pd.DataFrame(records)
-    # Parse timestamps: keep them in local time (Asia/Bangkok) for consistent comparison
-    # Log timestamps are stored in local time (may be naive or aware).
-    # We parse without utc=True, then ensure tz-aware in Asia/Bangkok.
-    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", utc=False)
-    # If timestamps are naive, localize to Asia/Bangkok
-    if df["timestamp"].dt.tz is None:
-        df["timestamp"] = df["timestamp"].dt.tz_localize(default_tz)
-    else:
-        # Convert to Asia/Bangkok if different timezone
-        df["timestamp"] = df["timestamp"].dt.tz_convert(default_tz)
     log.debug("_load_recent_checks: loaded %d records, time range %s to %s",
               len(df), df["timestamp"].min(), df["timestamp"].max())
     return df
@@ -569,7 +576,8 @@ def compute_integrity(
     """Compute per-resolver integrity scores.
 
     Uses baseline-based scoring via MLAgent.score() when an ml_agent is provided.
-    Falls back to Isolation Forest if ml_agent is None (backward compatibility).
+    Raises ValueError if ml_agent is None (Isolation Forest fallback removed
+    due to false positives during mass-failure events).
 
     Returns a dict keyed by resolver name with:
     - integrity_score (0-100, higher = more consistent with baseline)
@@ -582,12 +590,15 @@ def compute_integrity(
     if df.empty:
         return {}
 
-    # Use baseline-based integrity if ml_agent is provided
+    # Use baseline-based integrity - ml_agent is required
     if ml_agent is not None:
         return _compute_integrity_baseline_based(df, ml_agent)
 
-    # Fall back to Isolation Forest for backward compatibility
-    return _compute_integrity_isolation_forest(df)
+    # Isolation Forest fallback removed (false positives during mass failures)
+    raise ValueError(
+        "ml_agent is required for integrity computation. "
+        "Isolation Forest fallback removed due to false anomalies during mass-failure events."
+    )
 
 
 def _compute_integrity_baseline_based(

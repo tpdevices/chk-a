@@ -261,6 +261,42 @@ async def test_dot_resolver_resolves():
     assert results[0].ips == ["1.2.3.4"]
 
 
+@pytest.mark.asyncio
+async def test_doh_resolver_resolves():
+    """DoH resolvers query via HTTPS (DNS wireformat) and return results."""
+    cfg = [ResolverConfig(name="doh", address="https://dns.google/dns-query")]
+    agent = _make_agent(cfg)
+
+    # Build a mock DNS wireformat response - use absolute names (trailing dot)
+    query = dns.message.make_query("example.com.", dns.rdatatype.A)
+    response = dns.message.make_response(query)
+    response.answer.append(dns.rrset.from_text("example.com.", 300, "IN", "A", "1.2.3.4"))
+    response_wire = response.to_wire()
+
+    # Mock the _get_doh_session method to return our mock session
+    from unittest.mock import MagicMock
+    mock_session = MagicMock()
+    mock_resp = MagicMock()
+    mock_resp.status = 200
+    mock_resp.read = AsyncMock(return_value=response_wire)
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+    mock_resp.__aexit__ = AsyncMock(return_value=None)
+    mock_session.post = MagicMock(return_value=mock_resp)
+
+    # Patch the method to return our mock session
+    async def mock_get_doh_session(resolver_name):
+        return mock_session
+
+    agent._get_doh_session = mock_get_doh_session
+
+    results = await agent.check_fqdn("example.com")
+
+    assert len(results) == 1
+    assert results[0].success is True
+    assert results[0].ips == ["1.2.3.4"]
+
+
 # --------------------------------------------------------------------------- #
 # Concurrency
 # --------------------------------------------------------------------------- #

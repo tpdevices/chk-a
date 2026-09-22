@@ -11,6 +11,9 @@ from __future__ import annotations
 import asyncio
 from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+import os
+import uuid
+from pathlib import Path
 
 import pytest
 
@@ -37,10 +40,32 @@ from chk_a.storage.baseline_store import BaselineStore
 from chk_a.utils.context import get_correlation_id, new_correlation_id, set_correlation_id
 from chk_a.utils.telegram_client import TelegramClient
 
+# Set allowed base dir for tests
+BASELINE_TEST_DIR = "/tmp/chk-a-test"
+os.environ["CHK_A_BASELINE_DIR"] = BASELINE_TEST_DIR
+Path(BASELINE_TEST_DIR).mkdir(parents=True, exist_ok=True)
+
+
+def _make_temp_path(suffix: str = "baselines.json") -> Path:
+    """Create a temp file path within the allowed test directory."""
+    return Path(BASELINE_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
+
 
 # Test fixtures
 @pytest.fixture
-def mock_config(tmp_path) -> AppConfig:
+def baseline_store_path() -> str:
+    """Create a temp baseline store path."""
+    return str(_make_temp_path("baselines.json"))
+
+
+@pytest.fixture
+def baseline_store(baseline_store_path) -> BaselineStore:
+    """Create a BaselineStore with temp path."""
+    return BaselineStore(baseline_store_path)
+
+
+@pytest.fixture
+def mock_config(baseline_store_path) -> AppConfig:
     """Create a test AppConfig with all required fields."""
     return AppConfig(
         fqdns=[
@@ -79,18 +104,12 @@ def mock_config(tmp_path) -> AppConfig:
             resolvers=[],
             timeout_sec=10,
         ),
-        baseline_store_path=str(tmp_path / "baselines.json"),
+        baseline_store_path=baseline_store_path,
         logging=LoggingConfig(
-            file=str(tmp_path / "checks.jsonl"),
+            file=str(_make_temp_path("checks.jsonl")),
             level="INFO",
         ),
     )
-
-
-@pytest.fixture
-def baseline_store(tmp_path) -> BaselineStore:
-    """Create a BaselineStore with temp path."""
-    return BaselineStore(tmp_path / "baselines.json")
 
 
 def _make_resolver_result(resolver: str, fqdn: str, ips: list[str], success: bool = True, error: str | None = None) -> CheckResult:
@@ -133,7 +152,7 @@ class TestPipelineIntegration:
     """Integration tests for the full pipeline."""
 
     @pytest.mark.asyncio
-    async def test_full_pipeline_happy_path(self, mock_config, baseline_store, tmp_path):
+    async def test_full_pipeline_happy_path(self, mock_config, baseline_store):
         """Test complete pipeline: DNS → Consensus → ML → Alert with correlation ID."""
         # Create mock telegram
         mock_telegram = MagicMock()
@@ -190,7 +209,7 @@ class TestPipelineIntegration:
             assert alert_agent._dedup == {}  # No dedup entries created
 
     @pytest.mark.asyncio
-    async def test_pipeline_with_anomaly_detection(self, mock_config, baseline_store, tmp_path):
+    async def test_pipeline_with_anomaly_detection(self, mock_config, baseline_store):
         """Test pipeline detects anomaly after learning baseline."""
         mock_telegram = MagicMock()
         mock_telegram.send_message = AsyncMock(return_value=True)
@@ -250,7 +269,7 @@ class TestPipelineIntegration:
                     assert score > 0  # Anomaly detected
 
     @pytest.mark.asyncio
-    async def test_correlation_id_propagation(self, mock_config, baseline_store, tmp_path):
+    async def test_correlation_id_propagation(self, mock_config, baseline_store):
         """Test correlation ID propagates through entire pipeline."""
         # Set a correlation ID at the start
         test_cid = "test-correlation-id-12345"
@@ -307,7 +326,7 @@ class TestPipelineIntegration:
             set_correlation_id(None)
 
     @pytest.mark.asyncio
-    async def test_orchestrator_single_cycle(self, mock_config, baseline_store, tmp_path):
+    async def test_orchestrator_single_cycle(self, mock_config, baseline_store):
         """Test Orchestrator.run_cycle() executes all agents in order."""
         mock_telegram = MagicMock()
         mock_telegram.send_message = AsyncMock(return_value=True)
@@ -335,7 +354,7 @@ class TestPipelineIntegration:
                 # Just verify run_cycle completed without error
 
     @pytest.mark.asyncio
-    async def test_orchestrator_shutdown_persists_baseline(self, mock_config, baseline_store, tmp_path):
+    async def test_orchestrator_shutdown_persists_baseline(self, mock_config, baseline_store, baseline_store_path):
         """Test Orchestrator shutdown saves baseline."""
         mock_telegram = MagicMock()
         mock_telegram.send_message = AsyncMock(return_value=True)
@@ -365,12 +384,11 @@ class TestPipelineIntegration:
             await orchestrator.shutdown()
 
         # Verify baseline was saved
-        baseline_path = tmp_path / "baselines.json"
-        assert baseline_path.exists()
+        assert Path(baseline_store_path).exists()
 
         # Verify can reload
         from chk_a.storage.baseline_store import BaselineStore as BS
-        reloaded = BS(baseline_path)
+        reloaded = BS(baseline_store_path)
         baseline = reloaded.get_baseline("example.com")
         assert baseline == {"1.2.3.4": 1.0}
 

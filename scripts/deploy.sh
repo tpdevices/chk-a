@@ -20,6 +20,10 @@ fi
 echo "Deploying src/chk_a/..."
 sudo rsync -avz -c --delete "$SRC/src/chk_a/" "$DST/src/chk_a/"
 
+# Deploy pyproject.toml (for version and package metadata)
+echo "Deploying pyproject.toml..."
+sudo rsync -avz -c "$SRC/pyproject.toml" "$DST/pyproject.toml"
+
 # Deploy scripts
 echo "Deploying scripts/..."
 sudo rsync -avz -c "$SRC/scripts/" "$DST/scripts/"
@@ -29,6 +33,11 @@ if [[ -d "$SRC/config" ]]; then
     echo "Deploying config templates..."
     sudo rsync -avz -c "$SRC/config/" "$DST/config/"
 fi
+
+# Reinstall Python package to pick up new version
+echo "Reinstalling Python package..."
+cd "$DST"
+sudo /opt/chk-a/.venv/bin/pip install -e . --no-build-isolation 2>&1 | tail -5
 
 # Restart service
 echo "Restarting chk-a service..."

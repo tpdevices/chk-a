@@ -9,8 +9,19 @@ from __future__ import annotations
 
 import asyncio
 import os
+import uuid
+from pathlib import Path
 
-os.environ["CHK_A_BASELINE_DIR"] = "/tmp"
+# Set allowed base dir for tests
+BASELINE_TEST_DIR = "/tmp/chk-a-test"
+os.environ["CHK_A_BASELINE_DIR"] = BASELINE_TEST_DIR
+Path(BASELINE_TEST_DIR).mkdir(parents=True, exist_ok=True)
+
+
+def _make_temp_path(suffix: str = "baselines.json") -> Path:
+    """Create a temp file path within the allowed test directory."""
+    return Path(BASELINE_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
+
 
 from chk_a.config.loader import load_config
 from chk_a.utils.context import (
@@ -44,15 +55,15 @@ def test_validate_config_cli() -> None:
     assert cmd_validate_config(config) == 0
 
 
-def test_show_baseline_cli_runs(capsys, tmp_path) -> None:  # type: ignore[no-untyped-def]
+def test_show_baseline_cli_runs(capsys) -> None:
     from chk_a.main import cmd_show_baseline
     from chk_a.utils.logger import setup_logger
 
     config = load_config("config/settings.yaml")
-    config.baseline_store_path = str(tmp_path / "baselines.json")
-    config.alert.alert_log_path = str(tmp_path / "alerts.jsonl")
-    config.alert.alert_text_log_path = str(tmp_path / "alerts.log")
-    config.alert.dedup_cache_path = str(tmp_path / "dedup_cache.json")
+    config.baseline_store_path = str(_make_temp_path("baselines.json"))
+    config.alert.alert_log_path = str(_make_temp_path("alerts.jsonl"))
+    config.alert.alert_text_log_path = str(_make_temp_path("alerts.log"))
+    config.alert.dedup_cache_path = str(_make_temp_path("dedup_cache.json"))
     logger = setup_logger("chk_a.test")
     rc = cmd_show_baseline(config, logger)
     assert rc == 0
@@ -60,15 +71,15 @@ def test_show_baseline_cli_runs(capsys, tmp_path) -> None:  # type: ignore[no-un
     assert "example.com" in out
 
 
-def test_check_once_cli_runs(tmp_path) -> None:
+def test_check_once_cli_runs() -> None:
     from chk_a.main import cmd_check_once
     from chk_a.utils.logger import setup_logger
 
     config = load_config("config/settings.yaml")
-    config.baseline_store_path = str(tmp_path / "baselines.json")
-    config.alert.alert_log_path = str(tmp_path / "alerts.jsonl")
-    config.alert.alert_text_log_path = str(tmp_path / "alerts.log")
-    config.alert.dedup_cache_path = str(tmp_path / "dedup_cache.json")
+    config.baseline_store_path = str(_make_temp_path("baselines.json"))
+    config.alert.alert_log_path = str(_make_temp_path("alerts.jsonl"))
+    config.alert.alert_text_log_path = str(_make_temp_path("alerts.log"))
+    config.alert.dedup_cache_path = str(_make_temp_path("dedup_cache.json"))
     logger = setup_logger("chk_a.test")
     # Runs a real (network) cycle; should complete without raising.
     rc = asyncio.run(cmd_check_once(config, logger))

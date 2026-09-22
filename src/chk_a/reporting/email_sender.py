@@ -12,6 +12,8 @@ from email.mime.text import MIMEText
 from pathlib import Path
 from typing import Any
 
+from pydantic import SecretStr
+
 log = logging.getLogger(__name__)
 
 
@@ -23,14 +25,16 @@ class EmailSender:
         smtp_host: str,
         smtp_port: int,
         username: str,
-        password: str,
+        password: str | SecretStr,
         timeout: int = 30,
+        ssl_context: ssl.SSLContext | None = None,
     ):
         self.smtp_host = smtp_host
         self.smtp_port = smtp_port
         self.username = username
-        self.password = password
+        self.password = password.get_secret_value() if isinstance(password, SecretStr) else password
         self.timeout = timeout
+        self.ssl_context = ssl_context or ssl.create_default_context()
 
     def send_report(
         self,
@@ -74,7 +78,7 @@ class EmailSender:
                 msg.attach(part)
 
             # Send
-            context = ssl.create_default_context()
+            context = self.ssl_context
             if self.smtp_port == 465:
                 # Implicit TLS (SMTPS)
                 with smtplib.SMTP_SSL(self.smtp_host, self.smtp_port, context=context, timeout=self.timeout) as server:

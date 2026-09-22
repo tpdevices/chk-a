@@ -15,50 +15,63 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import uuid
 
 from chk_a.agents.ml_agent import MLAgent
 from chk_a.models.schemas import ConsensusResult, MLConfig
 from chk_a.storage.baseline_store import BaselineStore
 
-# Allow tests to use temporary directories (set before BaselineStore import)
-os.environ["CHK_A_BASELINE_DIR"] = "/tmp"
+# Allow tests to use temporary directories under allowed base dir
+# SEC-002 compatibility: must be under CHK_A_BASELINE_DIR (/tmp)
+BASELINE_TEST_DIR = "/tmp/chk-a-test"
+os.environ["CHK_A_BASELINE_DIR"] = BASELINE_TEST_DIR
+Path(BASELINE_TEST_DIR).mkdir(parents=True, exist_ok=True)
+
+
+def _make_temp_path(suffix: str = "baseline.json") -> Path:
+    """Create a temp file path within the allowed test directory."""
+    return Path(BASELINE_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
 
 
 def _consensus(fqdn: str, ips: list[str]) -> ConsensusResult:
     return ConsensusResult(fqdn=fqdn, majority_ips=ips, consensus_score=1.0)
 
 
-def _make_agent(tmp_path: Path, **ml_kwargs: object) -> MLAgent:
+def _make_agent(path: Path, **ml_kwargs: object) -> MLAgent:
     cfg = MLConfig(**ml_kwargs)  # type: ignore[arg-type]
-    store = BaselineStore(tmp_path / "baseline.json")
+    store = BaselineStore(path)
     return MLAgent(cfg, store)
 
 
-def test_cold_start_returns_zero(tmp_path: Path) -> None:
-    agent = _make_agent(tmp_path)
+def test_cold_start_returns_zero() -> None:
+    path = _make_temp_path()
+    agent = _make_agent(path)
     for _ in range(5):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
     # 5 < min_samples_before_alert (10) -> not enough data to judge
     assert agent.score("example.com", {"1.2.3.4"}) == 0.0
 
 
-def test_learned_ip_scores_zero(tmp_path: Path) -> None:
-    agent = _make_agent(tmp_path)
+def test_learned_ip_scores_zero() -> None:
+    path = _make_temp_path()
+    agent = _make_agent(path)
     for _ in range(12):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
     assert agent.score("example.com", {"1.2.3.4"}) == 0.0
 
 
-def test_sudden_change_is_anomalous(tmp_path: Path) -> None:
-    agent = _make_agent(tmp_path)
+def test_sudden_change_is_anomalous() -> None:
+    path = _make_temp_path()
+    agent = _make_agent(path)
     for _ in range(12):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
     score = agent.score("example.com", {"9.9.9.9"})
     assert score == 1.0  # no overlap at all
 
 
-def test_new_ip_partial_anomaly(tmp_path: Path) -> None:
-    agent = _make_agent(tmp_path)
+def test_new_ip_partial_anomaly() -> None:
+    path = _make_temp_path()
+    agent = _make_agent(path)
     for _ in range(12):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
     alone = agent.score("example.com", {"1.2.3.4"})
@@ -68,8 +81,9 @@ def test_new_ip_partial_anomaly(tmp_path: Path) -> None:
     assert with_new < 1.0
 
 
-def test_gradual_drift_accepts_new_majority(tmp_path: Path) -> None:
-    agent = _make_agent(tmp_path)
+def test_gradual_drift_accepts_new_majority() -> None:
+    path = _make_temp_path()
+    agent = _make_agent(path)
     for _ in range(12):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
     for _ in range(15):
@@ -82,8 +96,9 @@ def test_gradual_drift_accepts_new_majority(tmp_path: Path) -> None:
     assert score_old > score_new
 
 
-def test_get_baseline_normalized(tmp_path: Path) -> None:
-    agent = _make_agent(tmp_path)
+def test_get_baseline_normalized() -> None:
+    path = _make_temp_path()
+    agent = _make_agent(path)
     for _ in range(12):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
     base = agent.get_baseline("example.com")
@@ -92,8 +107,8 @@ def test_get_baseline_normalized(tmp_path: Path) -> None:
     assert agent.get_baseline("other.com") == {}
 
 
-def test_persistence_across_restart(tmp_path: Path) -> None:
-    path = tmp_path / "baseline.json"
+def test_persistence_across_restart() -> None:
+    path = _make_temp_path()
     agent = MLAgent(MLConfig(), BaselineStore(path))
     for _ in range(12):
         agent.learn(_consensus("example.com", ["1.2.3.4"]))
@@ -103,8 +118,8 @@ def test_persistence_across_restart(tmp_path: Path) -> None:
     assert agent2.score("example.com", {"1.2.3.4"}) == 0.0
 
 
-def test_baseline_store_atomic_roundtrip(tmp_path: Path) -> None:
-    path = tmp_path / "baseline.json"
+def test_baseline_store_atomic_roundtrip() -> None:
+    path = _make_temp_path()
     store = BaselineStore(path)
     store.set_raw("example.com", {"1.2.3.4": 5.0}, 10)
     store.save()
