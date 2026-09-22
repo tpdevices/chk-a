@@ -1105,7 +1105,7 @@ class Orchestrator:
                     lookback_fraction,
                     mtr_log_path,
                     ml_agent=ml_agent,
-                    reference_date=today_end,
+                    reference_date=now,  # FIX: use now as reference, not today_end
                 )
 
                 # 2. Month insights: Sep 1 to now (for daily heatmap)
