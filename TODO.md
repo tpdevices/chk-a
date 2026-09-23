@@ -1,12 +1,12 @@
 # TODO — chk-a
 
-**Last Updated:** 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-23 10:00:00 (Asia/Bangkok UTC+07)
 
 ---
 
 ## 🔴 Critical / Blocking
 
-None — all critical issues resolved as of v1.0.25.
+None — all critical issues resolved as of v1.0.35.
 
 ---
 
@@ -27,6 +27,12 @@ None — all critical issues resolved as of v1.0.25.
 **Priority:** High — blocks clean installs on retry
 **Status:** COMPLETED 2026-09-17 — Added `NEED_PIP_INSTALL` flag to verify pip presence in existing venv and install if missing. Improved logging for pip installation steps.
 
+### [x] Thai Localization for Alert/Report Messages
+**Context:** User requested full Thai language support for all Telegram alerts and reports
+**Files:** `src/chk_a/agents/alert_agent.py`, `src/chk_a/reporting/telegram_reporter.py`, `tests/test_alert_agent.py`
+**Priority:** High — User request
+**Status:** COMPLETED 2026-09-23 — Complete Thai rewrite of `_format_html()` for all alert types, Thai monthly/daily report summaries, updated test assertions. All 313 tests passing.
+
 ### [x] Verify production install on fresh VM (v1.0.15)
 **Context:** v1.0.15 released with all fixes including daily report time range bug, daily midnight task image fallback, complete config examples, img/ in release assets.
 **Steps:** Fresh Ubuntu 24.04 VM → `curl install.sh` → `sudo ./install.sh v1.0.15` → verify service starts
@@ -37,26 +43,29 @@ None — all critical issues resolved as of v1.0.25.
 
 ## 🟢 Medium Priority
 
-### [ ] Add DoH/DoT resolver support (SEC-010)
+### [x] Add DoH/DoT resolver support (SEC-010)
 **Context:** Current resolvers config only supports IP:port or hostname:port (Do53). Add DoH (DNS over HTTPS) and DoT (DNS over TLS) support.
 **Files:** `src/chk_a/agents/resolver_agent.py`, `src/chk_a/models/schemas.py`, `config/config.yaml`
-**Status:** Partially done — schemas updated, resolver agent needs implementation
+**Status:** COMPLETED 2026-09-22 — schemas updated (DohConfig, DotConfig), resolver agent implementation exists (`_query_doh`, `_query_dot`), tests added in v1.0.30
 **Priority:** Medium — feature enhancement
 
-### [ ] CAP_NET_RAW for MTR without root (SEC-011)
+### [x] CAP_NET_RAW for MTR without root (SEC-011)
 **Context:** MTR requires CAP_NET_RAW for ICMP. Current systemd service runs as `chk-a` user without capabilities.
 **Fix:** Add `AmbientCapabilities=CAP_NET_RAW` to systemd service or use setcap on mtr binary
 **Files:** `systemd/chk-a.service`, `install.sh`
+**Status:** COMPLETED 2026-09-22 — systemd service already has `CapabilityBoundingSet=CAP_NET_RAW` and `AmbientCapabilities=CAP_NET_RAW`, tests added in v1.0.30
 **Priority:** Medium — security hardening
 
-### [ ] Add log rotation test coverage
+### [x] Add log rotation test coverage
 **Context:** `_load_recent_checks()` handles rotated logs (.bz2, .gz). Need integration tests.
-**Files:** `tests/test_reporting.py` (new), `src/chk_a/reporting/graph_generator.py`
+**Files:** `tests/test_reporting.py` (new), `src/chk_a/reporting/ml_insights.py`
+**Status:** COMPLETED 2026-09-22 — 18 comprehensive tests added in v1.0.30 covering plain JSONL, date-stamped `.bz2`, numbered `.gz`, mixed timezone timestamps, fractional lookback, malformed lines, non-CheckResult lines, empty/nonexistent files
 **Priority:** Medium — reliability
 
-### [ ] Email reporting integration
+### [x] Email reporting integration
 **Context:** Config has email section but implementation is stub. Monthly reports should send PDF via email.
-**Files:** `src/chk_a/reporting/email_reporter.py` (new), `src/chk_a/orchestrator.py`
+**Files:** `src/chk_a/reporting/email_sender.py`, `src/chk_a/reporting/monthly_report.py`, `src/chk_a/orchestrator.py`
+**Status:** COMPLETED 2026-09-22 — EmailSender class exists with STARTTLS/Implicit TLS, auth/no-auth, PDF attachments, Thai/English body; 12 tests added in v1.0.31
 **Priority:** Medium — feature completion
 
 ### [x] Telegram report sending: sequential + Thai-only graphs (NEW)
@@ -77,9 +86,10 @@ None — all critical issues resolved as of v1.0.25.
 **Priority:** Critical — blocks tests and production correctness
 **Status:** COMPLETED 2026-09-19 — Indentation fixed, timezone-aware datetime (Asia/Bangkok), fractional lookback for midnight-to-now, THAI-only graphs for all daily reports.
 
-### [ ] FQDN-centric data model & storage
+### [x] FQDN-centric data model & storage
 **Context:** Current system tracks resolver-centric data only. Need FQDN as primary entity with: identity (fqdn, domain, subdomain, apex), DNS records (current IPs, CNAME chain, TTL), history (IP changes with timestamps/sources), metadata (registrar, expiry, NS), monitoring state (last_checked, status, failures), alerting rules, ML features (baseline IPs, anomaly score, flip-flop count, geo shifts).
 **Files:** `src/chk_a/models/schemas.py` (FQDNRecord), `src/chk_a/storage/fqdn_store.py` (new), `src/chk_a/agents/resolver_agent.py` (ingestion), `src/chk_a/orchestrator.py` (scheduler)
+**Status:** COMPLETED 2026-09-22 — FQDNRecord and FQDNStore implemented with full feature set, 25 tests in v1.0.32
 **Priority:** Medium — architectural improvement for traceability & correlation
 
 ---
@@ -254,6 +264,30 @@ None — all critical issues resolved as of v1.0.25.
 **Details:**
 - Fixed: MTR CLI target validation auto-appends `:53` for bare IP/hostname, allowing CLI to accept bare IP/hostname as target argument without manual port specification.
 
+### [x] v1.0.30 Release (2026-09-22 14:45:00)
+**Details:**
+- SEC-010/011 tests added (DoH/DoT, CAP_NET_RAW)
+- Log Rotation Tests added (18 tests)
+- Fixed 13 test functions: tmp_path → _make_temp_path()
+
+### [x] v1.0.31 Release (2026-09-22 15:30:00)
+**Details:**
+- Email Reporting Tests added (12 tests)
+
+### [x] v1.0.32 Release (2026-09-22 16:00:00)
+**Details:**
+- FQDN-centric Data Model & Store implemented (FQDNRecord, FQDNStore, 25 tests)
+
+### [x] v1.0.33 Release (2026-09-22 16:30:00)
+**Details:**
+- Startup heatmap fix (00:00 to now), version bump in source files
+- Alert/Recovery version footer added
+
+### [x] v1.0.34 Release (2026-09-22 16:30:00)
+**Details:**
+- Modern graph styling (colorblind-safe, viridis heatmap, clean aesthetics)
+- Alert/Recovery version footer included in release
+
 ---
 
 ## 📋 Related Files
@@ -262,12 +296,12 @@ None — all critical issues resolved as of v1.0.25.
 |----------|-------|
 | **Core Agents** | `src/chk_a/agents/resolver_agent.py`, `consensus_agent.py`, `ml_agent.py`, `alert_agent.py`, `mtr_agent.py` |
 | **Orchestrator** | `src/chk_a/orchestrator.py`, `src/chk_a/main.py` |
-| **Reporting** | `src/chk_a/reporting/graph_generator.py`, `telegram_reporter.py`, `telegram_client.py`, `pdf_generator.py` |
-| **Storage** | `src/chk_a/storage/baseline_store.py` |
+| **Reporting** | `src/chk_a/reporting/graph_generator.py`, `telegram_reporter.py`, `telegram_client.py`, `pdf_generator.py`, `email_sender.py` |
+| **Storage** | `src/chk_a/storage/baseline_store.py`, `src/chk_a/storage/fqdn_store.py` |
 | **Models/Config** | `src/chk_a/models/schemas.py`, `config/config.yaml`, `/etc/chk-a/config.yaml` |
 | **Systemd** | `systemd/chk-a.service`, `scripts/systemd_wrapper.py`, `scripts/systemd_notify.py` |
 | **Deploy/Install** | `scripts/deploy.sh`, `install.sh`, `uninstall.sh`, `Makefile`, `.github/workflows/release.yml` |
-| **Tests** | `tests/test_*.py` (257 tests), `tests/conftest.py` |
+| **Tests** | `tests/test_*.py` (313 tests), `tests/conftest.py` |
 | **Logs** | `/var/log/chk-a/checks.jsonl*`, `/var/log/chk-a/alerts.jsonl*`, `/var/log/chk-a/alerts.log` |
 | **Baselines** | `/var/lib/chk-a/baselines.json` |
 | **Secrets** | `/etc/chk-a/env` |
@@ -276,12 +310,12 @@ None — all critical issues resolved as of v1.0.25.
 
 ## 🎯 Next Session Priorities
 
-1. **SEC-010/011** — DoH/DoT support, CAP_NET_RAW for MTR (Medium)
-2. **Add log rotation test coverage** (Medium)
-3. **Email reporting integration** (Medium)
-4. **Dashboard web UI** (Low)
-5. **GitHub repo cleanup & branch consolidation** (Low)
+1. **Dashboard web UI** (FastAPI + HTMX + Chart.js) — Low
+2. **GitHub repo cleanup & branch consolidation** — Low
+3. **Historical data compaction** — Low
+4. **Multi-host orchestration** — Low
+5. **Prometheus metrics export (optional)** — Low
 
 ---
 
-*อัปเดตโดย Hermes Agent session วันที่ 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)*
+*อัปเดตโดย Hermes Agent session วันที่ 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)*

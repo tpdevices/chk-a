@@ -1,1 +1,2 @@
 Resume the live session with: hermes --resume 20260911_093110_e5a1c7
+hermes --resume 20260922_092615_3bac52 -p chk-a

@@ -137,7 +137,7 @@ async def test_formatting_contains_fields() -> None:
     assert "5.6.7.8" in text
     assert "baseline_deviation" in text
     assert "95.00%" in text  # 0.95 -> 95.00%
-    assert "4 checked" in text
+    assert "4 ตัว" in text  # Thai format: "4 ตัว"
     assert kwargs.get("parse_mode", args[3] if len(args) > 3 else None) == "HTML"
 
 
@@ -172,7 +172,7 @@ async def test_jsonl_log_written(tmp_path) -> None:
 
 def test_format_html_helper() -> None:
     text = _format_html(_event(ips=("1.2.3.4",)))
-    assert "<b>⚠️ DNS Anomaly Detected</b>" in text
+    assert "<b>⚠️ พบความผิดปกติของ DNS</b>" in text
     assert "<code>1.2.3.4</code>" in text
 
 
@@ -375,9 +375,9 @@ async def test_recovery_alert_formatting_contains_fields() -> None:
     args = client.send_photo.call_args.args
     kwargs = client.send_photo.call_args.kwargs
     text = kwargs.get("caption") or (args[2] if len(args) > 2 else "")
-    assert "✅ Recovery" in text
+    assert "✅ DNS ฟื้นฟูปกติแล้ว" in text
     assert "baseline_deviation" in text
-    assert "Duration" in text
+    assert "ระยะเวลา" in text
     assert "ML Baseline Stability" in text
     assert "ML Recovery Confidence" in text
     assert "1.2.3.4" in text

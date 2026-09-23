@@ -1,6 +1,6 @@
 # Project Context — chk-a
 
-**Last Updated:** 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -83,9 +83,18 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 25. **v1.0.20 Release** — Timezone fix for daily reports + robust Thai filtering (2026-09-19)
 26. **v1.0.21 Release** — Debug logging for daily reports + robust Thai filtering (2026-09-19)
 27. **v1.0.22 Release** — Manual daily report fixes: Thai-only filter, latency boxplot sort, daily heatmap month context (2026-09-20)
-26. **v1.0.23 Release** — Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task (2026-09-20)
-27. **v1.0.24 Release** — Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version (2026-09-20)
-28. **v1.0.25 Release** — Missing daily report month merge + daily heatmap title format (Days 1 to N / วันที่ 1 ถึง N) (2026-09-20)
+28. **v1.0.23 Release** — Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task (2026-09-20)
+29. **v1.0.24 Release** — Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version (2026-09-20)
+30. **v1.0.25 Release** — Missing daily report month merge + daily heatmap title format (Days 1 to N / วันที่ 1 ถึง N) (2026-09-20)
+31. **v1.0.26 Release** — Scheduled daily report (06:00 AM) now merges month data (1st to yesterday) for daily availability heatmap, consistent with startup report (2026-09-21)
+32. **v1.0.27 Release** — Version display across all reports (graphs footer, Telegram summaries, dashboard) (2026-09-21)
+33. **v1.0.28 Release** — Version detection works both as package and module; SecretStr extraction in CLI (2026-09-21)
+34. **v1.0.29 Release** — MTR CLI target validation auto-appends `:53`; Test VM Python cache resolved (2026-09-21)
+35. **v1.0.30 Release** — SEC-010/011 tests, Log Rotation tests, tmp_path fixture fixes (2026-09-22)
+36. **v1.0.31 Release** — Email Reporting tests (2026-09-22)
+37. **v1.0.32 Release** — FQDN-centric Data Model & Store (2026-09-22)
+38. **v1.0.33 Release** — Startup heatmap fix, version bump in source files (2026-09-22)
+39. **v1.0.34 Release** — Modern graph styling (colorblind-safe palette), alert/recovery version footer (2026-09-22)
 
 ---
 
@@ -174,7 +183,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ## Testing & Quality
 
-- **257/257 tests pass** on **both dev and test VM** (zero-regression policy)
+- **313/313 tests pass** on **both dev and test VM** (zero-regression policy)
 - **Test Location:** Everything on test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
 - **Fix Tests, Not Agent Code** — per project rules
 - **Code Review Patterns:** Per skill `software-development` → `code-review-patterns`
@@ -311,6 +320,33 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 ### v1.0.25 Release (2026-09-20)
 - Missing daily report month merge + daily heatmap title format (Days 1 to N / วันที่ 1 ถึง N)
 
+### v1.0.26 Release (2026-09-21)
+- Scheduled daily report (06:00 AM) now merges month data (1st to yesterday) for daily availability heatmap
+
+### v1.0.27 Release (2026-09-21)
+- Version display across all reports: graphs footer, Telegram summaries, dashboard
+
+### v1.0.28 Release (2026-09-21)
+- Version detection works both as package and module; SecretStr extraction in CLI
+
+### v1.0.29 Release (2026-09-21)
+- MTR CLI target validation auto-appends `:53`; Test VM Python cache resolved
+
+### v1.0.30 Release (2026-09-22)
+- SEC-010/011 tests, Log Rotation tests, tmp_path fixture fixes
+
+### v1.0.31 Release (2026-09-22)
+- Email Reporting tests (12 tests)
+
+### v1.0.32 Release (2026-09-22)
+- FQDN-centric Data Model & Store (FQDNRecord, FQDNStore, 25 tests)
+
+### v1.0.33 Release (2026-09-22)
+- Startup heatmap fix (00:00 to now), version bump in source files
+
+### v1.0.34 Release (2026-09-22)
+- Modern graph styling (colorblind-safe, viridis heatmap, clean aesthetics), alert/recovery version footer
+
 ---
 
 ## AI Model Config (for cyber-security-review)
@@ -345,13 +381,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.25/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.34/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.25`
+  3. `sudo ./install.sh v1.0.34`
   4. Edit `/etc/chk-a/env` with Telegram credentials
   5. Edit `/etc/chk-a/config.yaml` with FQDNs/resolvers
   6. `sudo systemctl restart chk-a`
 
 ---
 
-*Created by Hermes Agent session on 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*
+*Created by Hermes Agent session on 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)*

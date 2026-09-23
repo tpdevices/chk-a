@@ -1,6 +1,6 @@
-# บริบทโครงการ chk-a
+# บริบทโครงการ — chk-a
 
-**อัปเดตล่าสุด:** 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -86,6 +86,15 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 28. **v1.0.23 Release** — Service startup report fix: Thai-only, today data 00:00-now, daily heatmap month context, background task (2026-09-20)
 29. **v1.0.24 Release** — Fix pyproject.toml version to 1.0.24 (was 1.0.14) — ensures wheel builds with correct version (2026-09-20)
 30. **v1.0.25 Release** — Missing daily report month merge + daily heatmap title format (Days 1 to N / วันที่ 1 ถึง N) (2026-09-20)
+31. **v1.0.26 Release** — Scheduled daily report (06:00 AM) merge month data (1st to yesterday) for daily availability heatmap (2026-09-21)
+32. **v1.0.27 Release** — Version display across all reports (graphs footer, Telegram summaries, dashboard) (2026-09-21)
+33. **v1.0.28 Release** — Version detection works both as package and module; SecretStr extraction in CLI (2026-09-21)
+34. **v1.0.29 Release** — MTR CLI target validation auto-appends `:53`; Test VM Python cache resolved (2026-09-21)
+35. **v1.0.30 Release** — SEC-010/011 tests, Log Rotation tests, tmp_path fixture fixes (2026-09-22)
+36. **v1.0.31 Release** — Email Reporting tests (2026-09-22)
+37. **v1.0.32 Release** — FQDN-centric Data Model & Store (2026-09-22)
+38. **v1.0.33 Release** — Startup heatmap fix, version bump in source files (2026-09-22)
+39. **v1.0.34 Release** — Modern graph styling (colorblind-safe palette), alert/recovery version footer (2026-09-22)
 
 ---
 
@@ -174,7 +183,7 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ## การทดสอบและคุณภาพ
 
-- **257/257 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
+- **313/313 tests ผ่าน** บน **ทั้ง dev และ test VM** (นโยบาย zero-regression)
 - **Test Location:** ทุกอย่างบน test VM (pytest, CLI, systemd, DNS/Telegram/MTR)
 - **Fix Tests, Not Agent Code** — ตามกฎโครงการ
 - **Code Review Patterns:** ตาม skill `software-development` → `code-review-patterns`
@@ -336,6 +345,67 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
 
 ---
 
+## v1.0.26 Release (2026-09-21 06:30:00)
+- ✅ Scheduled daily report (06:00 AM) merge month data (1st to yesterday) for daily availability heatmap, สอดคล้องกับ startup report behavior
+
+---
+
+## v1.0.27 Release (2026-09-21 08:00:00)
+- ✅ แสดง version ทั่วทุกรายงาน:
+  - กราฟ: Version ใน footer กลาง (`vX.Y.Z`) ผ่าน `_add_header_footer()` ใน `graph_generator.py`
+  - Telegram Monthly Summary: Version ท้ายข้อความผ่าน `create_telegram_summary()` ใน `telegram_reporter.py`
+  - Telegram Daily Summary: Version ท้ายข้อความผ่าน `create_daily_telegram_summary()` ใน `telegram_reporter.py`
+  - Dashboard/Reports: Version ส่งผ่าน `generate_summary_dashboard()` ไป 8 chart types ทั้งหมด
+
+---
+
+## v1.0.28 Release (2026-09-21 10:30:00)
+- ✅ Version detection ทำงานทั้งตอนติดตั้งเป็น package และรันเป็น module (`-m chk_a.main`). เพิ่ม fallback อ่านจาก `pyproject.toml`
+- ✅ CLI commands `test-telegram` และ `test-daily-image` extract secret values จาก `SecretStr` ก่อนส่งให้ `TelegramClient`, แก้ "Object of type SecretStr is not JSON serializable" error
+
+---
+
+## v1.0.29 Release (2026-09-21 15:30:00)
+- ✅ MTR CLI target validation auto-appends `:53` สำหรับ bare IP/hostname, ให้ CLI รับ bare IP/hostname เป็น target argument ได้โดยไม่ต้องระบุ port เอง
+- ✅ Test VM Python cache issue แก้แล้ว: ลบ `.pyc` cache เพื่อ serve updated `__version__` (1.0.29)
+
+---
+
+## v1.0.30 Release (2026-09-22 14:45:00)
+- ✅ **SEC-010**: DoH/DoT resolver support tests เพิ่ม — `test_doh_resolver_resolves()` mocking aiohttp DoH query with DNS wireformat response
+- ✅ **SEC-011**: CAP_NET_RAW for MTR ICMP tests เพิ่ม — `TestSEC011_MTRCapNetRaw` class 3 tests verify systemd CAP_NET_RAW capability, MTRConfig ICMP mode support, MTRAgent ICMP privileges
+- ✅ **Log Rotation Tests**: Comprehensive tests สำหรับ `_load_recent_checks()` ครอบคลุม plain JSONL, date-stamped `.bz2`, numbered `.gz`, mixed timezone timestamps, fractional lookback, malformed lines, non-CheckResult log lines, empty/nonexistent files, edge cases (18 tests)
+- ✅ แก้: `_load_recent_checks()` timestamp parsing สำหรับ mixed naive และ timezone-aware timestamps, preserve local time (Asia/Bangkok) สำหรับ naive timestamps ขณะแปลง aware timestamps ไป Asia/Bangkok
+- ✅ แก้: 13 test functions แทนที่ `tmp_path` pytest fixture ด้วย `_make_temp_path()` helper จาก conftest.py เพื่อ baseline path consistency
+
+---
+
+## v1.0.31 Release (2026-09-22 15:30:00)
+- ✅ **Email Reporting Tests**: Comprehensive tests สำหรับ EmailSender class (12 tests) ครอบคลุม STARTTLS/implicit TLS, auth/no-auth, missing attachments, exception handling, create_email_body() function (English/Thai languages, missing summary), MonthlyReportGenerator integration
+
+---
+
+## v1.0.32 Release (2026-09-22 16:00:00)
+- ✅ **FQDN-centric Data Model**: เพิ่ม `FQDNRecord` และ `FQDNStore` พร้อม identity (fqdn, domain, subdomain, apex), DNS records (current IPs, CNAME chain, TTL), history (IP changes with timestamps/sources), metadata (registrar, expiry, NS), monitoring state (last_checked, status, failures), alerting rules, ML features (baseline IPs, anomaly score, flip-flop count, geo shifts)
+- ✅ **FQDN Store Tests**: 25 comprehensive tests ครอบคลุม creation, domain extraction, IP change history, monitoring state transitions, baseline/anomaly updates, serialization, persistence, queries (by domain, status, anomaly, recent changes), path traversal protection, corrupt/empty file handling
+
+---
+
+## v1.0.33 Release (2026-09-22 16:30:00)
+- ✅ **Startup Report Heatmap Fix**: แก้ `_send_today_report_on_startup()` ให้ใช้ `reference_date=now` แทน `today_end`, ให้ fractional lookback ครอบคลุม 00:00 ถึงเวลาปัจจุบันถูกต้อง (ไม่ใช่ 09:30-14:30)
+- ✅ **Version Bump**: Source files แสดง 1.0.33 ถูกต้อง (เคยเป็น 1.0.32 ใน pyproject.toml และ main.py)
+- ✅ Python cache cleared และ package reinstall สำหรับ `__version__` detection ที่ถูกต้อง
+
+---
+
+## v1.0.34 Release (2026-09-22 16:30:00)
+- ✅ **Modern Graph Styling**: Overhaul `graph_generator.py` เต็มรูปแบบ พร้อม colorblind-safe palette (viridis heatmap, semantic colors), clean aesthetics (ไม่มี top/right spines, subtle grid), DPI สูงขึ้น (200), colorblind-safe categorical palette (seaborn colorblind), ปรับปรุง Thai font (bold weight, adjusted sizes). Footer version สี primary blue
+- ✅ **Alert/Recovery Version Footer**: เพิ่ม version footer ใน Telegram alert และ recovery messages (`🏷️ <b>chk-a v1.0.34</b>`)
+- ✅ **Test VM Sync**: Sync source files ทั้งหมดไป test VM ผ่าน rsync, 313/313 tests ผ่านบน test VM
+- ✅ **Production Ready**: GitHub Release v1.0.34 published พร้อม assets ทั้งหมด
+
+---
+
 ## AI Model Config (สำหรับ cyber-security-review)
 
 **Available Providers:** NVIDIA (primary), 9router/OpenRouter/AnyAPI/Aihubmix (gateways), Ollama-Local, Poolside.AI
@@ -368,13 +438,13 @@ YYYY-MM-DD HH:MM:SS hostname resolver ip event_type: fqdn
   2. Dev: `rsync -avz -c /home/ipds/Hermes-Prj/chk-a/ ipds@192.168.56.122:/home/ipds/Hermes-Prj/chk-a/`
   3. Test VM: `sudo /home/ipds/Hermes-Prj/chk-a/scripts/deploy.sh`
 - **Production Install Workflow:**
-  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.25/install.sh`
+  1. `curl -L -o install.sh https://github.com/tpdevices/chk-a/releases/download/v1.0.34/install.sh`
   2. `chmod +x install.sh`
-  3. `sudo ./install.sh v1.0.25`
+  3. `sudo ./install.sh v1.0.34`
   4. แก้ `/etc/chk-a/env` ใส่ Telegram credentials
   5. แก้ `/etc/chk-a/config.yaml` ใส่ FQDNs/resolvers
   6. `sudo systemctl restart chk-a`
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*
+*Created by Hermes Agent session on 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)*

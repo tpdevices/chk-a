@@ -6,6 +6,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.35] - 2026-09-23 10:00:00 (Asia/Bangkok UTC+07)
+
+### Added
+- **Thai localization for all Telegram alerts and reports** — Full Thai language support for anomaly/recovery alerts, monthly/daily report summaries
+  - Alert headers: `⚠️ พบความผิดปกติของ DNS`, `✅ DNS ฟื้นฟูปกติแล้ว`, `⏰ เตือนความผิดปกติ DNS (ทุกชั่วโมง)`
+  - Severity labels: `🔴 รุนแรง (CRITICAL)`, `🟡 คำเตือน (WARNING)`, `🔵 ข้อมูล (INFO)`
+  - Type labels: `📊 ความแตกต่างจาก Baseline`, `🗳️ ความแตกต่างของคะแนนเสียง`, `🆕 IP ใหม่`, `🚫 NXDOMAIN`
+  - Resolver groups: `✅ ฝ่ายมาก`, `⚠️ ฝ่ายน้อย`, `❌ ค่าผิดปกติ (Outliers) — ต่างจากฝ่ายมาก`, `❌ ล้มเหลว / ไม่ตอบสนอง (ไม่นับในคะแนนเสียง)`
+  - Consensus descriptions: `100% = ตอบเหมือนกันหมด`, `90-99% = สูงมาก — มี resolver ฝ่ายน้อยผิดปกติ`, `70-89% = ปานกลาง — มี resolver ฝ่ายน้อยผิดปกติ`, `50-69% = แยกสองฝ่ายชัดเจน`, `1-49% = ใกล้ Tie ความไม่แน่นอนสูง`, `0% = เสมอภาค`
+  - Recovery/Monthly/Daily summaries with Thai formatting and version footer
+
+### Changed
+- **2026-09-23 10:00:00** — `src/chk_a/agents/alert_agent.py` — Complete Thai rewrite of `_format_html()` function for all alert types
+- **2026-09-23 10:00:00** — `src/chk_a/reporting/telegram_reporter.py` — Thai monthly/daily report summaries (`create_telegram_summary`, `create_daily_telegram_summary`)
+- **2026-09-23 10:00:00** — `tests/test_alert_agent.py` — Updated test assertions to match Thai format
+- **2026-09-23 10:00:00** — `pyproject.toml` — Bumped version to 1.0.35
+
+### Testing
+- All 313 tests passing (zero regression)
+- Validated on test VM (192.168.56.122) — files synced, ready for deploy
+
+---
+
 ## [1.0.34] - 2026-09-22 16:30:00 (Asia/Bangkok UTC+07)
 
 ### Changed
@@ -13,6 +36,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - **2026-09-22 16:25:00** — `pyproject.toml` — Bumped version to 1.0.34.
+
+---
+
+## [1.0.33] - 2026-09-22 16:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-22 15:30:00** — `src/chk_a/orchestrator.py` — Fixed: Startup report heatmap window bug. Changed `_send_today_report_on_startup()` to use `reference_date=now` instead of `today_end` (23:59:59), so fractional lookback correctly covers 00:00 to current time (not 09:30-14:30).
+
+### Changed
+- **2026-09-22 16:00:00** — `pyproject.toml` — Bumped version to 1.0.33 (was 1.0.32 in source files).
+- **2026-09-22 16:00:00** — `src/chk_a/main.py` — Bumped CLI version to 1.0.33.
+- **2026-09-22 16:00:00** — `src/chk_a/agents/alert_agent.py` — Added version footer to alert/recovery Telegram messages (`🏷️ <b>chk-a v{version}</b>`).
+- **2026-09-22 16:00:00** — `src/chk_a/main.py` — Pass version to AlertAgent constructor.
 
 ---
 

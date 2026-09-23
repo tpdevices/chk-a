@@ -1,6 +1,6 @@
 # Project Status — chk-a
 
-**Last Updated:** 2026-09-21 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -110,7 +110,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ All project timestamps now consistently use Asia/Bangkok local time (+07)
 
 ### Testing & Operations
-- ✅ **257/257 tests pass** on **both dev and test VM** (zero-regression policy)
+- ✅ **313/313 tests pass** on **both dev and test VM** (zero-regression policy)
 - ✅ CLI subcommands: `validate-config`, `check-once`, `show-baseline`, `test-telegram`, `test-daily-image`, `mtr`
 - ✅ Dev↔Test VM sync via `rsync -c` (checksum) with immediate sync back of VM edits
 - ✅ Test VM: Ubuntu 24.04 at 192.168.56.122 (user: ipds), service runs as `chk-a` (uid=999)
@@ -217,17 +217,17 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Monthly reports: 18-20 graphs total (7 chart types × EN/TH = 14 + 2 Dashboard = 16 + 2 Daily Heatmap = 18)
 
 ### v1.0.15 Release (2026-09-18)
-### Fixed
+#### Fixed
 - **2026-09-18 21:00:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: Daily report time range bug. Changed from `datetime.now().replace(hour=23, minute=59) - timedelta(days=1)` (which gave wrong time when run at 06:00) to `yesterday = datetime.now() - timedelta(days=1); yesterday_end = yesterday.replace(hour=23, minute=59)` to correctly get yesterday's 23:59:59.
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Fixed: Daily midnight task (00:00) error handling for missing images. Added fallback to anomaly/recovery images from AlertAgent, detailed logging for missing images, and graceful skip when no image available.
 
-### Added
+#### Added
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Added: Copy `img/` directory to release assets and create `img.tar.gz` for production installation.
 - **2026-09-18 21:00:00** — `install.sh` — Added: Download and extract `img.tar.gz` to `/opt/chk-a/img/` during production install.
 - **2026-09-18 21:00:00** — `config/config.yaml.example` — Added: Complete configuration example with all sections (fqdns, resolvers, resolver_agent, ml, alert, scheduler, logging, mtr, reporting, baseline_store_path) with Thai comments explaining each setting.
 - **2026-09-18 21:00:00** — `config/chk-a.env.example` — Added: Complete environment example with placeholders for Telegram, SMTP, and Age encryption keys.
 
-### Changed
+#### Changed
 - **2026-09-18 21:00:00** — `src/chk_a/orchestrator.py` — Changed: Improved daily midnight task logging and fallback logic for daily/anomaly/recovery images.
 - **2026-09-18 21:00:00** — `.github/workflows/release.yml` — Changed: Use new complete `config/config.yaml.example` in release assets instead of old `config/chk-a.config.yaml.example`.
 
@@ -270,11 +270,54 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Daily heatmap title format: "Days 1 to N" (EN) / "วันที่ 1 ถึง N" (TH) — clearer than "Month: 1st to DD MMM"
 - ✅ Month start fix: Both missing & today reports use `month_start = day 1`
 
+### v1.0.26 Release (2026-09-21 06:30:00)
+- ✅ Scheduled daily report (06:00 AM) now merges month data (1st to yesterday) for daily availability heatmap, instead of only yesterday's data. Consistent with startup report behavior.
+
+### v1.0.27 Release (2026-09-21 08:00:00)
+- ✅ Version display across all reports:
+  - Graphs: Version shown in footer center (`vX.Y.Z`) via `_add_header_footer()` in `graph_generator.py`
+  - Telegram Monthly Summary: Version at end of message via `create_telegram_summary()` in `telegram_reporter.py`
+  - Telegram Daily Summary: Version at end of message via `create_daily_telegram_summary()` in `telegram_reporter.py`
+  - Dashboard/Reports: Version passed through `generate_summary_dashboard()` to all 8 chart types
+
+### v1.0.28 Release (2026-09-21 10:30:00)
+- ✅ Version detection now works both when installed as package and when running as module (`-m chk_a.main`). Added fallback to read from `pyproject.toml`.
+- ✅ CLI commands `test-telegram` and `test-daily-image` now properly extract secret values from `SecretStr` before passing to `TelegramClient`, fixing "Object of type SecretStr is not JSON serializable" error.
+
+### v1.0.29 Release (2026-09-21 15:30:00)
+- ✅ MTR CLI target validation auto-appends `:53` for bare IP/hostname, allowing CLI to accept bare IP/hostname as target argument without manual port specification.
+- ✅ Test VM Python cache issue resolved: cleared `.pyc` cache to serve updated `__version__` (1.0.29).
+
+### v1.0.30 Release (2026-09-22 14:45:00)
+- ✅ **SEC-010**: DoH/DoT resolver support tests added — `test_doh_resolver_resolves()` mocking aiohttp DoH query with DNS wireformat response
+- ✅ **SEC-011**: CAP_NET_RAW for MTR ICMP tests added — `TestSEC011_MTRCapNetRaw` class with 3 tests verifying systemd CAP_NET_RAW capability, MTRConfig ICMP mode support, and MTRAgent ICMP privileges
+- ✅ **Log Rotation Tests**: Comprehensive tests for `_load_recent_checks()` covering plain JSONL, date-stamped `.bz2` rotated files, numbered `.gz` backups, mixed timezone timestamps, fractional lookback, malformed lines, non-CheckResult log lines, empty/nonexistent files, and edge cases (18 tests)
+- ✅ Fixed: `_load_recent_checks()` timestamp parsing for mixed naive and timezone-aware timestamps, preserving local time (Asia/Bangkok) for naive timestamps while converting aware timestamps to Asia/Bangkok
+- ✅ Fixed: 13 test functions replacing `tmp_path` pytest fixture with `_make_temp_path()` helper from conftest.py for baseline path consistency
+
+### v1.0.31 Release (2026-09-22 15:30:00)
+- ✅ **Email Reporting Tests**: Comprehensive tests for EmailSender class (12 tests) covering STARTTLS/implicit TLS, auth/no-auth, missing attachments, exception handling, create_email_body() function (English/Thai languages, missing summary), and MonthlyReportGenerator integration
+
+### v1.0.32 Release (2026-09-22 16:00:00)
+- ✅ **FQDN-centric Data Model**: Added `FQDNRecord` and `FQDNStore` with identity (fqdn, domain, subdomain, apex), DNS records (current IPs, CNAME chain, TTL), history (IP changes with timestamps/sources), metadata (registrar, expiry, NS), monitoring state (last_checked, status, failures), alerting rules, ML features (baseline IPs, anomaly score, flip-flop count, geo shifts)
+- ✅ **FQDN Store Tests**: 25 comprehensive tests covering creation, domain extraction, IP change history, monitoring state transitions, baseline/anomaly updates, serialization, persistence, queries (by domain, status, anomaly, recent changes), path traversal protection, corrupt/empty file handling
+
+### v1.0.33 Release (2026-09-22 16:30:00)
+- ✅ **Startup Report Heatmap Fix**: Fixed `_send_today_report_on_startup()` to use `reference_date=now` instead of `today_end`, so fractional lookback correctly covers 00:00 to current time (not 09:30-14:30)
+- ✅ **Version Bump**: Source files now correctly show 1.0.33 (was 1.0.32 in pyproject.toml and main.py)
+- ✅ Python cache cleared and package reinstalled for correct `__version__` detection
+
+### v1.0.34 Release (2026-09-22 16:30:00)
+- ✅ **Modern Graph Styling**: Complete overhaul of `graph_generator.py` with colorblind-safe palette (viridis heatmap, semantic colors), clean aesthetics (no top/right spines, subtle grid), higher DPI (200), colorblind-safe categorical palette (seaborn colorblind), Thai font improvements (bold weight, adjusted sizes). Footer version now in primary blue color.
+- ✅ **Alert/Recovery Version Footer**: Added version footer to Telegram alert and recovery messages (`🏷️ <b>chk-a v1.0.34</b>`)
+- ✅ **Test VM Sync**: All source files synced to test VM via rsync, 313/313 tests passing on test VM
+- ✅ **Production Ready**: GitHub Release v1.0.34 published with all assets
+
 ---
 
 ## 4. In Progress
 
-None — all critical issues resolved as of v1.0.25.
+None — all critical issues resolved as of v1.0.34.
 
 ---
 
@@ -298,6 +341,21 @@ None — all critical issues resolved as of v1.0.25.
 - ✅ **Daily startup report: Thai-only graphs + today's data (00:00 to now)** — Fixed in v1.0.23/v1.0.25
 - ✅ **Missing daily report month merge** — Fixed in v1.0.25
 - ✅ **Daily heatmap title format** — Fixed in v1.0.25 ("Days 1 to N" / "วันที่ 1 ถึง N")
+- ✅ **Scheduled daily report month merge** — Fixed in v1.0.26
+- ✅ **Version display across all reports** — Fixed in v1.0.27
+- ✅ **Version detection (package vs module)** — Fixed in v1.0.28
+- ✅ **SecretStr JSON serialization in CLI** — Fixed in v1.0.28
+- ✅ **MTR CLI target validation** — Fixed in v1.0.29
+- ✅ **Test VM Python cache** — Fixed in v1.0.29
+- ✅ **SEC-010/011 tests** — Added in v1.0.30
+- ✅ **Log rotation tests** — Added in v1.0.30
+- ✅ **tmp_path fixture misuse** — Fixed in v1.0.30
+- ✅ **Email reporting tests** — Added in v1.0.31
+- ✅ **FQDN-centric model** — Implemented in v1.0.32
+- ✅ **Startup heatmap window bug** — Fixed in v1.0.33
+- ✅ **Version bump in source files** — Fixed in v1.0.33
+- ✅ **Alert/Recovery version footer** — Added in v1.0.33 (local)
+- ✅ **Modern graph styling** — Implemented in v1.0.34
 
 ### Active
 None — all known issues resolved.
@@ -307,9 +365,10 @@ None — all known issues resolved.
 ## 6. Next Actions
 
 ### This Sprint (P2)
-- SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR
-- Add log rotation test coverage
-- Email reporting integration
+- SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR (already implemented, tests added)
+- Add log rotation test coverage (completed in v1.0.30)
+- Email reporting integration (tests added in v1.0.31, implementation exists)
+- FQDN-centric model integration with agents (completed in v1.0.32)
 
 ### This Quarter (P3)
 - Dashboard web UI (FastAPI + HTMX + Chart.js)
@@ -328,6 +387,7 @@ None — all known issues resolved.
 | `src/chk_a/agents/ml_agent.py` | ~180 | Exponential decay baseline, anomaly scoring |
 | `src/chk_a/agents/alert_agent.py` | ~350 | Dedup, rate-limit, Telegram, dual audit logs |
 | `src/chk_a/agents/mtr_agent.py` | ~400 | MTR subprocess, JSON parsing, hop stats |
+| `src/chk_a/storage/fqdn_store.py` | ~350 | FQDN-centric data model & storage |
 
 ### Orchestration & Config
 | File | Lines | Purpose |
@@ -346,6 +406,7 @@ None — all known issues resolved.
 | `src/chk_a/reporting/pdf_generator.py` | ~200 | fpdf2 EN/TH templates |
 | `src/chk_a/reporting/ml_insights.py` | ~260 | Availability, integrity, path health, anomaly detection + daily_availability |
 | `src/chk_a/reporting/telegram_client.py` | ~180 | Async Telegram client with retry, circuit breaker |
+| `src/chk_a/reporting/email_sender.py` | ~200 | SMTP email with TLS, PDF attachments |
 
 ### Entry Point & Config
 | File | Purpose |
@@ -373,6 +434,9 @@ None — all known issues resolved.
 | `tests/conftest.py` | Session-wide test config (`CHK_A_BASELINE_DIR=/tmp`) |
 | `tests/test_integration_pipeline.py` | Full pipeline integration tests (7 tests) |
 | `tests/test_security_regressions.py` | Security regression tests (74 tests, SEC-001 to SEC-020) |
+| `tests/test_fqdn_store.py` | FQDN store tests (25 tests) |
+| `tests/test_reporting.py` | Log rotation tests (18 tests) |
+| `tests/test_email_sender.py` | Email sender tests (12 tests) |
 
 ### Release & Deployment
 | File | Purpose |
@@ -390,4 +454,4 @@ See [TODO.md](TODO.md) for detailed breakdown.
 
 ---
 
-*Generated by Hermes Agent session on 2026-09-20 17:30:00 (Asia/Bangkok UTC+07)*
+*Generated by Hermes Agent session on 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)*

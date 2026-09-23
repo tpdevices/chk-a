@@ -333,10 +333,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th", versi
 
     timestamp = datetime.now().strftime("%d/%m/%Y %H:%M")
     lookback = ml_insights.get("lookback_days", 30)
-    # Handle version with or without 'v' prefix
-    version_str = version if version else ""
-    if version_str and not version_str.startswith("v"):
-        version_str = f"v{version_str}"
+    version_str = f"v{version}" if version else ""
 
     if lang == "th":
         lines = [
@@ -394,7 +391,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th", versi
         lines.append("📎 ไฟล์ PDF เต็มรูปแบบ (EN/TH) ส่งทางอีเมล")
         lines.append("📈 กราฟแนบในข้อความนี้")
         if version_str:
-            lines.append(f"🏷️ <b>chk-a {version_str}</b>")
+            lines.append(f"🏷️ <b>chk-a version: {version_str}</b>")
 
         return "\n".join(lines)
 
@@ -583,7 +580,7 @@ def create_daily_telegram_summary(
 
     lines = [
         f"📅 <b>chk-a รายงานรายวัน ({yesterday})</b>",
-        f"🖥️ โฮสต์: {_html_escape(hostname)}",
+        f"🖥️ Host: {_html_escape(hostname)}",
         "",
         "📈 <b>สรุป Availability / Path Availability / Integrity</b>",
         f"• Resolver ทั้งหมด: {summary.get('total_resolvers', 0)}",
@@ -647,7 +644,7 @@ def create_daily_telegram_summary(
 
     lines.append("📈 กราฟแนบด้านล่าง (Availability / Path / Integrity / Anomaly)")
     if version_str:
-        lines.append(f"🏷️ <b>chk-a {version_str}</b>")
+        lines.append(f"🏷️ <b>chk-a version: {version_str}</b>")
 
     return "\n".join(lines)
 
