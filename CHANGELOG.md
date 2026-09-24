@@ -64,6 +64,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Cleanup
 - **2026-09-24 14:30:00** — GitHub repo cleanup: removed 33 obsolete files (duplicate configs, test scripts, build artifacts, install backups), updated .gitignore, fixed vulture warnings, all 313 tests passing
 - **2026-09-24 14:45:00** — Restored `img/ok.jpg` and `img/priority.jpg` (required for alert_agent tests), added `*.backup` `*.orig` to .gitignore
+- **2026-09-24 15:15:00** — Restored `img/sleepy.jpg` (used for midnight daily heartbeat in orchestrator)
+- **2026-09-24 15:20:00** — Restored `config/chk-a.env.example` (deployment environment template)
+- **2026-09-24 15:25:00** — Deleted old `main` branch on GitHub, set `master` as default branch
+
+### Documentation
+- **2026-09-24 15:30:00** — Updated STATUS.md, STATUS-TH.md, PROJECT_CONTEXT.md, PROJECT_CONTEXT-TH.md, TODO.md with current project state
 
 ---
 
