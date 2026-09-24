@@ -41,6 +41,10 @@ backups/
 .tmp/
 *.tmp
 
+# Backup files
+*.backup
+*.orig
+
 # Environment
 *.env.local
 
