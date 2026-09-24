@@ -22,7 +22,7 @@ from .. import __version__ as chk_a_version
 # Late import to avoid circular dependency
 from ..agents.ml_agent import MLAgent
 from .ml_insights import generate_ml_insights
-from .graph_generator import generate_summary_dashboard, generate_summary_dashboard_th
+from .graph_generator import generate_summary_dashboard
 from .pdf_generator import generate_pdf_report_en, generate_pdf_report_th
 from .email_sender import EmailSender, create_email_body
 from .telegram_reporter import send_monthly_report_telegram

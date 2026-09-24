@@ -73,8 +73,8 @@ resolvers:
 # 3. RESOLVER AGENT - ทูนประสิทธิภาพการ query DNS
 # =============================================================================
 resolver_agent:
-  # max_concurrent: 20                        # จำนวน query พร้อมกันสูงสุด (None = auto-tune จากจำนวน resolvers)
-  # default_timeout_ms: 2000                  # timeout เริ่มต้นถ้า resolver ไม่ได้กำหนด
+  max_concurrent: 20                        # จำนวน query พร้อมกันสูงสุด (None = auto-tune จากจำนวน resolvers)
+  default_timeout_ms: 2000                  # timeout เริ่มต้นถ้า resolver ไม่ได้กำหนด
 
 # =============================================================================
 # 4. ML (MACHINE LEARNING) - การเรียนรู้ baseline + anomaly detection

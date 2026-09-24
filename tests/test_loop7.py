@@ -55,8 +55,8 @@ def test_correlation_id_unique() -> None:
 def test_validate_config_cli() -> None:
     from chk_a.main import cmd_validate_config
 
-    config = load_config("config/settings.yaml")
-    # settings.yaml is a valid example config -> exit 0
+    config = load_config("config/config.yaml.example")
+    # config.yaml.example is a valid example config -> exit 0
     assert cmd_validate_config(config) == 0
 
 
@@ -64,7 +64,7 @@ def test_show_baseline_cli_runs(capsys) -> None:
     from chk_a.main import cmd_show_baseline
     from chk_a.utils.logger import setup_logger
 
-    config = load_config("config/settings.yaml")
+    config = load_config("config/config.yaml.example")
     config.baseline_store_path = str(_make_temp_path("baselines.json"))
     config.alert.alert_log_path = str(_make_temp_path("alerts.jsonl"))
     config.alert.alert_text_log_path = str(_make_temp_path("alerts.log"))

@@ -11,7 +11,7 @@ from chk_a.validate_config import validate
 
 
 def test_validate_ok_with_real_config():
-    cfg = load_config("config/settings.yaml")
+    cfg = load_config("config/config.yaml.example")
     assert validate(cfg) == []
 
 

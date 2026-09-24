@@ -860,7 +860,7 @@ class Orchestrator:
     async def _run_health_server(self, port: int, bind_address: str = "127.0.0.1") -> None:
         from aiohttp import web
 
-        async def _health(request: Any) -> Any:
+        async def _health(_request: Any) -> Any:
             return web.json_response(
                 {
                     "status": "ok",
