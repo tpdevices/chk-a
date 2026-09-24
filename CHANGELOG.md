@@ -63,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Cleanup
 - **2026-09-24 14:30:00** — GitHub repo cleanup: removed 33 obsolete files (duplicate configs, test scripts, build artifacts, install backups), updated .gitignore, fixed vulture warnings, all 313 tests passing
+- **2026-09-24 14:45:00** — Restored `img/ok.jpg` and `img/priority.jpg` (required for alert_agent tests), added `*.backup` `*.orig` to .gitignore
 
 ---
 
