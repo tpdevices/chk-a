@@ -57,6 +57,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Testing
 - All 313 tests passing (zero regression) on both dev and test VM
 - Test VM deploy verified: service starts cleanly, no systemd timeout, CAP_NET_RAW capability active
+- **2026-09-24 13:35:00** — Production (uptime-host) v1.0.36 deployed and verified: startup reports sent successfully, 6 Thai graphs delivered via Telegram, service running stable
 - **2026-09-23 11:30:00** — `tests/test_integration_pipeline.py` — Fixed CHK_A_FQDN_DIR, fixture fixes
 - **2026-09-23 11:35:00** — `tests/test_loop7.py` — Fixed CHK_A_FQDN_DIR, CLI test fixes
 

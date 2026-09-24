@@ -29,7 +29,7 @@
 | **Source (dev)** | 1.0.36 | ✅ 313 tests pass |
 | **GitHub tag** | v1.0.36 | ✅ pushed |
 | **Test VM** | 1.0.36 | ✅ deployed & verified |
-| **Production** | v1.0.34 | ✅ running |
+| **Production** | v1.0.36 | ✅ running |
 
 **Next release:** v1.0.37 (after next feature cycle)
 

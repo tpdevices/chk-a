@@ -29,7 +29,7 @@
 | **Source (dev)** | 1.0.36 | ✅ 313 tests ผ่าน |
 | **GitHub tag** | v1.0.36 | ✅ pushed |
 | **Test VM** | 1.0.36 | ✅ deployed & verified |
-| **Production** | v1.0.34 | ✅ ทำงานอยู่ |
+| **Production** | v1.0.36 | ✅ ทำงานอยู่ |
 
 **Release ถัดไป:** v1.0.37 (หลัง feature cycle ถัดไป)
 
