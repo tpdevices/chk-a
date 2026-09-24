@@ -61,14 +61,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **2026-09-23 11:30:00** — `tests/test_integration_pipeline.py` — Fixed CHK_A_FQDN_DIR, fixture fixes
 - **2026-09-23 11:35:00** — `tests/test_loop7.py` — Fixed CHK_A_FQDN_DIR, CLI test fixes
 
-### Testing
-- All 313 tests passing (zero regression, including new FQDN feature tests)
-- Source synced to test VM (192.168.56.122:/home/ipds/Hermes-Prj/chk-a/)
-- Awaiting `sudo ./scripts/deploy.sh` on test VM for runtime verification
+### Cleanup
+- **2026-09-24 14:30:00** — GitHub repo cleanup: removed 33 obsolete files (duplicate configs, test scripts, build artifacts, install backups), updated .gitignore, fixed vulture warnings, all 313 tests passing
 
 ---
 
-## [1.0.34] - 2026-09-22 16:30:00 (Asia/Bangkok UTC+07)
+## [1.0.35] - 2026-09-23 10:00:00 (Asia/Bangkok UTC+07)
 
 ### Changed
 - **2026-09-22 16:15:00** — `src/chk_a/reporting/graph_generator.py` — Modernized graph styling with colorblind-safe palette (viridis heatmap, semantic colors), clean aesthetics (no top/right spines, subtle grid), higher DPI (200), colorblind-safe categorical palette, Thai font improvements (bold weight, adjusted sizes). Footer version now in primary blue color.
