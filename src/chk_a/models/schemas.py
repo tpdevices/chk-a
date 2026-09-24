@@ -123,6 +123,8 @@ class FQDNConfig(BaseModel):
     name: str
     expected_ips: list[str] = Field(default_factory=list)  # optional allowlist
     min_consensus: float = Field(default=0.6, ge=0.0, le=1.0)
+    # Per-FQDN custom alert rules (optional, overrides global config)
+    alert_rules: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("name", mode="after")
     @classmethod
@@ -191,7 +193,7 @@ class AnomalyEvent(BaseModel):
     """A detected anomaly that may trigger an alert."""
 
     fqdn: str
-    type: Literal["baseline_deviation", "consensus_deviation", "new_ip", "nxdomain", "recovery", "hourly_reminder"]
+    type: Literal["baseline_deviation", "consensus_deviation", "new_ip", "nxdomain", "ip_change", "recovery", "hourly_reminder"]
     severity: Literal["info", "warning", "critical"] = "warning"
     details: dict[str, Any] = Field(default_factory=dict)
     timestamp: datetime = Field(default_factory=datetime.now)

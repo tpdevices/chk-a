@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-09-23 11:45:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -271,7 +271,7 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ Month start fix: Both missing & today reports use `month_start = day 1`
 
 ### v1.0.26 Release (2026-09-21 06:30:00)
-- ✅ Scheduled daily report (06:00 น.) merge month data (1st ถึงเมื่อวาน) สำหรับ daily availability heatmap, แทนแค่ข้อมูลเมื่อวาน. สอดคล้องกับ startup report behavior
+- ✅ Scheduled daily report (06:00 น.) merge month data (1st ถึงเมื่อวาน) สำหรับ daily availability heatmap, สอดคล้องกับ startup report behavior
 
 ### v1.0.27 Release (2026-09-21 08:00:00)
 - ✅ แสดง version ทั่วทุกรายงาน:
@@ -313,11 +313,26 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **Test VM Sync**: Sync source files ทั้งหมดไป test VM ผ่าน rsync, 313/313 tests ผ่านบน test VM
 - ✅ **Production Ready**: GitHub Release v1.0.34 published พร้อม assets ทั้งหมด
 
+### v1.0.35 Release (2026-09-23 10:00:00)
+- ✅ **Thai Localization สำหรับ Telegram alerts และ reports ทั้งหมด** — Thai rewrite เต็มรูปแบบของ `_format_html()` สำหรับ anomaly/recovery/hourly_reminder, Thai monthly/daily report summaries
+- ✅ **Terminology สอดคล้องกัน**: `ฝ่ายมาก` (Majority), `ฝ่ายน้อย` (Minority), `เสมอ` (Tie), `ค่าผิดปกติ` (Outliers), `ล้มเหลว / ไม่ตอบสนอง` (Failed)
+- ✅ **Consensus descriptions**: `100% = ตอบเหมือนกันหมด`, `90-99% = สูงมาก — มี resolver ฝ่ายน้อยผิดปกติ`, `70-89% = ปานกลาง — มี resolver ฝ่ายน้อยผิดปกติ`, `50-69% = แยกสองฝ่ายชัดเจน`, `1-49% = ใกล้ Tie ความไม่แน่นอนสูง`, `0% = เสมอภาค`
+- ✅ **313/313 tests ผ่านทั้งหมด** (zero regression)
+
+### FQDN Features Implementation (2026-09-23)
+- ✅ **Per-FQDN Custom Alert Thresholds** — `FQDNConfig.alert_rules` dict พร้อม `anomaly_threshold`, `consensus_min_score` ต่อ FQDN
+- ✅ **FQDN Availability Tracking** — คำนวณต่อรอบ (`successful_resolvers / total * 100`)
+- ✅ **IP Change Detection/Alert** — `_alert_ip_change()` ทริกเกอร์เมื่อ `current_ips != observed_ips`, ส่ง Thai-formatted alert
+- ✅ **FQDNStore Integration** — Import & init ใน Orchestrator, FQDNRecord อัปเดตทุกรอบ
+- ✅ **Thai Formatting สำหรับ `ip_change`** — เพิ่มใน `alert_agent.py` type_map และ `_format_html()`
+- ✅ **313/313 tests ผ่านทั้งหมด** (รวม FQDN features ใหม่)
+- ✅ **Synced to Test VM** — พร้อม deploy
+
 ---
 
 ## 4. สิ่งที่กำลังทำอยู่
 
-ไม่มี — ปัญหา Critical ทั้งหมดแก้เสร็จแล้วใน v1.0.34
+- **Test VM Deploy** — รอ `sudo ./scripts/deploy.sh` บน 192.168.56.122
 
 ---
 
@@ -356,6 +371,8 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 - ✅ **Version bump in source files** — Fixed in v1.0.33
 - ✅ **Alert/Recovery version footer** — Added in v1.0.33 (local)
 - ✅ **Modern graph styling** — implemented ใน v1.0.34
+- ✅ **Thai localization complete** — implemented ใน v1.0.35
+- ✅ **FQDN features complete** — implemented 2026-09-23
 
 ### กำลังดำเนินการ
 ไม่มี — ปัญหาที่รู้จักทั้งหมดแก้เสร็จแล้ว
@@ -365,10 +382,9 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 ## 6. งานที่ต้องทำต่อ
 
 ### Sprint นี้ (P2)
-- SEC-010/011 — DoH/DoT support, CAP_NET_RAW for MTR (implemented แล้ว, tests added)
-- Add log rotation test coverage (เสร็จใน v1.0.30)
-- Email reporting integration (tests added ใน v1.0.31, implementation มีอยู่แล้ว)
-- FQDN-centric model integration กับ agents (เสร็จใน v1.0.32)
+- Deploy ไป test VM และ verify FQDN features
+- Verify IP change alerts บน test VM
+- Tag v1.0.36 สำหรับ production release
 
 ### Quarter นี้ (P3)
 - Dashboard web UI (FastAPI + HTMX + Chart.js)
@@ -426,17 +442,19 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 | `scripts/deploy.sh` | Deploy source ที่ sync มาไปยัง FHS runtime `/opt/chk-a/` |
 | `scripts/manual_daily_report.py` | On-demand daily report from midnight to now |
 | `scripts/manual_monthly_report.py` | On-demand monthly report from 1st to now |
+| `show_fqdn_examples.py` | Demo script สำหรับ FQDN data structures |
 
 ### Test & Scripts
 | ไฟล์ | วัตถุประสงค์ |
 |------|-------------|
-| `tests/test_alert_agent.py` | Alert agent tests (อัปเดตแล้วสำหรับ `send_photo` signature) |
-| `tests/conftest.py` | Session-wide test config (`CHK_A_BASELINE_DIR=/tmp`) |
+| `tests/test_alert_agent.py` | Alert agent tests (อัปเดตแล้วสำหรับ `send_photo` signature + Thai format) |
+| `tests/conftest.py` | Session-wide test config (`CHK_A_BASELINE_DIR=/tmp`, `CHK_A_FQDN_DIR=/tmp/chk-a-test/fqdns`) |
 | `tests/test_integration_pipeline.py` | Full pipeline integration tests (7 tests) |
 | `tests/test_security_regressions.py` | Security regression tests (74 tests, SEC-001 ถึง SEC-020) |
 | `tests/test_fqdn_store.py` | FQDN store tests (25 tests) |
 | `tests/test_reporting.py` | Log rotation tests (18 tests) |
 | `tests/test_email_sender.py` | Email sender tests (12 tests) |
+| `tests/test_orchestrator.py` | Orchestrator tests (12 tests, อัปเดตสำหรับ FQDNStore) |
 
 ### Release & Deployment
 | ไฟล์ | วัตถุประสงค์ |
@@ -454,4 +472,4 @@ CheckResult[]  ConsensusResult  BaselineStore  AnomalyEvent
 
 ---
 
-*สร้างโดย Hermes Agent session วันที่ 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)*
+*สร้างโดย Hermes Agent session วันที่ 2026-09-23 11:45:00 (Asia/Bangkok UTC+07)*

@@ -75,6 +75,7 @@ class AppConfig(BaseModel):
     mtr: MTRConfig = Field(default_factory=MTRConfig)
     reporting: ReportingConfig = Field(default_factory=ReportingConfig)
     baseline_store_path: str = Field(default="./data/baselines.json")
+    fqdn_store_path: str = Field(default="/var/lib/chk-a/fqdns/main.json")
     hostname: str = Field(default_factory=lambda: __import__("socket").gethostname())
 
     @field_validator("fqdns", mode="after")

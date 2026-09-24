@@ -14,12 +14,17 @@ from pathlib import Path
 
 # Set allowed base dir for tests
 BASELINE_TEST_DIR = "/tmp/chk-a-test"
+FQDN_TEST_DIR = "/tmp/chk-a-test/fqdns"
 os.environ["CHK_A_BASELINE_DIR"] = BASELINE_TEST_DIR
+os.environ["CHK_A_FQDN_DIR"] = FQDN_TEST_DIR
 Path(BASELINE_TEST_DIR).mkdir(parents=True, exist_ok=True)
+Path(FQDN_TEST_DIR).mkdir(parents=True, exist_ok=True)
 
 
-def _make_temp_path(suffix: str = "baselines.json") -> Path:
+def _make_temp_path(suffix: str = "baselines.json", subdir: str = "") -> Path:
     """Create a temp file path within the allowed test directory."""
+    if subdir == "chk-a-test/fqdns":
+        return Path(FQDN_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
     return Path(BASELINE_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
 
 
@@ -77,6 +82,7 @@ def test_check_once_cli_runs() -> None:
 
     config = load_config("config/settings.yaml")
     config.baseline_store_path = str(_make_temp_path("baselines.json"))
+    config.fqdn_store_path = str(_make_temp_path("main.json", subdir="chk-a-test/fqdns"))
     config.alert.alert_log_path = str(_make_temp_path("alerts.jsonl"))
     config.alert.alert_text_log_path = str(_make_temp_path("alerts.log"))
     config.alert.dedup_cache_path = str(_make_temp_path("dedup_cache.json"))

@@ -21,12 +21,14 @@ from chk_a.models.schemas import (
     ResolverConfig,
 )
 from chk_a.orchestrator import Orchestrator, ActiveAnomaly
+from tests.conftest import _make_temp_path
 
 
 def _make_config() -> AppConfig:
     return AppConfig(
         fqdns=[FQDNConfig(name="example.com")],
         resolvers=[ResolverConfig(name="r1", address="1.1.1.1:53")],
+        fqdn_store_path=str(_make_temp_path("main.json", subdir="chk-a-test/fqdns")),
     )
 
 
@@ -46,7 +48,7 @@ def _make_agents(score: float = 0.0, outliers: list[CheckResult] | None = None):
     consensus.aggregate.return_value = ConsensusResult(
         fqdn="example.com",
         majority_ips=["1.2.3.4"],
-        consensus_score=1.0,
+        consensus_score=0.5,  # Low score to trigger consensus_deviation alert
         outliers=outliers or [],
     )
     ml = MagicMock()
@@ -104,7 +106,7 @@ async def test_run_cycle_alerts_on_consensus_outlier():
 
 @pytest.mark.asyncio
 async def test_run_cycle_skips_when_no_fqdns():
-    config = AppConfig()  # empty
+    config = AppConfig(fqdn_store_path=str(_make_temp_path("main.json", subdir="chk-a-test/fqdns")))  # empty
     agents = _make_agents()
     orch = Orchestrator(config, agents)
     await orch.run_cycle()
@@ -161,7 +163,14 @@ async def test_recovery_alert_sent_when_anomaly_resolves():
     assert "example.com|baseline_deviation" in orch._active_anomalies
 
     # Now change score to below threshold (recovered)
+    # Also update consensus mock to return high consensus score (recovered)
     orch.ml.score.return_value = 0.1
+    orch.consensus.aggregate.return_value = ConsensusResult(
+        fqdn="example.com",
+        majority_ips=["1.2.3.4"],
+        consensus_score=1.0,  # High consensus = recovered
+        outliers=[],
+    )
     await orch.run_cycle()
     # A recovery alert should now have been sent (2nd maybe_alert call)
     assert orch.alert.maybe_alert.await_count == 2

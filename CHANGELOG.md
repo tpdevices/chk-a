@@ -29,6 +29,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.36] - 2026-09-24 13:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **2026-09-24 13:25:00** — `src/chk_a/orchestrator.py` — Fixed systemd shutdown timeout: added `notify_stopping()` call in `shutdown()` method to properly notify systemd (Type=notify + WatchdogSec) before graceful exit
+- **2026-09-24 13:25:00** — `systemd/chk-a.service` — Added `CapabilityBoundingSet=CAP_NET_RAW` and `AmbientCapabilities=CAP_NET_RAW` for MTR ICMP mode support
+
+### Added
+- **FQDN-centric features: Availability tracking, Per-FQDN custom alert thresholds, IP change detection/alert**
+  - `FQDNConfig.alert_rules` dict with optional per-FQDN `anomaly_threshold` and `consensus_min_score` overrides
+  - `AnomalyEvent.type = "ip_change"` — new anomaly type for IP change detection
+  - `_process_fqdn()` in Orchestrator — computes FQDN availability per cycle (`successful_resolvers / total * 100`), updates FQDNRecord
+  - `_alert_ip_change()` in Orchestrator — detects when `current_ips != observed_ips`, sends Thai-formatted alert
+  - FQDNStore integration in Orchestrator — import, init, FQDNRecord updates per cycle
+  - Thai formatting for `ip_change` in `alert_agent.py` (type_map + `_format_html()`)
+  - `fqdn_store_path` in `AppConfig` (config/loader.py)
+
+### Changed
+- **2026-09-23 11:00:00** — `src/chk_a/models/schemas.py` — Added `alert_rules` dict to `FQDNConfig`, added `ip_change` to `AnomalyEvent.type` literal
+- **2026-09-23 11:05:00** — `src/chk_a/orchestrator.py` — Integrated FQDNStore, implemented `_process_fqdn()` availability tracking, `_alert_ip_change()` IP change detection
+- **2026-09-23 11:10:00** — `src/chk_a/agents/alert_agent.py` — Added Thai `ip_change` formatting in type_map and `_format_html()`
+- **2026-09-23 11:15:00** — `src/chk_a/config/loader.py` — Added `fqdn_store_path` to `AppConfig`
+- **2026-09-23 11:20:00** — `tests/conftest.py` — Added `CHK_A_FQDN_DIR` env var and `_make_temp_path(subdir="chk-a-test/fqdns")` helper
+- **2026-09-23 11:25:00** — `tests/test_orchestrator.py` — Fixed temp path usage, consensus_score fix, recovery test fix
+- **2026-09-24 13:30:00** — `pyproject.toml` — Bumped version to 1.0.36
+
+### Testing
+- All 313 tests passing (zero regression) on both dev and test VM
+- Test VM deploy verified: service starts cleanly, no systemd timeout, CAP_NET_RAW capability active
+- **2026-09-23 11:30:00** — `tests/test_integration_pipeline.py` — Fixed CHK_A_FQDN_DIR, fixture fixes
+- **2026-09-23 11:35:00** — `tests/test_loop7.py` — Fixed CHK_A_FQDN_DIR, CLI test fixes
+
+### Testing
+- All 313 tests passing (zero regression, including new FQDN feature tests)
+- Source synced to test VM (192.168.56.122:/home/ipds/Hermes-Prj/chk-a/)
+- Awaiting `sudo ./scripts/deploy.sh` on test VM for runtime verification
+
+---
+
 ## [1.0.34] - 2026-09-22 16:30:00 (Asia/Bangkok UTC+07)
 
 ### Changed

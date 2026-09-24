@@ -65,6 +65,7 @@ def _format_html(event: AnomalyEvent, version: str | None = None) -> str:
         "consensus_deviation": "🗳️ ความแตกต่างของคะแนนเสียง (Consensus Deviation)",
         "new_ip": "🆕 IP ใหม่ (New IP Detected)",
         "nxdomain": "🚫 NXDOMAIN",
+        "ip_change": "🔄 การเปลี่ยนแปลง IP (IP Address Change)",
         "recovery": "✅ ฟื้นฟู (Recovery)",
         "hourly_reminder": "⏰ เตือนทุกชั่วโมง (Hourly Reminder)",
     }
@@ -124,6 +125,19 @@ def _format_html(event: AnomalyEvent, version: str | None = None) -> str:
             f"<b>เวลา:</b> {event.timestamp.strftime('%Y-%m-%d %H:%M:%S')} (Asia/Bangkok)",
         ])
         # Add version footer if available
+        if version:
+            lines.append(f"🏷️ <b>chk-a v{version}</b>")
+        return "\n".join(lines)
+
+    # Handle ip_change event specially
+    if event.type == "ip_change":
+        old_ips = d.get("old_ips", [])
+        new_ips = d.get("new_ips", [])
+        lines.append(f"<b>🔄 IP เดิม:</b> {', '.join(f'<code>{_html_escape(ip)}</code>' for ip in old_ips) if old_ips else '<i>ไม่มีข้อมูล</i>'}")
+        lines.append(f"<b>🔄 IP ใหม่:</b> {', '.join(f'<code>{_html_escape(ip)}</code>' for ip in new_ips) if new_ips else '<i>ไม่มีข้อมูล</i>'}")
+        lines.append(f"<b>คะแนนเสียง (Consensus):</b> {consensus:.2%}")
+        lines.append(f"<b>Resolver:</b> {resolver_count} ตัว")
+        lines.append(f"<b>เวลา:</b> {event.timestamp.strftime('%Y-%m-%d %H:%M:%S')} (Asia/Bangkok)")
         if version:
             lines.append(f"🏷️ <b>chk-a v{version}</b>")
         return "\n".join(lines)

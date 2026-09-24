@@ -45,6 +45,7 @@ from .models.schemas import (
     ConsensusResult,
     FQDNConfig,
 )
+from .storage.fqdn_store import FQDNStore, FQDNRecord
 from .reporting.monthly_report import generate_monthly_report, generate_daily_report
 from .utils.context import new_correlation_id, set_correlation_id
 from .utils.logger import setup_logger
@@ -139,6 +140,9 @@ class Orchestrator:
         self.logger = logger or setup_logger("chk_a.orchestrator")
         self._shutdown: asyncio.Event | None = None
         self.hostname = config.hostname
+        # FQDN Store for per-FQDN tracking
+        fqdn_store_path = getattr(config, 'fqdn_store_path', '/var/lib/chk-a/fqdns/main.json')
+        self.fqdn_store = FQDNStore(fqdn_store_path)
         # Daily task state
         self._daily_task: asyncio.Task | None = None
         # Daily report task state
@@ -225,6 +229,10 @@ class Orchestrator:
 
     async def shutdown(self) -> None:
         """Persist the ML baseline and release resources cleanly."""
+        # Tell systemd we are stopping gracefully (Type=notify + WatchdogSec)
+        from .utils.systemd_notify import notify_stopping
+        with contextlib.suppress(Exception):
+            notify_stopping()
         self.logger.info("Persisting ML baseline and flushing logs")
         with contextlib.suppress(Exception):
             self.ml.storage.save()
@@ -286,18 +294,59 @@ class Orchestrator:
     async def _process_fqdn(self, fqdn: str, results: list[CheckResult]) -> None:
         cfg = self._fqdn_config(fqdn)
         min_consensus = cfg.min_consensus if cfg else 0.6
+        # Get per-FQDN alert rules (fallback to global config)
+        fqdn_alert_rules = cfg.alert_rules if cfg else {}
+        anomaly_threshold = fqdn_alert_rules.get("anomaly_threshold", self.config.ml.anomaly_threshold)
+        consensus_min_score = fqdn_alert_rules.get("consensus_min_score", 0.6)
+        
         consensus = self.consensus.aggregate(fqdn, results, min_consensus=min_consensus)
         self.ml.learn(consensus)
 
         observed_ips = list(consensus.majority_ips)
         score = self.ml.score(fqdn, observed_ips)
 
+        # --- FQDN Availability Tracking ---
+        successful_results = [r for r in results if r.success and r.ips]
+        availability_pct = (len(successful_results) / len(results)) * 100 if results else 0
+        
+        # Get or create FQDN record for tracking
+        fqdn_record = self.fqdn_store.get(fqdn)
+        if fqdn_record is None:
+            fqdn_record = FQDNRecord(fqdn)
+            # Initialize with current state
+            fqdn_record.current_ips = observed_ips
+            fqdn_record.update_monitoring_state(
+                success=len(successful_results) > 0,
+                latency_ms=sum(r.latency_ms for r in successful_results) / len(successful_results) if successful_results else 0.0,
+                timestamp=datetime.now(TZ)
+            )
+        else:
+            # Check for IP changes
+            if set(fqdn_record.current_ips) != set(observed_ips) and fqdn_record.current_ips:
+                # IP changed - record in history and alert
+                old_ips = fqdn_record.current_ips
+                fqdn_record.add_ip_change(old_ips, observed_ips, "consensus", datetime.now(TZ))
+                # Trigger IP change alert
+                await self._alert_ip_change(fqdn, old_ips, observed_ips, consensus, results)
+            
+            # Update monitoring state
+            fqdn_record.current_ips = observed_ips
+            fqdn_record.update_monitoring_state(
+                success=len(successful_results) > 0,
+                latency_ms=sum(r.latency_ms for r in successful_results) / len(successful_results) if successful_results else 0.0,
+                timestamp=datetime.now(TZ)
+            )
+        
+        # Save FQDN record
+        self.fqdn_store.set(fqdn_record)
+        self.fqdn_store.save()
+
         # Check for recovery of active anomalies for this FQDN
         await self._check_recovery(fqdn, consensus, results, score)
 
-        if score > self.config.ml.anomaly_threshold:
+        if score > anomaly_threshold:
             await self._alert_baseline(fqdn, consensus, results, score)
-        if consensus.outliers:
+        if consensus.outliers and consensus.consensus_score < consensus_min_score:
             await self._alert_consensus(fqdn, consensus, results)
 
     def _fqdn_config(self, fqdn: str) -> FQDNConfig | None:
@@ -584,6 +633,60 @@ class Orchestrator:
 
         # Track this anomaly for recovery detection
         await self._track_new_anomaly(fqdn, "consensus_deviation", consensus, results, 1.0)
+
+    async def _alert_ip_change(
+        self,
+        fqdn: str,
+        old_ips: list[str],
+        new_ips: list[str],
+        consensus: ConsensusResult,
+        results: list[CheckResult],
+    ) -> None:
+        """Alert when FQDN IP addresses change."""
+        # Determine resolver name from results
+        resolver_name = results[0].resolver if results else "unknown"
+
+        # Prepare full resolver details for alert formatting
+        all_results = []
+        for r in results:
+            all_results.append(
+                {
+                    "resolver": r.resolver,
+                    "ips": r.ips,
+                    "latency_ms": r.latency_ms,
+                    "timestamp": r.timestamp.isoformat(),
+                    "success": r.success,
+                    "error": r.error,
+                }
+            )
+
+        # Generate event ID: {hostname}-YYYYMMDD-HHmmss
+        event_id = f"{self.hostname}-{datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
+        event = AnomalyEvent(
+            fqdn=fqdn,
+            type="ip_change",
+            severity="warning",
+            details={
+                "old_ips": old_ips,
+                "new_ips": new_ips,
+                "consensus_score": consensus.consensus_score,
+                "resolver_count": len(results),
+                "anomaly_score": 1.0,
+                "majority_ips": list(consensus.majority_ips),
+                "all_results": all_results,
+                "outlier_details": [],
+            },
+            resolver_snapshots=results,
+            hostname=socket.gethostname(),
+            resolver_name=resolver_name,
+            event_id=event_id,
+        )
+        sent = await self.alert.maybe_alert(event)
+        self.logger.info("IP change %s alert_sent=%s", fqdn, sent)
+
+        # Track this anomaly for recovery detection
+        await self._track_new_anomaly(fqdn, "ip_change", consensus, results, 1.0)
 
     # -- recovery detection ------------------------------------------------
     async def _track_new_anomaly(

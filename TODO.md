@@ -1,12 +1,12 @@
 # TODO — chk-a
 
-**Last Updated:** 2026-09-23 10:00:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-09-23 11:45:00 (Asia/Bangkok UTC+07)
 
 ---
 
 ## 🔴 Critical / Blocking
 
-None — all critical issues resolved as of v1.0.35.
+None — all critical issues resolved as of v1.0.35 + FQDN features.
 
 ---
 
@@ -39,6 +39,19 @@ None — all critical issues resolved as of v1.0.35.
 **Priority:** High — release validation
 **Status:** COMPLETED 2026-09-18 — Production `uptime-host` installed v1.0.15 successfully. 00:00 daily image confirmed working.
 
+### [x] FQDN Features: Availability, Per-FQDN Thresholds, IP Change Detection
+**Context:** User requested FQDN-centric features: availability tracking per FQDN, custom alert thresholds per FQDN, IP change detection/alert
+**Files:** `src/chk_a/models/schemas.py`, `src/chk_a/orchestrator.py`, `src/chk_a/storage/fqdn_store.py`, `src/chk_a/agents/alert_agent.py`, `src/chk_a/config/loader.py`, `tests/conftest.py`, `tests/test_orchestrator.py`, `tests/test_integration_pipeline.py`, `tests/test_loop7.py`
+**Priority:** High — User request
+**Status:** COMPLETED 2026-09-23 — All FQDN features implemented:
+- `FQDNConfig.alert_rules` dict for per-FQDN thresholds
+- `AnomalyEvent.type = "ip_change"` for IP change detection
+- `_process_fqdn()` computes availability per cycle, updates FQDNRecord
+- `_alert_ip_change()` triggers when IPs change, sends Thai alert
+- Thai formatting for `ip_change` in `alert_agent.py`
+- All 313 tests passing
+- Synced to Test VM, awaiting deploy
+
 ---
 
 ## 🟢 Medium Priority
@@ -68,7 +81,7 @@ None — all critical issues resolved as of v1.0.35.
 **Status:** COMPLETED 2026-09-22 — EmailSender class exists with STARTTLS/Implicit TLS, auth/no-auth, PDF attachments, Thai/English body; 12 tests added in v1.0.31
 **Priority:** Medium — feature completion
 
-### [x] Telegram report sending: sequential + Thai-only graphs (NEW)
+### [x] Telegram report sending: sequential + Thai-only graphs
 **Context:** User requested Telegram reports to send only Thai-language graphs (not English) and send sequentially (one-by-one waiting for success confirmation) instead of concurrent burst sending.
 **Files:** `src/chk_a/reporting/telegram_reporter.py` — Modified `send_monthly_report_telegram()` and `send_daily_report_telegram()` to filter `-th.png` graphs, send sequentially with 0.5s delay, detailed logging per graph.
 **Priority:** Medium — UX improvement for Telegram delivery reliability
@@ -95,11 +108,6 @@ None — all critical issues resolved as of v1.0.35.
 ---
 
 ## 🔵 Low Priority / Nice to Have
-
-### [x] Config.yaml Parameter Documentation & Setup Guide (Done in v1.0.15)
-**Context:** Create comprehensive documentation for all config.yaml parameters with explanations, valid values, recommended settings, and setup guides.
-**Files:** `config/config.yaml.example` (updated with Thai comments), `config/chk-a.env.example` (updated)
-**Status:** COMPLETED 2026-09-18 — Complete config.yaml.example with all 10 sections and Thai comments; complete chk-a.env.example with placeholders.
 
 ### [ ] Dashboard web UI
 **Context:** Add simple web dashboard for real-time status, graphs, alerts history.
@@ -158,7 +166,7 @@ None — all critical issues resolved as of v1.0.35.
 **Details:** Orchestrator checks for missing yesterday's report on startup and sends it automatically.
 
 ### [x] GitHub Release Workflow + Production Installer (2026-09-16)
-**Details:** 
+**Details:**
 - `.github/workflows/release.yml` — build wheel on tag push, create GitHub Release
 - `install.sh` / `uninstall.sh` — production installer/uninstaller
 - `Makefile` — install, uninstall, upgrade, status, logs, version targets
@@ -260,9 +268,10 @@ None — all critical issues resolved as of v1.0.35.
 - Fixed: Version detection now works both when installed as package and when running as module (`-m chk_a.main`). Added fallback to read from `pyproject.toml`.
 - Fixed: CLI commands `test-telegram` and `test-daily-image` now properly extract secret values from `SecretStr` before passing to `TelegramClient`, fixing "Object of type SecretStr is not JSON serializable" error.
 
-### [x] v1.0.29 Release (2026-09-21 11:00:00)
+### [x] v1.0.29 Release (2026-09-21 15:30:00)
 **Details:**
 - Fixed: MTR CLI target validation auto-appends `:53` for bare IP/hostname, allowing CLI to accept bare IP/hostname as target argument without manual port specification.
+- Test VM Python cache issue: Python `.pyc` cache in `/opt/chk-a/.venv/lib/python3.14/site-packages/chk_a/__pycache__/` was serving stale `__init__.py` (v0.1.0). Cleared cache with `sudo find /opt/chk-a/.venv -name '*.pyc' -path '*/chk_a/*' -delete` to serve updated `__version__` (1.0.29).
 
 ### [x] v1.0.30 Release (2026-09-22 14:45:00)
 **Details:**
@@ -288,6 +297,22 @@ None — all critical issues resolved as of v1.0.35.
 - Modern graph styling (colorblind-safe, viridis heatmap, clean aesthetics)
 - Alert/Recovery version footer included in release
 
+### [x] v1.0.35 Release (2026-09-23 10:00:00)
+**Details:**
+- Thai localization for all Telegram alerts and reports
+- Consensus descriptions, resolver group labels, severity/type labels all in Thai
+- All 313 tests passing (zero regression)
+
+### [x] FQDN Features Complete (2026-09-23 11:45:00)
+**Details:**
+- Per-FQDN custom alert thresholds (`FQDNConfig.alert_rules`)
+- FQDN availability tracking (successful/total * 100 per cycle)
+- IP change detection/alert (`_alert_ip_change()`, `ip_change` anomaly type)
+- FQDNStore integration in Orchestrator
+- Thai formatting for `ip_change` alerts
+- All 313 tests passing
+- Synced to Test VM, awaiting deploy
+
 ---
 
 ## 📋 Related Files
@@ -304,18 +329,22 @@ None — all critical issues resolved as of v1.0.35.
 | **Tests** | `tests/test_*.py` (313 tests), `tests/conftest.py` |
 | **Logs** | `/var/log/chk-a/checks.jsonl*`, `/var/log/chk-a/alerts.jsonl*`, `/var/log/chk-a/alerts.log` |
 | **Baselines** | `/var/lib/chk-a/baselines.json` |
+| **FQDN Store** | `/var/lib/chk-a/fqdns.json` (NEW) |
 | **Secrets** | `/etc/chk-a/env` |
 
 ---
 
 ## 🎯 Next Session Priorities
 
-1. **Dashboard web UI** (FastAPI + HTMX + Chart.js) — Low
-2. **GitHub repo cleanup & branch consolidation** — Low
-3. **Historical data compaction** — Low
-4. **Multi-host orchestration** — Low
-5. **Prometheus metrics export (optional)** — Low
+1. **Deploy to Test VM** — Run `sudo ./scripts/deploy.sh` on 192.168.56.122
+2. **Verify FQDN features on Test VM** — Check availability tracking, IP change alerts
+3. **Tag v1.0.36** — After test verification, release to production via GitHub Actions
+4. **Dashboard web UI** (FastAPI + HTMX + Chart.js) — Low
+5. **GitHub repo cleanup & branch consolidation** — Low
+6. **Historical data compaction** — Low
+7. **Multi-host orchestration** — Low
+8. **Prometheus metrics export (optional)** — Low
 
 ---
 
-*อัปเดตโดย Hermes Agent session วันที่ 2026-09-22 15:40:32 (Asia/Bangkok UTC+07)*
+*อัปเดตโดย Hermes Agent session วันที่ 2026-09-23 11:45:00 (Asia/Bangkok UTC+07)*

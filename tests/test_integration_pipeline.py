@@ -42,12 +42,17 @@ from chk_a.utils.telegram_client import TelegramClient
 
 # Set allowed base dir for tests
 BASELINE_TEST_DIR = "/tmp/chk-a-test"
+FQDN_TEST_DIR = "/tmp/chk-a-test/fqdns"
 os.environ["CHK_A_BASELINE_DIR"] = BASELINE_TEST_DIR
+os.environ["CHK_A_FQDN_DIR"] = FQDN_TEST_DIR
 Path(BASELINE_TEST_DIR).mkdir(parents=True, exist_ok=True)
+Path(FQDN_TEST_DIR).mkdir(parents=True, exist_ok=True)
 
 
-def _make_temp_path(suffix: str = "baselines.json") -> Path:
+def _make_temp_path(suffix: str = "baselines.json", subdir: str = "") -> Path:
     """Create a temp file path within the allowed test directory."""
+    if subdir == "fqdns":
+        return Path(FQDN_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
     return Path(BASELINE_TEST_DIR) / f"test_{uuid.uuid4().hex[:8]}_{suffix}"
 
 
@@ -105,6 +110,7 @@ def mock_config(baseline_store_path) -> AppConfig:
             timeout_sec=10,
         ),
         baseline_store_path=baseline_store_path,
+        fqdn_store_path=str(_make_temp_path("main.json", subdir="fqdns")),
         logging=LoggingConfig(
             file=str(_make_temp_path("checks.jsonl")),
             level="INFO",
