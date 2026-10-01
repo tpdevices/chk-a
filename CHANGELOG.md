@@ -6,7 +6,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [1.0.35] - 2026-09-23 10:00:00 (Asia/Bangkok UTC+07)
+## [Unreleased]
+
+### Added
+- **Monthly report bar graphs with Overall Average lines** — Enhanced Availability and Integrity bar charts to show overall average across all resolvers
+  - `generate_availability_bar_chart()` now accepts `overall_availability_pct` parameter and displays a solid cyan line with label
+  - `generate_integrity_chart()` now accepts `overall_integrity_pct` parameter and displays a solid cyan line with label
+  - Added `overall_integrity_pct` to `generate_ml_insights()` summary output
+  - Thai translation for "Overall Avg:" label in graphs
+
+### Changed
+- **2026-10-01 15:45:00** — `src/chk_a/reporting/ml_insights.py` — Added `overall_integrity_pct` calculation and output in summary
+- **2026-10-01 15:45:00** — `src/chk_a/reporting/graph_generator.py` — Added `overall_availability_pct` and `overall_integrity_pct` parameters to bar chart functions, added Thai translations, integrated into `generate_summary_dashboard()`
+
+### Testing
+- All 313 tests passing (zero regression)
+
+---
+
+## [1.0.36] - 2026-09-24 13:30:00 (Asia/Bangkok UTC+07)
 
 ### Added
 - **Thai localization for all Telegram alerts and reports** — Full Thai language support for anomaly/recovery alerts, monthly/daily report summaries

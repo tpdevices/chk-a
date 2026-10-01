@@ -335,6 +335,8 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
         "Integrity": "ความสมบูรณ์",
         "Anomaly": "ผิดปกติ",
         "Normal": "ปกติ",
+        "Overall Avg:": "ค่าเฉลี่ยรวม:",
+        "Overall Avg": "ค่าเฉลี่ยรวม",
     }
 
     # Axis labels and title - apply Thai font
@@ -402,6 +404,7 @@ def generate_availability_bar_chart(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    overall_availability_pct: float | None = None,
 ) -> None:
     """Generate horizontal bar chart of resolver availability."""
     if not availability_data:
@@ -440,6 +443,17 @@ def generate_availability_bar_chart(
     ax.set_xlabel("Availability (%)", fontsize=12)
     ax.axvline(x=99, color=COLORS["success"], linestyle="--", alpha=0.5, label="99% SLA")
     ax.axvline(x=95, color=COLORS["warning"], linestyle="--", alpha=0.5, label="95% SLA")
+    
+    # Add overall average line
+    if overall_availability_pct is not None:
+        ax.axvline(
+            x=overall_availability_pct,
+            color=COLORS["info"],
+            linestyle="-",
+            linewidth=2,
+            alpha=0.8,
+            label=f"Overall Avg: {overall_availability_pct:.2f}%"
+        )
     ax.legend(loc="lower right")
 
     # Invert y-axis so best is at top
@@ -578,6 +592,7 @@ def generate_integrity_chart(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    overall_integrity_pct: float | None = None,
 ) -> None:
     """Generate horizontal bar chart of ML-based integrity scores."""
     if not integrity_data:
@@ -618,6 +633,17 @@ def generate_integrity_chart(
     ax.set_xlim(0, 110)
     ax.set_xlabel("Integrity Score (0-100, higher = more consistent)", fontsize=12)
     ax.axvline(x=50, color=COLORS["warning"], linestyle="--", alpha=0.5, label="Median")
+    
+    # Add overall average line
+    if overall_integrity_pct is not None:
+        ax.axvline(
+            x=overall_integrity_pct,
+            color=COLORS["info"],
+            linestyle="-",
+            linewidth=2,
+            alpha=0.8,
+            label=f"Overall Avg: {overall_integrity_pct:.2f}%"
+        )
     ax.legend(loc="lower right")
     ax.invert_yaxis()
 
@@ -996,7 +1022,8 @@ def generate_summary_dashboard(
 
     # 1. Availability bar chart
     path = output_dir / f"availability-bar{timestamp}{lang_suffix}.png"
-    generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname, version=version)
+    overall_availability_pct = ml_insights.get("summary", {}).get("overall_availability_pct")
+    generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname, version=version, overall_availability_pct=overall_availability_pct)
     generated.append(path)
 
     # 2. Availability heatmap (hourly)
@@ -1034,7 +1061,8 @@ def generate_summary_dashboard(
 
     # 4. Integrity chart
     path = output_dir / f"integrity-score{timestamp}{lang_suffix}.png"
-    generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname, version=version)
+    overall_integrity_pct = ml_insights.get("summary", {}).get("overall_integrity_pct")
+    generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname, version=version, overall_integrity_pct=overall_integrity_pct)
     generated.append(path)
 
     # 4. Latency boxplot
@@ -1071,6 +1099,7 @@ def generate_availability_bar_chart_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    overall_availability_pct: float | None = None,
 ) -> None:
     """Thai version of availability bar chart."""
     generate_availability_bar_chart(
@@ -1080,6 +1109,7 @@ def generate_availability_bar_chart_th(
         lang="th",
         hostname=hostname,
         version=version,
+        overall_availability_pct=overall_availability_pct,
     )
 
 
@@ -1122,6 +1152,7 @@ def generate_integrity_chart_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    overall_integrity_pct: float | None = None,
 ) -> None:
     """Thai version of integrity chart."""
     generate_integrity_chart(
@@ -1131,6 +1162,7 @@ def generate_integrity_chart_th(
         lang="th",
         hostname=hostname,
         version=version,
+        overall_integrity_pct=overall_integrity_pct,
     )
 
 

@@ -821,6 +821,12 @@ def generate_ml_insights(
         if total_resolvers > 0
         else 0.0
     )
+    # Overall integrity average
+    overall_integrity = (
+        sum(v["integrity_score"] for v in integrity.values()) / total_resolvers
+        if total_resolvers > 0
+        else 0.0
+    )
     anomalous = [r for r, v in integrity.items() if v.get("is_anomaly", False)]
 
     # Best/worst by availability
@@ -839,6 +845,7 @@ def generate_ml_insights(
             "total_resolvers": total_resolvers,
             "total_queries": total_queries,
             "overall_availability_pct": round(overall_availability, 2),
+            "overall_integrity_pct": round(overall_integrity, 2),
             "anomalous_resolvers": anomalous,
             "best_resolver": best,
             "worst_resolver": worst,
