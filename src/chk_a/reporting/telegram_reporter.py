@@ -347,6 +347,7 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th", versi
             f"• Resolver ทั้งหมด: {summary.get('total_resolvers', 0)}",
             f"• Query ทั้งหมด: {summary.get('total_queries', 0):,}",
             f"• ความพร้อมใช้งานโดยรวม: {summary.get('overall_availability_pct', 0):.2f}%",
+            f"• ความสมบูรณ์โดยรวม: {summary.get('overall_integrity_pct', 0):.2f}%",
             f"• 🏆 ดีที่สุด: {_html_escape(summary.get('best_resolver', 'N/A'))}",
             f"• ⚠️ ต้องปรับปรุง: {_html_escape(summary.get('worst_resolver', 'N/A'))}",
             f"• 🔴 Anomaly: {len(summary.get('anomalous_resolvers', []))} ตัว",
@@ -363,6 +364,20 @@ def create_telegram_summary(ml_insights: dict[str, Any], lang: str = "th", versi
                 pct = data["availability_pct"]
                 emoji = "🟢" if pct >= 99 else "🟡" if pct >= 95 else "🔴"
                 lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {pct:.2f}%")
+
+            lines.append("")
+
+        # All resolvers integrity
+        if integrity:
+            lines.append("🔐 <b>All Resolvers Integrity (Baseline Consistency)</b>")
+            sorted_integrity = sorted(
+                integrity.items(), key=lambda x: x[1].get("integrity_score", 0), reverse=True
+            )
+            for i, (resolver, data) in enumerate(sorted_integrity, 1):
+                score = data.get("integrity_score", 0)
+                success_rate = data.get("success_rate", 0)
+                emoji = "🟢" if score >= 95 else "🟡" if score >= 80 else "🔴"
+                lines.append(f"{i}. {emoji} {_html_escape(resolver)}: {score:.1f} (✓{success_rate:.0f}%)")
 
             lines.append("")
 
