@@ -58,10 +58,33 @@ class MonthlyReportGenerator:
         }
 
     def generate_insights(self) -> dict[str, Any]:
-        """Step 1: Generate ML insights from historical data."""
+        """Step 1: Generate ML insights from historical data for the PREVIOUS MONTH."""
         log.info("Generating ML insights from log data...")
         log_path = self.config.logging.file
-        lookback = self.reporting_config.lookback_days
+
+        # Calculate previous month date range: 1st to last day of previous month
+        from datetime import datetime, timedelta
+        from zoneinfo import ZoneInfo
+        TZ = ZoneInfo("Asia/Bangkok")
+        now = datetime.now(TZ)
+        # First day of current month at 00:00:00
+        first_day_current = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Last day of previous month at 23:59:59
+        last_day_prev = first_day_current - timedelta(seconds=1)
+        # First day of previous month at 00:00:00
+        first_day_prev = last_day_prev.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # Lookback days = number of days in previous month
+        lookback = (last_day_prev - first_day_prev).days + 1
+        reference_date = last_day_prev
+
+        log.info(
+            "Monthly report: previous month range %s to %s (lookback=%d days, ref=%s)",
+            first_day_prev.strftime("%Y-%m-%d"),
+            last_day_prev.strftime("%Y-%m-%d"),
+            lookback,
+            reference_date.isoformat(),
+        )
 
         # MTR log path
         mtr_log_path = ""
@@ -73,7 +96,7 @@ class MonthlyReportGenerator:
         store = BaselineStore(self.config.baseline_store_path)
         ml_agent = MLAgent(self.config.ml, store)
 
-        insights = generate_ml_insights(log_path, lookback, mtr_log_path, ml_agent=ml_agent)
+        insights = generate_ml_insights(log_path, float(lookback), mtr_log_path, ml_agent=ml_agent, reference_date=reference_date)
         log.info(
             "ML insights generated: %d resolvers, %.2f%% overall availability",
             insights["summary"]["total_resolvers"],

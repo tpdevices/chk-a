@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **2026-10-01 15:45:00** — `src/chk_a/reporting/ml_insights.py` — Added `overall_integrity_pct` calculation and output in summary
 - **2026-10-01 15:45:00** — `src/chk_a/reporting/graph_generator.py` — Added `overall_availability_pct` and `overall_integrity_pct` parameters to bar chart functions, added Thai translations, integrated into `generate_summary_dashboard()`
+- **2026-10-01 16:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed monthly report date range: now uses previous calendar month (1st to last day) instead of rolling 30-day lookback. Calculates lookback dynamically based on previous month's days, uses `reference_date` for precise cutoff.
 
 ### Testing
 - All 313 tests passing (zero regression)
