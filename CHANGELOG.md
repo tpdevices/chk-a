@@ -6,27 +6,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-## [Unreleased]
+## [1.0.37] - 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
-### Added
-- **Monthly report bar graphs with Overall Average lines** — Enhanced Availability and Integrity bar charts to show overall average across all resolvers
-  - `generate_availability_bar_chart()` now accepts `overall_availability_pct` parameter and displays a solid cyan line with label
-  - `generate_integrity_chart()` now accepts `overall_integrity_pct` parameter and displays a solid cyan line with label
-  - Added `overall_integrity_pct` to `generate_ml_insights()` summary output
-  - Thai translation for "Overall Avg:" label in graphs
+### Fixed
+- **Monthly report dashboard title** — Changed to "chk-a รายงานเดือน {ชื่อเดือนไทย} {ปี} ของ DNS Resolver" with Thai month name
+- **Dashboard footer timestamp** — Changed from "อัปเดตล่าสุด" to "สร้างเมื่อ {timestamp}" (TH) / "Generated at" (EN) using consistent generation time
+- **Daily Availability Heatmap title** — Now uses actual last day from data (1 to N) instead of current day `now.day`
+- **Daily Heatmap calendar-month window** — Added `start_date` parameter to `_load_recent_checks()` and `generate_ml_insights()` for precise 1st to last day window (not rolling 30-day)
+- **Cleared test data** — Removed persisted test resolvers (r1, fake-resolver) from baseline, FQDN store, and checks.jsonl
 
 ### Changed
-- **2026-10-01 15:45:00** — `src/chk_a/reporting/ml_insights.py` — Added `overall_integrity_pct` calculation and output in summary
-- **2026-10-01 15:45:00** — `src/chk_a/reporting/graph_generator.py` — Added `overall_availability_pct` and `overall_integrity_pct` parameters to bar chart functions, added Thai translations, integrated into `generate_summary_dashboard()`
-- **2026-10-01 16:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed monthly report date range: now uses previous calendar month (1st to last day) instead of rolling 30-day lookback. Calculates lookback dynamically based on previous month's days, uses `reference_date` for precise cutoff.
-- **2026-10-01 17:30:00** — `src/chk_a/reporting/telegram_reporter.py` — Added Integrity section to monthly Telegram summary: overall integrity %, per-resolver integrity scores with success rates, emoji indicators.
+- **2026-10-02 09:30:00** — `src/chk_a/reporting/monthly_report.py` — Added `_get_thai_month_name()`, `_get_previous_month_info()`, `_get_generation_datetime()`; generate Thai dashboard title with previous month name; pass `generation_datetime` to graph generator
+- **2026-10-02 09:45:00** — `src/chk_a/reporting/graph_generator.py` — `_add_header_footer()` accepts `generation_datetime`, changed footer text to "สร้างเมื่อ/Generated at"; all chart functions accept `generation_datetime`; `generate_summary_dashboard()` computes max day from `daily_availability` data for heatmap title
+- **2026-10-02 10:00:00** — `src/chk_a/reporting/monthly_report.py` — Daily report generation also uses `generation_datetime` for consistency
+- **2026-10-02 11:00:00** — `src/chk_a/reporting/ml_insights.py` — Added `start_date` parameter to `_load_recent_checks()` and `generate_ml_insights()` for calendar-month window; monthly report passes `first_day_prev`, daily report passes `month_start`
+- **2026-10-02 11:30:00** — `src/chk_a/reporting/monthly_report.py` — Monthly and daily report generation pass `start_date` for precise calendar-month window
 
 ### Testing
-- All 313 tests passing (zero regression)
+- All 313 tests passing (zero regression) on both Dev and Test VM
+- Test VM source synced, cache cleared, awaiting daily/monthly report verification
+
+### Deployment
+- Test VM source synced, cache cleared, awaiting report verification
+- Production (uptime-host) pending deploy v1.0.37
 
 ---
 
-## [1.0.36] - 2026-09-24 13:30:00 (Asia/Bangkok UTC+07)
+## [Unreleased]
+
+### Fixed
+- **2026-10-05 09:30:00** — `src/chk_a/orchestrator.py` — Fixed: Missing daily report detection now handles multiple consecutive missed days (e.g., weekend downtime). Added `_find_last_daily_report_date()` to find the most recent report date from existing reports, and `_generate_daily_report_for_date()` to generate reports for each missed day between last report and yesterday. This ensures all missed daily reports are sent on service startup, not just yesterday's.
+- **2026-10-05 09:45:00** — `src/chk_a/reporting/pdf_generator.py` — Fixed: Thai font registration for PDF reports. Now uses system TLWG Loma TTF fonts (`/usr/share/fonts/truetype/tlwg/`) instead of bundled OTF fonts (which ReportLab doesn't support). Registered 4 font variants (Regular, Bold, Oblique, BoldOblique) for proper Thai text rendering in both Thai PDF reports and table content. All paragraph/table styles now use Thai fonts when `lang="th"`.
+- **2026-10-05 10:30:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: Thai font loading for matplotlib graphs. Now prioritizes system TLWG Loma TTF fonts with proper variant separation (Regular, Bold, Oblique, BoldOblique) for correct bold/italic rendering. Uses bold font file directly (without `weight="bold"`) since the font file is already bold.
+- **2026-10-05 11:30:00** — `src/chk_a/reporting/graph_generator.py` — Fixed: `_apply_thai_fonts()` now applies Thai fonts to ALL text elements including figure-level texts (footer, y-axis labels, tick labels, legend, annotations). Previously footer (y < 0.05) was skipped, and y-axis labels/tick labels were not consistently getting Thai font properties. Now applies font properties and Thai translations to all text elements: axis labels, tick labels, legend, annotations, figure texts (header, footer, others), and axis offset text.
+- **2026-10-05 13:30:00** — `src/chk_a/reporting/monthly_report.py` — Fixed: PDF graph language separation. English PDF now uses English graphs (`*.png`), Thai PDF uses Thai graphs (`*-th.png`). Previously both PDFs used English graphs only. Added explicit filtering with logging for verification.
+
+### Changed
+- **2026-10-05 09:30:00** — `src/chk_a/orchestrator.py` — Refactored `_send_missing_daily_report()` to iterate over all missed days instead of checking only yesterday.
+- **2026-10-05 09:45:00** — `src/chk_a/reporting/pdf_generator.py` — Updated `_get_styles(lang)` to accept language parameter and use Thai fonts for Thai reports. Updated `_create_header_footer()` to use Thai fonts for header/footer in Thai PDFs. Updated `_create_cover_page()` to pass language to styles.
+- **2026-10-05 10:30:00** — `src/chk_a/reporting/graph_generator.py` — Reorganized font loading priority: 1) System Loma TTF with variants, 2) Other system Thai fonts, 3) Bundled OTF (fallback). Added proper variant separation for bold/italic support.
+- **2026-10-05 11:30:00** — `src/chk_a/reporting/graph_generator.py` — Enhanced `_apply_thai_fonts()` to comprehensively apply Thai fonts to all text elements: axis labels, tick labels, legend, annotations, figure texts (header, footer, others), and axis offset text. Fixed footer skipping issue (y < 0.05 was previously skipped). All text elements now get Thai font properties and Thai translations.
+- **2026-10-05 13:30:00** — `src/chk_a/reporting/monthly_report.py` — Enhanced `generate_pdfs()` to use language-specific graphs. English PDF uses English graphs (`*.png`), Thai PDF uses Thai graphs (`*-th.png`). Added explicit filtering with logging for verification.
+
+---
+
+## [1.0.37] - 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
 ### Added
 - **Thai localization for all Telegram alerts and reports** — Full Thai language support for anomaly/recovery alerts, monthly/daily report summaries

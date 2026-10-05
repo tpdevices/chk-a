@@ -249,6 +249,7 @@ def _load_recent_checks(
     log_path: str,
     lookback_days: float,
     reference_date: datetime | None = None,
+    start_date: datetime | None = None,
 ) -> pd.DataFrame:
     """Load check results from ``log_path`` that fall within the last *lookback_days*.
 
@@ -761,6 +762,7 @@ def generate_ml_insights(
     mtr_log_path: str = "",
     ml_agent: "MLAgent | None" = None,
     reference_date: datetime | None = None,
+    start_date: datetime | None = None,
 ) -> dict[str, Any]:
     """Generate complete ML insights for the monthly report.
 
@@ -782,7 +784,7 @@ def generate_ml_insights(
             "lookback_days": int,
         }
     """
-    df = _load_recent_checks(log_path, lookback_days, reference_date=reference_date)
+    df = _load_recent_checks(log_path, float(lookback_days), reference_date=reference_date, start_date=start_date)
 
     # Load MTR data if path provided
     mtr_data = {}

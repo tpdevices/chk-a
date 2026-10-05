@@ -16,6 +16,8 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import cm
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.platypus import (
     Image,
     PageBreak,
@@ -27,6 +29,46 @@ from reportlab.platypus import (
 )
 
 log = logging.getLogger(__name__)
+
+# ============================================================================
+# THAI FONT REGISTRATION FOR PDF
+# ============================================================================
+THAI_FONT_REGISTERED = False
+
+def _register_thai_fonts():
+    """Register Thai fonts with ReportLab using system TTF fonts."""
+    global THAI_FONT_REGISTERED
+    if THAI_FONT_REGISTERED:
+        return
+    
+    # Use system TLWG Loma TTF fonts (available on Ubuntu)
+    font_files = {
+        "Loma": "/usr/share/fonts/truetype/tlwg/Loma.ttf",
+        "Loma-Bold": "/usr/share/fonts/truetype/tlwg/Loma-Bold.ttf",
+        "Loma-Oblique": "/usr/share/fonts/truetype/tlwg/Loma-Oblique.ttf",
+        "Loma-BoldOblique": "/usr/share/fonts/truetype/tlwg/Loma-BoldOblique.ttf",
+    }
+    
+    try:
+        for font_name, font_path in font_files.items():
+            if Path(font_path).exists():
+                pdfmetrics.registerFont(TTFont(font_name, str(font_path)))
+                log.debug("Registered Thai font: %s from %s", font_name, font_path)
+            else:
+                log.warning("Thai font file not found: %s", font_path)
+        THAI_FONT_REGISTERED = True
+        log.info("Thai fonts registered successfully")
+    except Exception as e:
+        log.warning("Failed to register Thai fonts: %s", e)
+
+# Register fonts at module load
+_register_thai_fonts()
+
+# Font names for use in styles
+THAI_FONT_NAME = "Loma"
+THAI_FONT_BOLD_NAME = "Loma-Bold"
+THAI_FONT_OBLIQUE_NAME = "Loma-Oblique"
+THAI_FONT_BOLD_OBLIQUE_NAME = "Loma-BoldOblique"
 
 # Page setup
 PAGE_WIDTH, PAGE_HEIGHT = A4
@@ -44,9 +86,23 @@ WHITE = colors.white
 BLACK = colors.black
 
 
-def _get_styles() -> dict[str, ParagraphStyle]:
+def _get_styles(lang: str = "en") -> dict[str, ParagraphStyle]:
     """Create custom paragraph styles."""
     styles = getSampleStyleSheet()
+    
+    # Choose font based on language
+    if lang == "th" and THAI_FONT_REGISTERED:
+        title_font = THAI_FONT_BOLD_NAME
+        normal_font = THAI_FONT_NAME
+        bold_font = THAI_FONT_BOLD_NAME
+        oblique_font = THAI_FONT_OBLIQUE_NAME
+        bold_oblique_font = THAI_FONT_BOLD_OBLIQUE_NAME
+    else:
+        title_font = "Helvetica-Bold"
+        normal_font = "Helvetica"
+        bold_font = "Helvetica-Bold"
+        oblique_font = "Helvetica-Oblique"
+        bold_oblique_font = "Helvetica-BoldOblique"
 
     custom = {
         "title": ParagraphStyle(
@@ -57,7 +113,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             textColor=PRIMARY_COLOR,
             spaceAfter=6,
             alignment=TA_CENTER,
-            fontName="Helvetica-Bold",
+            fontName=title_font,
         ),
         "subtitle": ParagraphStyle(
             "CustomSubtitle",
@@ -67,7 +123,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             textColor=SECONDARY_COLOR,
             spaceAfter=12,
             alignment=TA_CENTER,
-            fontName="Helvetica",
+            fontName=normal_font,
         ),
         "heading1": ParagraphStyle(
             "CustomHeading1",
@@ -77,7 +133,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             textColor=PRIMARY_COLOR,
             spaceBefore=18,
             spaceAfter=8,
-            fontName="Helvetica-Bold",
+            fontName=bold_font,
             borderWidth=0,
             borderPadding=0,
         ),
@@ -89,7 +145,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             textColor=SECONDARY_COLOR,
             spaceBefore=12,
             spaceAfter=6,
-            fontName="Helvetica-Bold",
+            fontName=bold_font,
         ),
         "body": ParagraphStyle(
             "CustomBody",
@@ -98,7 +154,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             leading=14,
             textColor=DARK_GRAY,
             spaceAfter=6,
-            fontName="Helvetica",
+            fontName=normal_font,
         ),
         "body_bold": ParagraphStyle(
             "CustomBodyBold",
@@ -107,7 +163,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             leading=14,
             textColor=DARK_GRAY,
             spaceAfter=6,
-            fontName="Helvetica-Bold",
+            fontName=bold_font,
         ),
         "small": ParagraphStyle(
             "CustomSmall",
@@ -116,7 +172,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             leading=10,
             textColor=colors.HexColor("#7F8C8D"),
             spaceAfter=4,
-            fontName="Helvetica",
+            fontName=normal_font,
         ),
         "table_header": ParagraphStyle(
             "TableHeader",
@@ -124,7 +180,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             fontSize=9,
             leading=11,
             textColor=WHITE,
-            fontName="Helvetica-Bold",
+            fontName=bold_font,
             alignment=TA_CENTER,
         ),
         "table_cell": ParagraphStyle(
@@ -133,7 +189,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             fontSize=8,
             leading=10,
             textColor=DARK_GRAY,
-            fontName="Helvetica",
+            fontName=normal_font,
             alignment=TA_CENTER,
         ),
         "table_cell_left": ParagraphStyle(
@@ -142,7 +198,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             fontSize=8,
             leading=10,
             textColor=DARK_GRAY,
-            fontName="Helvetica",
+            fontName=normal_font,
             alignment=TA_LEFT,
         ),
         "footer": ParagraphStyle(
@@ -152,7 +208,7 @@ def _get_styles() -> dict[str, ParagraphStyle]:
             leading=10,
             textColor=colors.HexColor("#95A5A6"),
             alignment=TA_CENTER,
-            fontName="Helvetica-Oblique",
+            fontName=oblique_font,
         ),
     }
     return custom
@@ -162,16 +218,24 @@ def _create_header_footer(canvas, doc, title: str, lang: str = "en") -> None:
     """Add header and footer to each page."""
     canvas.saveState()
 
+    # Choose font based on language
+    if lang == "th" and THAI_FONT_REGISTERED:
+        header_font = THAI_FONT_NAME
+        footer_font = THAI_FONT_OBLIQUE_NAME
+    else:
+        header_font = "Helvetica"
+        footer_font = "Helvetica-Oblique"
+
     # Header line
     canvas.setStrokeColor(PRIMARY_COLOR)
     canvas.setLineWidth(1.5)
     canvas.line(MARGIN, PAGE_HEIGHT - MARGIN + 5, PAGE_WIDTH - MARGIN, PAGE_HEIGHT - MARGIN + 5)
 
     # Header text
-    canvas.setFont("Helvetica", 8)
+    canvas.setFont(header_font, 8)
     canvas.setFillColor(colors.HexColor("#7F8C8D"))
     if lang == "th":
-        canvas.drawString(MARGIN, PAGE_HEIGHT - MARGIN + 8, "chk-a Monthly DNS Resolver Report")
+        canvas.drawString(MARGIN, PAGE_HEIGHT - MARGIN + 8, "รายงานรายเดือน DNS Resolver")
     else:
         canvas.drawString(MARGIN, PAGE_HEIGHT - MARGIN + 8, "chk-a Monthly DNS Resolver Report")
     canvas.drawRightString(
@@ -182,7 +246,7 @@ def _create_header_footer(canvas, doc, title: str, lang: str = "en") -> None:
     canvas.setStrokeColor(colors.HexColor("#BDC3C7"))
     canvas.setLineWidth(0.5)
     canvas.line(MARGIN, MARGIN - 10, PAGE_WIDTH - MARGIN, MARGIN - 10)
-    canvas.setFont("Helvetica-Oblique", 7)
+    canvas.setFont(footer_font, 7)
     canvas.setFillColor(colors.HexColor("#95A5A6"))
     canvas.drawCentredString(
         PAGE_WIDTH / 2,
@@ -195,7 +259,15 @@ def _create_header_footer(canvas, doc, title: str, lang: str = "en") -> None:
 
 def _create_cover_page(story: list, ml_insights: dict[str, Any], lang: str = "en") -> None:
     """Create the report cover page."""
-    styles = _get_styles()
+    styles = _get_styles(lang)
+    
+    # Get font names for tables
+    if lang == "th" and THAI_FONT_REGISTERED:
+        table_header_font = THAI_FONT_BOLD_NAME
+        table_cell_font = THAI_FONT_NAME
+    else:
+        table_header_font = "Helvetica-Bold"
+        table_cell_font = "Helvetica"
 
     story.append(Spacer(1, 4 * cm))
 
@@ -254,11 +326,11 @@ def _create_cover_page(story: list, ml_insights: dict[str, Any], lang: str = "en
             [
                 ("BACKGROUND", (0, 0), (-1, 0), PRIMARY_COLOR),
                 ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), table_header_font),
                 ("FONTSIZE", (0, 0), (-1, 0), 10),
                 ("BACKGROUND", (0, 1), (-1, -1), LIGHT_GRAY),
                 ("TEXTCOLOR", (0, 1), (-1, -1), DARK_GRAY),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 1), (-1, -1), table_cell_font),
                 ("FONTSIZE", (0, 1), (-1, -1), 9),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -281,7 +353,7 @@ def _create_availability_section(
     lang: str = "en",
 ) -> None:
     """Create availability analysis section with graphs."""
-    styles = _get_styles()
+    styles = _get_styles(lang)
 
     if lang == "th":
         story.append(Paragraph("1. การวิเคราะห์ความพร้อมใช้งาน (Availability)", styles["heading1"]))
@@ -346,14 +418,23 @@ def _create_availability_section(
 
     col_widths = [3.2 * cm, 2 * cm, 1.5 * cm, 1.5 * cm, 2.5 * cm, 2.2 * cm, 2 * cm, 2 * cm, 2 * cm]
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    
+    # Get font names for tables
+    if lang == "th" and THAI_FONT_REGISTERED:
+        table_header_font = THAI_FONT_BOLD_NAME
+        table_cell_font = THAI_FONT_NAME
+    else:
+        table_header_font = "Helvetica-Bold"
+        table_cell_font = "Helvetica"
+    
     table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), PRIMARY_COLOR),
                 ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), table_header_font),
                 ("FONTSIZE", (0, 0), (-1, 0), 8),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 1), (-1, -1), table_cell_font),
                 ("FONTSIZE", (0, 1), (-1, -1), 7),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -387,7 +468,7 @@ def _create_integrity_section(
     lang: str = "en",
 ) -> None:
     """Create integrity analysis section with graphs."""
-    styles = _get_styles()
+    styles = _get_styles(lang)
 
     if lang == "th":
         story.append(
@@ -452,14 +533,23 @@ def _create_integrity_section(
 
     col_widths = [3.5 * cm, 2.5 * cm, 2.5 * cm, 2.5 * cm, 6 * cm]
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    
+    # Get font names for tables
+    if lang == "th" and THAI_FONT_REGISTERED:
+        table_header_font = THAI_FONT_BOLD_NAME
+        table_cell_font = THAI_FONT_NAME
+    else:
+        table_header_font = "Helvetica-Bold"
+        table_cell_font = "Helvetica"
+    
     table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), SECONDARY_COLOR),
                 ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), table_header_font),
                 ("FONTSIZE", (0, 0), (-1, 0), 8),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 1), (-1, -1), table_cell_font),
                 ("FONTSIZE", (0, 1), (-1, -1), 7),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -508,7 +598,7 @@ def _create_path_availability_section(
     lang: str = "en",
 ) -> None:
     """Create path availability section with ML-based health scores."""
-    styles = _get_styles()
+    styles = _get_styles(lang)
 
     if lang == "th":
         story.append(
@@ -610,14 +700,23 @@ def _create_path_availability_section(
         4 * cm,
     ]
     table = Table(table_data, colWidths=col_widths, repeatRows=1)
+    
+    # Get font names for tables
+    if lang == "th" and THAI_FONT_REGISTERED:
+        table_header_font = THAI_FONT_BOLD_NAME
+        table_cell_font = THAI_FONT_NAME
+    else:
+        table_header_font = "Helvetica-Bold"
+        table_cell_font = "Helvetica"
+    
     table.setStyle(
         TableStyle(
             [
                 ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#8E44AD")),  # Purple for path
                 ("TEXTCOLOR", (0, 0), (-1, 0), WHITE),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTNAME", (0, 0), (-1, 0), table_header_font),
                 ("FONTSIZE", (0, 0), (-1, 0), 7),
-                ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 1), (-1, -1), table_cell_font),
                 ("FONTSIZE", (0, 1), (-1, -1), 6),
                 ("ALIGN", (0, 0), (-1, -1), "CENTER"),
                 ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
@@ -663,7 +762,7 @@ def _create_ml_insights_section(
     lang: str = "en",
 ) -> None:
     """Create ML insights and recommendations section."""
-    styles = _get_styles()
+    styles = _get_styles(lang)
     summary = ml_insights.get("summary", {})
 
     if lang == "th":
@@ -752,7 +851,7 @@ def _create_ml_insights_section(
 
 def _create_methodology_section(story: list, lang: str = "en") -> None:
     """Create methodology appendix."""
-    styles = _get_styles()
+    styles = _get_styles(lang)
 
     if lang == "th":
         story.append(Paragraph("ภาคผนวก: วิธีการคำนวณและอัลกอริทึม", styles["heading1"]))

@@ -1,6 +1,6 @@
 # บริบทโครงการ - chk-a
 
-**อัปเดตล่าสุด:** 2026-09-24 15:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -14,14 +14,14 @@
 
 ## เวอร์ชันปัจจุบันและสถานะ Release
 
-| องค์ประกอบ | เวอร์ชัน | สถานะ |
-|-----------|---------|--------|
-| **Source (dev)** | 1.0.36 | ✅ 313 tests ผ่าน |
-| **GitHub tag** | v1.0.36 | ✅ pushed |
-| **Test VM** | 1.0.36 | ✅ deployed & verified |
-| **Production** | v1.0.36 | ✅ running on uptime-host |
+|| องค์ประกอบ | เวอร์ชัน | สถานะ ||
+||-----------|---------|--------|
+|| **Source (dev)** | 1.0.37 | ✅ 313 tests ผ่าน ||
+|| **GitHub tag** | v1.0.36 | ✅ pushed ||
+|| **Test VM** | 1.0.37 | ✅ **Source synced, cache cleared, 313 tests ผ่านทั้งหมด, รายงาน verified เสร็จ** ||
+|| **Production** | v1.0.36 | ✅ running on uptime-host ||
 
-**Next release:** v1.0.37 (หลัง feature cycle ถัดไป)
+**Next release:** v1.0.37 (หลัง Test VM verification เสร็จ)
 
 ---
 
@@ -64,6 +64,16 @@
 - ✅ Single branch `master` (ลบ `main` เก่าแล้ว)
 - ✅ 84 tracked files, working tree clean
 
+### ปรับปรุงรายงานประจำเดือน (v1.0.37)
+- ✅ **รายงานประจำเดือนใช้เดือนก่อนหน้าเต็มเดือน** (1 ถึง 30/31) แทน rolling 30-day lookback
+- ✅ **เส้น Overall Average บนกราฟแท่ง** — กราฟ Availability และ Integrity แสดงค่าเฉลี่ยรวม
+- ✅ **ส่วน Integrity ใน Telegram Monthly Summary** — Overall integrity %, ค่า Integrity ต่อ resolver พร้อม success rate
+- ✅ **Dashboard title: "chk-a รายงานเดือน {ชื่อเดือนไทย} ของ DNS Resolver"** — ชื่อเดือนไทยใน title
+- ✅ **Footer timestamp: "สร้างเมื่อ {timestamp}" / "Generated at"** — เวลาสร้างที่สอดคล้องกันทุกกราฟ
+- ✅ **Daily Availability Heatmap title ใช้วันสุดท้ายจากข้อมูลจริง** — ไม่ใช่วันปัจจุบัน
+- ✅ **Daily Heatmap: calendar-month window ผ่าน start_date parameter** — Precise 1st to last day
+- ✅ **ล้าง test data (r1, fake-resolver)** — Baseline, FQDN store, checks.jsonl
+
 ---
 
 ## สถานะการทดสอบ
@@ -72,13 +82,13 @@
 - **Passing:** 313 (100%)
 - **Regression:** Zero
 - **Security tests:** 74 (SEC-001 ถึง SEC-020)
-- **Environments verified:** Dev (WSL), Test VM (VirtualBox), Production (uptime-host)
+- **Environments verified:** Dev (WSL), Test VM (VirtualBox - v1.0.37 synced), Production (uptime-host)
 
 ---
 
 ## สถาปัตยกรรมการ Deploy
 
-```
+```plaintext
 Dev (WSL Ubuntu)          Test VM (VirtualBox)        Production (uptime-host)
 172.20.14.199              192.168.56.122              (direct GitHub deploy)
      │                          │                          │
@@ -110,7 +120,7 @@ Secrets:                     Secrets:                    Secrets:
 | `config/config.yaml.example` | Runtime config template (Thai comments, ทุกตัวเลือก) |
 | `config/chk-a.env.example` | Systemd EnvironmentFile template (Telegram creds, paths) |
 | `systemd/chk-a.service` | Systemd unit พร้อม CAP_NET_RAW, Type=notify, WatchdogSec |
-| `pyproject.toml` | Project metadata, dependencies, version (1.0.36) |
+| `pyproject.toml` | Project metadata, dependencies, version (1.0.37) |
 
 ---
 
@@ -147,7 +157,8 @@ Secrets:                     Secrets:                    Secrets:
 
 ## ขั้นตอนต่อไป (Priority)
 
-1. **Dashboard Web UI** (High) — FastAPI + HTMX + Chart.js, real-time status, FQDN table, graphs
-2. **Historical Data Compaction** (Medium) — Retention policy สำหรับ checks.jsonl/alerts.jsonl
-3. **deploy.sh Enhancement** (Low) — Auto-copy install.sh, tests/, systemd/
-4. **GitHub Actions Optimization** (Low) — uv cache, parallel test matrix
+1. **Complete Test VM monthly report verification** — ตรวจสอบ daily/monthly reports บน Test VM หลัง v1.0.37 sync
+2. **Dashboard Web UI** (High) — FastAPI + HTMX + Chart.js, real-time status, FQDN table, graphs
+3. **Historical Data Compaction** (Medium) — Retention policy สำหรับ checks.jsonl/alerts.jsonl
+4. **deploy.sh Enhancement** (Low) — Auto-copy install.sh, tests/, systemd/
+5. **GitHub Actions Optimization** (Low) — uv cache, parallel test matrix

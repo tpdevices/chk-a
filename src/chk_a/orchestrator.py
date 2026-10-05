@@ -1284,139 +1284,198 @@ class Orchestrator:
                 self.logger.exception("Failed to generate/send today's startup report for %s: %s", today_str, exc)
 
     async def _send_missing_daily_report(self) -> None:
-            """Check if yesterday's daily report was sent; if not, generate and send it.
+            """Check for missing daily reports since last successful report and send them.
 
-            This runs on service startup to ensure we don't miss a daily report
+            This runs on service startup to ensure we don't miss daily reports
             if the service was down during the scheduled time (06:00 AM).
+            Handles multiple consecutive missed days (e.g., weekend downtime).
             """
             if not self.config.reporting.daily_report_enabled:
                 self.logger.info("Daily report generation disabled in config, skipping startup check")
                 return
 
-            # Determine yesterday's date
-            yesterday = datetime.now(TZ) - timedelta(days=1)
+            now = datetime.now(TZ)
+            yesterday = now - timedelta(days=1)
             yesterday_str = yesterday.strftime("%Y-%m-%d")
 
             # Check if we already have a report file for yesterday
             output_dir = Path(self.config.reporting.output_dir)
             if not output_dir.exists():
                 self.logger.info("No output directory found, will generate yesterday's report")
-            else:
-                # Look for any report file with yesterday's date
-                found = False
-                for report_file in output_dir.glob(f"*{yesterday_str}*"):
-                    if report_file.is_dir():
-                        found = True
-                        break
-                if found:
-                    self.logger.info("Yesterday's daily report (%s) already exists, skipping", yesterday_str)
-                    return
+                await self._generate_daily_report_for_date(yesterday)
+                return
 
-            self.logger.info("No daily report found for %s, generating on startup...", yesterday_str)
+            # Look for any report file with yesterday's date
+            found_yesterday = False
+            for report_file in output_dir.glob(f"*{yesterday_str}*"):
+                if report_file.is_dir():
+                    found_yesterday = True
+                    break
 
-            try:
-                # Generate daily report using yesterday as reference
-                lookback_days = self.config.reporting.daily_report_lookback_days
-                yesterday_end = yesterday.replace(hour=23, minute=59, second=59, microsecond=0)
-                month_start = yesterday.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            if found_yesterday:
+                self.logger.info("Yesterday's daily report (%s) already exists, skipping", yesterday_str)
+                return
 
-                from .reporting.ml_insights import generate_ml_insights
-                from .reporting.graph_generator import generate_summary_dashboard
-                from .reporting.telegram_reporter import send_daily_report_telegram
-                from .storage.baseline_store import BaselineStore
-                from .agents.ml_agent import MLAgent
+            # Find the most recent daily report date from existing reports
+            last_report_date = self._find_last_daily_report_date(output_dir)
+            if last_report_date is None:
+                # No previous reports at all, just generate yesterday's
+                self.logger.info("No previous daily reports found, generating yesterday's report (%s)", yesterday_str)
+                await self._generate_daily_report_for_date(yesterday)
+                return
 
-                log_path = self.config.logging.file
-                mtr_log_path = ""
-                if hasattr(self.config, "mtr") and self.config.mtr.enabled:
-                    mtr_log_path = getattr(self.config.mtr, "log_path", "") or ""
+            # Generate reports for all missed days between last_report_date and yesterday
+            missed_days = []
+            current = last_report_date + timedelta(days=1)
+            while current <= yesterday:
+                missed_days.append(current)
+                current += timedelta(days=1)
 
-                # Create MLAgent for baseline-based integrity scoring
-                store = BaselineStore(self.config.baseline_store_path)
-                ml_agent = MLAgent(self.config.ml, store)
+            self.logger.info(
+                "Found %d missing daily report(s) from %s to %s, generating on startup...",
+                len(missed_days), missed_days[0].strftime("%Y-%m-%d"), missed_days[-1].strftime("%Y-%m-%d")
+            )
 
-                # 1. Yesterday insights: full day (lookback_days from config)
-                self.logger.info("Missing report (yesterday): yesterday=%s, yesterday_end=%s, lookback_days=%d",
-                                 yesterday_str, yesterday_end.isoformat(), lookback_days)
-                insights_yesterday = generate_ml_insights(
-                    log_path,
-                    lookback_days,
-                    mtr_log_path,
-                    ml_agent=ml_agent,
-                    reference_date=yesterday_end,
-                )
+            for missed_date in missed_days:
+                await self._generate_daily_report_for_date(missed_date)
 
-                # 2. Month insights: Sep 1 to yesterday_end (for daily heatmap)
-                month_lookback = (yesterday_end - month_start).days + 1  # inclusive
-                self.logger.info("Missing report (month): month_start=%s, yesterday_end=%s, month_lookback=%d",
-                                 month_start.isoformat(), yesterday_end.isoformat(), month_lookback)
-                insights_month = generate_ml_insights(
-                    log_path,
-                    float(month_lookback),
-                    mtr_log_path,
-                    ml_agent=ml_agent,
-                    reference_date=yesterday_end,
-                )
+    def _find_last_daily_report_date(self, output_dir: Path) -> datetime | None:
+        """Find the most recent date that has a daily report directory.
 
-                # 3. Merge: use yesterday's insights but replace daily_availability with month's
-                availability_yesterday = insights_yesterday.get("availability", {})
-                availability_month = insights_month.get("availability", {})
+        Looks for directories matching pattern: daily-YYYYMMDD-* or daily-*-YYYYMMDD-*
+        Returns the date of the most recent report, or None if no reports found.
+        """
+        try:
+            dates = []
+            for report_dir in output_dir.glob("daily-*"):
+                if not report_dir.is_dir():
+                    continue
+                # Try to extract date from directory name
+                # Patterns: daily-YYYYMMDD-HHMMSS, daily-startup-YYYYMMDD-HHMMSS, daily-today-startup-YYYYMMDD-HHMMSS
+                name = report_dir.name
+                # Find 8-digit date pattern
+                import re
+                match = re.search(r'(\d{8})', name)
+                if match:
+                    date_str = match.group(1)
+                    try:
+                        report_date = datetime.strptime(date_str, "%Y%m%d").date()
+                        dates.append(report_date)
+                    except ValueError:
+                        continue
 
-                for resolver, data in availability_yesterday.items():
-                    if resolver in availability_month:
-                        data["daily_availability"] = availability_month[resolver].get("daily_availability", {})
+            if dates:
+                return datetime.combine(max(dates), datetime.min.time()).replace(tzinfo=TZ)
+        except Exception as exc:
+            self.logger.warning("Failed to find last daily report date: %s", exc)
+        return None
 
-                # Use merged insights
-                insights = insights_yesterday
-                insights["availability"] = availability_yesterday
+    async def _generate_daily_report_for_date(self, target_date: datetime) -> None:
+        """Generate and send daily report for a specific date."""
+        target_str = target_date.strftime("%Y-%m-%d")
+        self.logger.info("Generating missing daily report for %s on startup...", target_str)
 
-                self.logger.info("Missing report: ML insights loaded (merged), total_resolvers=%d",
-                                 insights.get("summary", {}).get("total_resolvers", 0))
+        try:
+            lookback_days = self.config.reporting.daily_report_lookback_days
+            # Target date end (23:59:59) as reference
+            target_end = target_date.replace(hour=23, minute=59, second=59, microsecond=0)
+            month_start = target_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-                if not insights.get("summary", {}).get("total_resolvers", 0):
-                    self.logger.warning("No data available for yesterday's report (%s)", yesterday_str)
-                    return
+            from .reporting.ml_insights import generate_ml_insights
+            from .reporting.graph_generator import generate_summary_dashboard
+            from .reporting.telegram_reporter import send_daily_report_telegram
+            from .storage.baseline_store import BaselineStore
+            from .agents.ml_agent import MLAgent
 
-                # Generate graphs - THAI ONLY (consistent with telegram_reporter)
-                timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-                report_output_dir = output_dir / f"daily-startup-{timestamp}"
-                report_output_dir.mkdir(parents=True, exist_ok=True)
+            log_path = self.config.logging.file
+            mtr_log_path = ""
+            if hasattr(self.config, "mtr") and self.config.mtr.enabled:
+                mtr_log_path = getattr(self.config.mtr, "log_path", "") or ""
 
-                # Only generate Thai graphs for Telegram (TH-only per user request)
-                th_graphs = generate_summary_dashboard(
-                    insights, report_output_dir, lang="th", hostname=self.hostname,
-                    report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str} (เริ่มต้น)",
-                    version=chk_a_version,
-                )
-                all_graphs = th_graphs  # Only Thai graphs
-                self.logger.info("Generated %d Thai graph files for missing daily report", len(all_graphs))
-                # DEBUG: log all generated graph filenames
-                for g in all_graphs:
-                    self.logger.debug("  Missing report graph: %s", g.name)
+            # Create MLAgent for baseline-based integrity scoring
+            store = BaselineStore(self.config.baseline_store_path)
+            ml_agent = MLAgent(self.config.ml, store)
 
-                # Send to Telegram
-                if self.config.reporting.daily_report_telegram_enabled:
-                    bot_token = self.config.alert.telegram_bot_token
-                    chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
+            # 1. Target day insights: full day (lookback_days from config)
+            self.logger.info("Missing report (target): target=%s, target_end=%s, lookback_days=%d",
+                             target_str, target_end.isoformat(), lookback_days)
+            insights_target = generate_ml_insights(
+                log_path,
+                lookback_days,
+                mtr_log_path,
+                ml_agent=ml_agent,
+                reference_date=target_end,
+            )
 
-                    if bot_token and chat_id:
-                        self.logger.info("Sending missing daily report to Telegram...")
-                        from pydantic import SecretStr
-                        chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
-                        await send_daily_report_telegram(
-                            bot_token=bot_token,
-                            chat_id=SecretStr(chat_id_str),
-                            ml_insights=insights,
-                            graph_paths=all_graphs,
-                            hostname=self.hostname,
-                            lookback_days=lookback_days,
-                            version=chk_a_version,
-                        )
-                        self.logger.info("Missing daily report for %s sent to Telegram successfully", yesterday_str)
-                    else:
-                        self.logger.warning("Telegram credentials not configured for daily report")
+            # 2. Month insights: 1st to target_end (for daily heatmap)
+            month_lookback = (target_end - month_start).days + 1  # inclusive
+            self.logger.info("Missing report (month): month_start=%s, target_end=%s, month_lookback=%d",
+                             month_start.isoformat(), target_end.isoformat(), month_lookback)
+            insights_month = generate_ml_insights(
+                log_path,
+                float(month_lookback),
+                mtr_log_path,
+                ml_agent=ml_agent,
+                reference_date=target_end,
+                start_date=month_start,
+            )
 
-            except Exception as exc:
-                self.logger.exception("Failed to generate/send missing daily report for %s: %s", yesterday_str, exc)
+            # 3. Merge: use target day insights but replace daily_availability with month's
+            availability_target = insights_target.get("availability", {})
+            availability_month = insights_month.get("availability", {})
+
+            for resolver, data in availability_target.items():
+                if resolver in availability_month:
+                    data["daily_availability"] = availability_month[resolver].get("daily_availability", {})
+
+            # Use merged insights
+            insights = insights_target
+            insights["availability"] = availability_target
+
+            self.logger.info("Missing report: ML insights loaded (merged), total_resolvers=%d",
+                             insights.get("summary", {}).get("total_resolvers", 0))
+
+            if not insights.get("summary", {}).get("total_resolvers", 0):
+                self.logger.warning("No data available for daily report (%s)", target_str)
+                return
+
+            # Generate graphs - THAI ONLY (consistent with telegram_reporter)
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            report_output_dir = output_dir / f"daily-startup-{timestamp}"
+            report_output_dir.mkdir(parents=True, exist_ok=True)
+
+            # Only generate Thai graphs for Telegram (TH-only per user request)
+            th_graphs = generate_summary_dashboard(
+                insights, report_output_dir, lang="th", hostname=self.hostname,
+                report_date_context=f"รายงานข้อมูลของวัน :{target_str} (เริ่มต้น)",
+                version=chk_a_version,
+            )
+            all_graphs = th_graphs  # Only Thai graphs
+            self.logger.info("Generated %d Thai graph files for missing daily report (%s)", len(all_graphs), target_str)
+
+            # Send to Telegram
+            if self.config.reporting.daily_report_telegram_enabled:
+                bot_token = self.config.alert.telegram_bot_token
+                chat_id = self.config.reporting.daily_report_telegram_chat_id or self.config.alert.telegram_chat_id
+
+                if bot_token and chat_id:
+                    self.logger.info("Sending missing daily report for %s to Telegram...", target_str)
+                    from pydantic import SecretStr
+                    chat_id_str = chat_id.get_secret_value() if isinstance(chat_id, SecretStr) else str(chat_id)
+                    await send_daily_report_telegram(
+                        bot_token=bot_token,
+                        chat_id=SecretStr(chat_id_str),
+                        ml_insights=insights,
+                        graph_paths=all_graphs,
+                        hostname=self.hostname,
+                        lookback_days=lookback_days,
+                        version=chk_a_version,
+                    )
+                    self.logger.info("Missing daily report for %s sent to Telegram successfully", target_str)
+                else:
+                    self.logger.warning("Telegram credentials not configured for daily report")
+
+        except Exception as exc:
+            self.logger.exception("Failed to generate/send missing daily report for %s: %s", target_str, exc)
 
 __all__ = ["Orchestrator"]

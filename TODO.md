@@ -1,10 +1,10 @@
 # TODO - chk-a Project
 
-**Last Updated:** 2026-09-24 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
-## ✅ Completed (v1.0.36)
+## ✅ Completed (v1.0.37)
 
 ### Core Features
 - [x] Multi-resolver DNS monitoring (DoH/DoT/UDP)
@@ -46,8 +46,18 @@
 - [x] Single master branch (deleted old main)
 - [x] Restored img/sleepy.jpg, config/chk-a.env.example
 
+### Monthly Report Enhancements (v1.0.37)
+- [x] Monthly report uses previous calendar month (1st to last day) instead of rolling 30-day lookback
+- [x] Overall Average lines on Availability and Integrity bar charts
+- [x] Integrity section in Telegram monthly summary (overall + per-resolver)
+- [x] Dashboard title: "chk-a รายงานเดือน {ชื่อเดือนไทย} ของ DNS Resolver"
+- [x] Footer timestamp: "สร้างเมื่อ {timestamp}" / "Generated at"
+- [x] Daily Availability Heatmap title uses actual last day from data
+- [x] Daily Heatmap: calendar-month window via start_date parameter
+- [x] Cleared test data (r1, fake-resolver) — baseline, FQDN store, checks.jsonl
+
 ### Deployment
-- [x] Test VM verified (313 tests, service running)
+- [x] Test VM source synced, cache cleared, awaiting report verification
 - [x] Production (uptime-host) v1.0.36 deployed and verified
 
 ---
@@ -55,6 +65,9 @@
 ## 📋 Planned (Priority Order)
 
 ### High Priority
+- [x] **Complete Test VM monthly report verification** — Verify daily/monthly reports on Test VM after v1.0.37 sync
+- [x] **Fix missing daily report detection for multi-day downtime** — Service now detects and sends all missed daily reports on startup (not just yesterday)
+- [x] **Fix Thai font rendering in PDF reports** — PDF reports now use system TLWG Loma TTF fonts for proper Thai text display in both Thai and English reports
 - [ ] **Dashboard Web UI** — Real-time monitoring interface
   - [ ] FastAPI backend with async endpoints
   - [ ] HTMX frontend for zero-JS complexity

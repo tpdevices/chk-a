@@ -42,6 +42,29 @@ class MonthlyReportGenerator:
         """Generate timestamp for filenames: YYYYMMDD-HHMMSS"""
         return datetime.now().strftime("%Y%m%d-%H%M%S")
 
+    def _get_generation_datetime(self) -> datetime:
+        """Get the report generation datetime (timezone-aware Asia/Bangkok)."""
+        from zoneinfo import ZoneInfo
+        return datetime.now(ZoneInfo("Asia/Bangkok"))
+
+    def _get_thai_month_name(self, month: int) -> str:
+        """Get Thai month name for given month number (1-12)."""
+        thai_months = {
+            1: "มกราคม", 2: "กุมภาพันธ์", 3: "มีนาคม", 4: "เมษายน",
+            5: "พฤษภาคม", 6: "มิถุนายน", 7: "กรกฎาคม", 8: "สิงหาคม",
+            9: "กันยายน", 10: "ตุลาคม", 11: "พฤศจิกายน", 12: "ธันวาคม"
+        }
+        return thai_months.get(month, str(month))
+
+    def _get_previous_month_info(self) -> tuple[int, int, str]:
+        """Get previous month (year, month_number, thai_month_name)."""
+        from zoneinfo import ZoneInfo
+        TZ = ZoneInfo("Asia/Bangkok")
+        now = datetime.now(TZ)
+        first_day_current = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_day_prev = first_day_current - timedelta(seconds=1)
+        return last_day_prev.year, last_day_prev.month, self._get_thai_month_name(last_day_prev.month)
+
     def _get_output_paths(self, timestamp: str) -> dict[str, Path]:
         """Generate output file paths for all report artifacts."""
         output_dir = Path(self.reporting_config.output_dir)
@@ -96,7 +119,7 @@ class MonthlyReportGenerator:
         store = BaselineStore(self.config.baseline_store_path)
         ml_agent = MLAgent(self.config.ml, store)
 
-        insights = generate_ml_insights(log_path, float(lookback), mtr_log_path, ml_agent=ml_agent, reference_date=reference_date)
+        insights = generate_ml_insights(log_path, float(lookback), mtr_log_path, ml_agent=ml_agent, reference_date=reference_date, start_date=first_day_prev)
         log.info(
             "ML insights generated: %d resolvers, %.2f%% overall availability",
             insights["summary"]["total_resolvers"],
@@ -109,20 +132,27 @@ class MonthlyReportGenerator:
         log.info("Generating graphs...")
         graphs_dir.mkdir(parents=True, exist_ok=True)
 
-        # Calculate last month for title context
-        lastmonth = (datetime.now().replace(day=1) - timedelta(days=1)).strftime("%Y-%m")
+        # Get previous month info for Thai title
+        prev_year, prev_month, prev_month_thai = self._get_previous_month_info()
+        generation_dt = self._get_generation_datetime()
+
+        # Dashboard title: "chk-a รายงานเดือน {ชื่อเดือนไทย} ของ DNS Resolver"
+        th_title = f"chk-a รายงานเดือน {prev_month_thai} {prev_year} ของ DNS Resolver"
+        en_title = f"chk-a Monthly Report {prev_month_thai} {prev_year} DNS Resolver"
 
         # Generate English graphs with date context in title
         en_graphs = generate_summary_dashboard(
             insights, graphs_dir, lang="en", hostname=self.hostname,
-            report_date_context=f"Monthly report for :{lastmonth}",
+            report_date_context=th_title,  # Use Thai title for both for consistency
             version=chk_a_version,
+            generation_datetime=generation_dt,
         )
         # Generate Thai graphs (separate files for Thai labels)
         th_graphs = generate_summary_dashboard(
             insights, graphs_dir, lang="th", hostname=self.hostname,
-            report_date_context=f"รายงานข้อมูลของเดือน :{lastmonth}",
+            report_date_context=th_title,
             version=chk_a_version,
+            generation_datetime=generation_dt,
         )
 
         all_graphs = en_graphs + th_graphs
@@ -139,11 +169,15 @@ class MonthlyReportGenerator:
         """Step 3: Generate PDF reports in English and Thai."""
         log.info("Generating PDF reports...")
 
-        # Filter graphs for PDF embedding (use English versions)
-        pdf_graphs = [p for p in graph_paths if not p.name.endswith("-th.png")]
+        # Filter graphs by language
+        en_graphs = [p for p in graph_paths if not p.name.endswith("-th.png")]
+        th_graphs = [p for p in graph_paths if p.name.endswith("-th.png")]
 
-        generate_pdf_report_en(insights, pdf_graphs, pdf_en_path, hostname=self.hostname)
-        generate_pdf_report_th(insights, pdf_graphs, pdf_th_path, hostname=self.hostname)
+        log.info(f"Embedding {len(en_graphs)} English graphs in English PDF: {[p.name for p in en_graphs]}")
+        log.info(f"Embedding {len(th_graphs)} Thai graphs in Thai PDF: {[p.name for p in th_graphs]}")
+
+        generate_pdf_report_en(insights, en_graphs, pdf_en_path, hostname=self.hostname)
+        generate_pdf_report_th(insights, th_graphs, pdf_th_path, hostname=self.hostname)
 
         log.info("PDF reports generated: %s, %s", pdf_en_path.name, pdf_th_path.name)
         return pdf_en_path, pdf_th_path
@@ -384,6 +418,7 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
         mtr_log_path,
         ml_agent=ml_agent,
         reference_date=yesterday_end,
+        start_date=month_start,
     )
 
     # 3. Merge: use yesterday's insights but replace daily_availability with month's
@@ -406,19 +441,22 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
 
     # Step 2: Generate graphs for daily report
     from .graph_generator import generate_summary_dashboard
+    from zoneinfo import ZoneInfo
 
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    generation_dt = datetime.now(ZoneInfo("Asia/Bangkok"))
+    timestamp = generation_dt.strftime("%Y%m%d-%H%M%S")
     output_dir = Path(reporting_config.output_dir) / f"daily-{timestamp}"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Calculate yesterday for title context
-    yesterday_str = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday_str = (datetime.now(ZoneInfo("Asia/Bangkok")) - timedelta(days=1)).strftime("%Y-%m-%d")
 
     # THAI ONLY for Telegram (consistent with telegram_reporter)
     th_graphs = generate_summary_dashboard(
         insights, output_dir, lang="th", hostname=hostname,
         report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str}",
         version=chk_a_version,
+        generation_datetime=generation_dt,
     )
     all_graphs = th_graphs
     log.info("Generated %d Thai graph files for daily report (scheduled)", len(all_graphs))

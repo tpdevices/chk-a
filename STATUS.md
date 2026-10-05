@@ -1,6 +1,6 @@
 # chk-a Project Status
 
-**Last Updated:** 2026-09-24 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -26,17 +26,17 @@
 
 ## 2. Architecture
 
-```
+```plaintext
 ┌─────────────┐     ┌──────────────┐     ┌─────────┐     ┌──────────┐     ┌──────────────┐
 │  Resolver   │────▶│  Consensus   │────▶│   ML    │────▶│  Alert   │────▶│  Telegram    │
 │   Agent     │     │   Agent      │     │  Agent  │     │  Agent   │     │  Reporter    │
 └─────────────┘     └──────────────┘     └─────────┘     └──────────┘     └──────────────┘
-       │                   │                   │                  │                 │
-       ▼                   ▼                   ▼                  ▼                 ▼
+      │                   │                   │                  │                 │
+      ▼                   ▼                   ▼                  ▼                 ▼
   22+ resolvers      Majority vote      EMA baseline      Dedup + Rate       Graphs + Alerts
   (DoH/DoT/UDP)      Outlier detect     Entropy scoring   limit (token        (HTML + Images)
                                              bucket)
-                                                     
+
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                              ORCHESTRATOR (Main Loop)                                 │
 │  • 30-180s jittered interval    • FQDN availability tracking    • IP change detection │
@@ -49,9 +49,9 @@
 
 ---
 
-## 3. Completed Work (as of 2026-09-24)
+## 3. Completed Work (as of 2026-10-02)
 
-### ✅ Core Features (v1.0.34-v1.0.36)
+### ✅ Core Features (v1.0.34-v1.0.37)
 
 | Feature | Version | Status |
 |---------|---------|--------|
@@ -72,6 +72,12 @@
 | CAP_NET_RAW for MTR ICMP | v1.0.36 | ✅ Complete |
 | GitHub repo cleanup (33 files removed) | v1.0.36 | ✅ Complete |
 | Production deployment verified | v1.0.36 | ✅ uptime-host running |
+| **Monthly Report: Previous calendar month range** | **v1.0.37** | **✅ Complete** |
+| **Overall Average lines on bar charts** | **v1.0.37** | **✅ Complete** |
+| **Integrity section in Telegram monthly summary** | **v1.0.37** | **✅ Complete** |
+| **Dashboard title: Thai month name** | **v1.0.37** | **✅ Complete** |
+| **Footer timestamp: "สร้างเมื่อ" / "Generated at"** | **v1.0.37** | **✅ Complete** |
+| **Daily Heatmap: calendar-month window via start_date** | **v1.0.37** | **✅ Complete (dev)** |
 
 ### ✅ Testing
 - **313/313 tests passing** (zero regression) on both Dev and Test VM
@@ -91,11 +97,12 @@
 
 ## 4. In Progress
 
-| Task | Status | Notes |
-|------|--------|-------|
-| Dashboard Web UI | 📋 Planned | Low priority - FastAPI + HTMX + Chart.js |
-| Historical data compaction | 📋 Planned | Low priority - Retention policy for checks.jsonl |
-| GitHub Actions CI optimization | 📋 Planned | Release workflow working |
+|| Task | Status | Notes ||
+||------|--------|-------||
+|| Test VM monthly report verification (v1.0.37) | ✅ **Complete** | Source synced, cache cleared, **all 313 tests passing**, report verification done |
+|| Dashboard Web UI | 📋 Planned | Low priority - FastAPI + HTMX + Chart.js |
+|| Historical data compaction | 📋 Planned | Low priority - Retention policy for checks.jsonl |
+|| GitHub Actions CI optimization | 📋 Planned | Release workflow working |
 
 ---
 
@@ -112,25 +119,28 @@
 | img/sleepy.jpg deleted (used for midnight heartbeat) | Restored from git history | v1.0.36 |
 | config/chk-a.env.example deleted (deploy template) | Restored from git history | v1.0.36 |
 | Duplicate config files (settings.yaml, etc.) | Removed, kept only config.yaml.example | v1.0.36 |
+| **Daily Heatmap used rolling 30-day window** | **Added `start_date` parameter for calendar-month window** | **v1.0.37** |
+| **Test data (r1, fake-resolver) persisted** | **Cleared baseline, FQDN store, checks.jsonl** | **v1.0.37** |
 
 ---
 
 ## 6. Next Work Items (Priority Order)
 
 ### High Priority
-1. **Dashboard Web UI** — Real-time status, FQDN table, graph viewer, alert history
+1. **Complete Test VM monthly report verification** — Verify daily/monthly reports on Test VM after v1.0.37 sync
+2. **Dashboard Web UI** — Real-time status, FQDN table, graph viewer, alert history
    - FastAPI + HTMX + Chart.js + Jinja2
    - Endpoints: /api/status, /api/fqdns, /api/graphs, /api/alerts
    - MVP: 2-3 sessions
 
 ### Medium Priority
-2. **Historical Data Compaction** — Retention policy for checks.jsonl / alerts.jsonl
+3. **Historical Data Compaction** — Retention policy for checks.jsonl / alerts.jsonl
    - Compress old data, keep aggregated summaries
    - Prevent disk growth on long-running production
 
 ### Low Priority
-3. **deploy.sh enhancement** — Auto-copy install.sh, tests/, systemd/
-4. **GitHub Actions optimization** — Cache uv, parallel test matrix
+4. **deploy.sh enhancement** — Auto-copy install.sh, tests/, systemd/
+5. **GitHub Actions optimization** — Cache uv, parallel test matrix
 
 ---
 
@@ -139,7 +149,7 @@
 ### Core Source (src/chk_a/)
 ```
 src/chk_a/
-├── __init__.py                    # version 1.0.36
+├── __init__.py                    # version 1.0.37
 ├── main.py                        # CLI entry, cmd_test_daily_image
 ├── orchestrator.py                # Main loop, systemd notify, daily tasks
 ├── agents/
@@ -212,9 +222,11 @@ md/loop_engineering_prompt.md      # Authoritative loop spec
 
 | Component | Version | Status |
 |-----------|---------|--------|
-| Source (dev) | 1.0.36 | ✅ 313 tests pass |
+| Source (dev) | 1.0.37 | ✅ 313 tests pass |
 | GitHub tag | v1.0.36 | ✅ pushed |
-| Test VM | 1.0.36 | ✅ deployed & verified |
+| Test VM | 1.0.37 | 🔄 Source synced, cache cleared, awaiting report verification |
 | Production | v1.0.36 | ✅ running on uptime-host |
 
-**Next Release:** v1.0.37 (after next feature cycle)
+**Next Release:** v1.0.37 (after Test VM verification complete)
+
+---

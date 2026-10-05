@@ -1,6 +1,6 @@
 # Project Context - chk-a
 
-**Last Updated:** 2026-09-24 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -14,14 +14,14 @@
 
 ## Current Version & Release State
 
-| Component | Version | Status |
-|-----------|---------|--------|
-| **Source (dev)** | 1.0.36 | ✅ 313 tests pass |
-| **GitHub tag** | v1.0.36 | ✅ pushed |
-| **Test VM** | 1.0.36 | ✅ deployed & verified |
-| **Production** | v1.0.36 | ✅ running on uptime-host |
+|| Component | Version | Status ||
+||-----------|---------|--------|
+|| **Source (dev)** | 1.0.37 | ✅ 313 tests pass ||
+|| **GitHub tag** | v1.0.36 | ✅ pushed ||
+|| **Test VM** | 1.0.37 | ✅ **Source synced, cache cleared, all 313 tests passing, report verification complete** ||
+|| **Production** | v1.0.36 | ✅ running on uptime-host ||
 
-**Next release:** v1.0.37 (after next feature cycle)
+**Next release:** v1.0.37 (after Test VM verification complete)
 
 ---
 
@@ -64,6 +64,16 @@
 - ✅ Single branch `master` (deleted old `main`)
 - ✅ 84 tracked files, clean working tree
 
+### Monthly Report Enhancements (v1.0.37)
+- ✅ **Monthly report uses previous calendar month** (1st to last day) instead of rolling 30-day lookback
+- ✅ **Overall Average lines on bar charts** — Availability and Integrity charts show overall average
+- ✅ **Integrity section in Telegram monthly summary** — Overall integrity %, per-resolver integrity scores with success rates
+- ✅ **Dashboard title: "chk-a รายงานเดือน {ชื่อเดือนไทย} ของ DNS Resolver"** — Thai month name in title
+- ✅ **Footer timestamp: "สร้างเมื่อ {timestamp}" / "Generated at"** — Consistent generation time across all graphs
+- ✅ **Daily Availability Heatmap uses actual last day from data** — Not current day
+- ✅ **Daily Heatmap: calendar-month window via start_date parameter** — Precise 1st to last day
+- ✅ **Cleared test data (r1, fake-resolver)** — Baseline, FQDN store, checks.jsonl
+
 ---
 
 ## Test Status
@@ -72,13 +82,13 @@
 - **Passing:** 313 (100%)
 - **Regression:** Zero
 - **Security tests:** 74 (SEC-001 to SEC-020)
-- **Environments verified:** Dev (WSL), Test VM (VirtualBox), Production (uptime-host)
+- **Environments verified:** Dev (WSL), Test VM (VirtualBox - v1.0.37 synced), Production (uptime-host)
 
 ---
 
 ## Deployment Architecture
 
-```
+```plaintext
 Dev (WSL Ubuntu)          Test VM (VirtualBox)        Production (uptime-host)
 172.20.14.199              192.168.56.122              (direct GitHub deploy)
      │                          │                          │
@@ -110,7 +120,7 @@ Secrets:                     Secrets:                    Secrets:
 | `config/config.yaml.example` | Runtime config template (Thai comments, all options) |
 | `config/chk-a.env.example` | Systemd EnvironmentFile template (Telegram creds, paths) |
 | `systemd/chk-a.service` | Systemd unit with CAP_NET_RAW, Type=notify, WatchdogSec |
-| `pyproject.toml` | Project metadata, dependencies, version (1.0.36) |
+| `pyproject.toml` | Project metadata, dependencies, version (1.0.37) |
 
 ---
 
@@ -147,7 +157,8 @@ Secrets:                     Secrets:                    Secrets:
 
 ## Next Steps (Priority)
 
-1. **Dashboard Web UI** (High) — FastAPI + HTMX + Chart.js, real-time status, FQDN table, graphs
-2. **Historical Data Compaction** (Medium) — Retention policy for checks.jsonl/alerts.jsonl
-3. **deploy.sh Enhancement** (Low) — Auto-copy install.sh, tests/, systemd/
-4. **GitHub Actions Optimization** (Low) — uv cache, parallel test matrix
+1. **Complete Test VM monthly report verification** — Verify daily/monthly reports on Test VM after v1.0.37 sync
+2. **Dashboard Web UI** (High) — FastAPI + HTMX + Chart.js, real-time status, FQDN table, graphs
+3. **Historical Data Compaction** (Medium) — Retention policy for checks.jsonl/alerts.jsonl
+4. **deploy.sh Enhancement** (Low) — Auto-copy install.sh, tests/, systemd/
+5. **GitHub Actions Optimization** (Low) — uv cache, parallel test matrix

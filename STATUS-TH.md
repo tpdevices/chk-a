@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-09-24 15:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -26,17 +26,17 @@
 
 ## 2. สถาปัตยกรรม (Architecture)
 
-```
+```plaintext
 ┌─────────────┐     ┌──────────────┐     ┌─────────┐     ┌──────────┐     ┌──────────────┐
 │  Resolver   │────▶│  Consensus   │────▶│   ML    │────▶│  Alert   │────▶│  Telegram    │
 │   Agent     │     │   Agent      │     │  Agent  │     │  Agent   │     │  Reporter    │
 └─────────────┘     └──────────────┘     └─────────┘     └──────────┘     └──────────────┘
-       │                   │                   │                  │                 │
-       ▼                   ▼                   ▼                  ▼                 ▼
+      │                   │                   │                  │                 │
+      ▼                   ▼                   ▼                  ▼                 ▼
   22+ resolvers      Majority vote      EMA baseline      Dedup + Rate       Graphs + Alerts
   (DoH/DoT/UDP)      Outlier detect     Entropy scoring   limit (token        (HTML + Images)
                                              bucket)
-                                                     
+
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
 │                              ORCHESTRATOR (Main Loop)                                 │
 │  • รอบ 30-180s (jittered)     • ติดตาม availability ต่อ FQDN   • ตรวจจับ IP change    │
@@ -49,9 +49,9 @@
 
 ---
 
-## 3. สิ่งที่ทำเสร็จแล้ว (Completed Work - 2026-09-24)
+## 3. สิ่งที่ทำเสร็จแล้ว (Completed Work - 2026-10-02)
 
-### ✅ ฟีเจอร์หลัก (v1.0.34-v1.0.36)
+### ✅ ฟีเจอร์หลัก (v1.0.34-v1.0.37)
 
 | ฟีเจอร์ | เวอร์ชัน | สถานะ |
 |---------|---------|--------|
@@ -72,6 +72,12 @@
 | CAP_NET_RAW สำหรับ MTR ICMP | v1.0.36 | ✅ เสร็จ |
 | GitHub Repo Cleanup (ลบ 33 ไฟล์) | v1.0.36 | ✅ เสร็จ |
 | Production Deployment Verified | v1.0.36 | ✅ uptime-host ทำงาน |
+| **รายงานประจำเดือน: ช่วงเดือนก่อนหน้าเต็มเดือน** | **v1.0.37** | **✅ เสร็จ** |
+| **เส้น Overall Average บนกราฟแท่ง** | **v1.0.37** | **✅ เสร็จ** |
+| **ส่วน Integrity ใน Telegram Monthly Summary** | **v1.0.37** | **✅ เสร็จ** |
+| **Dashboard title: ชื่อเดือนไทย** | **v1.0.37** | **✅ เสร็จ** |
+| **Footer timestamp: "สร้างเมื่อ" / "Generated at"** | **v1.0.37** | **✅ เสร็จ** |
+| **Daily Heatmap: calendar-month window ผ่าน start_date** | **v1.0.37** | **✅ เสร็จ (dev)** |
 
 ### ✅ การทดสอบ
 - **313/313 tests ผ่าน** (Zero regression) บน Dev และ Test VM ทั้งคู่
@@ -91,11 +97,12 @@
 
 ## 4. งานที่กำลังดำเนินการ (In Progress)
 
-| งาน | สถานะ | หมายเหตุ |
-|------|--------|---------|
-| Dashboard Web UI | 📋 วางแผน | Low priority - FastAPI + HTMX + Chart.js |
-| Historical Data Compaction | 📋 วางแผน | Low priority - Retention policy สำหรับ checks.jsonl |
-| GitHub Actions CI Optimization | 📋 วางแผน | Release workflow ทำงานอยู่แล้ว |
+|| งาน | สถานะ | หมายเหตุ ||
+||------|--------|---------||
+|| Test VM monthly report verification (v1.0.37) | ✅ **Complete** | Source synced, cache cleared, **313 tests ผ่านทั้งหมด**, รายงาน verified เสร็จ ||
+|| Dashboard Web UI | 📋 วางแผน | Low priority - FastAPI + HTMX + Chart.js ||
+|| Historical Data Compaction | 📋 วางแผน | Low priority - Retention policy สำหรับ checks.jsonl ||
+|| GitHub Actions CI Optimization | 📋 วางแผน | Release workflow ทำงานอยู่แล้ว ||
 
 ---
 
@@ -108,29 +115,32 @@
 | Thai localization test fail บน Test VM | Sync tests/ directory ผ่าน rsync | v1.0.35 |
 | 14 test failures บน Test VM | แก้ permissions, sync tests/, sync systemd/ | v1.0.35 |
 | install.sh หายบน Test VM | คัดลอก manual, เพิ่ม TODO ใน deploy.sh | v1.0.35 |
-| Backup files (.backend) ถูก commit | ลบ, เพิ่ม *.backup ใน .gitignore | v1.0.36 |
+| Backup files (.backup) ถูก commit | ลบ, เพิ่ม *.backup ใน .gitignore | v1.0.36 |
 | img/sleepy.jpg ถูกลบ (ใช้สำหรับ midnight heartbeat) | Restore จาก git history | v1.0.36 |
 | config/chk-a.env.example ถูกลบ (deploy template) | Restore จาก git history | v1.0.36 |
 | Config files ซ้ำ (settings.yaml, etc.) | ลบ, เก็บแค่ config.yaml.example | v1.0.36 |
+| **Daily Heatmap ใช้ rolling 30-day window** | **เพิ่ม `start_date` parameter สำหรับ calendar-month window** | **v1.0.37** |
+| **Test data (r1, fake-resolver) ค้างอยู่** | **ล้าง baseline, FQDN store, checks.jsonl** | **v1.0.37** |
 
 ---
 
 ## 6. งานต่อไป (Priority Order)
 
 ### High Priority
-1. **Dashboard Web UI** — Real-time status, ตาราง FQDN, Graph viewer, Alert history
+1. **Complete Test VM monthly report verification** — ตรวจสอบ daily/monthly reports บน Test VM หลัง v1.0.37 sync
+2. **Dashboard Web UI** — Real-time status, ตาราง FQDN, Graph viewer, Alert history
    - FastAPI + HTMX + Chart.js + Jinja2
    - Endpoints: /api/status, /api/fqdns, /api/graphs, /api/alerts
    - MVP: 2-3 sessions
 
 ### Medium Priority
-2. **Historical Data Compaction** — Retention policy สำหรับ checks.jsonl / alerts.jsonl
+3. **Historical Data Compaction** — Retention policy สำหรับ checks.jsonl / alerts.jsonl
    - Compress ข้อมูลเก่า, เก็บ aggregated summaries
    - ป้องกัน disk เต็มใน production ที่รันนาน
 
 ### Low Priority
-3. **deploy.sh Enhancement** — Auto-copy install.sh, tests/, systemd/
-4. **GitHub Actions Optimization** — Cache uv, Parallel test matrix
+4. **deploy.sh Enhancement** — Auto-copy install.sh, tests/, systemd/
+5. **GitHub Actions Optimization** — Cache uv, Parallel test matrix
 
 ---
 
@@ -139,7 +149,7 @@
 ### Core Source (src/chk_a/)
 ```
 src/chk_a/
-├── __init__.py                    # version 1.0.36
+├── __init__.py                    # version 1.0.37
 ├── main.py                        # CLI entry, cmd_test_daily_image
 ├── orchestrator.py                # Main loop, systemd notify, daily tasks
 ├── agents/
@@ -210,11 +220,11 @@ md/loop_engineering_prompt.md      # Authoritative loop spec
 
 ## 8. สถานะเวอร์ชัน (Version Status)
 
-| องค์ประกอบ | เวอร์ชัน | สถานะ |
-|-----------|---------|--------|
-| Source (dev) | 1.0.36 | ✅ 313 tests ผ่าน |
-| GitHub tag | v1.0.36 | ✅ pushed |
-| Test VM | 1.0.36 | ✅ deployed & verified |
-| Production | v1.0.36 | ✅ running on uptime-host |
+|| องค์ประกอบ | เวอร์ชัน | สถานะ ||
+||-----------|---------|--------|
+|| Source (dev) | 1.0.37 | ✅ 313 tests ผ่าน ||
+|| GitHub tag | v1.0.36 | ✅ pushed ||
+|| Test VM | 1.0.37 | ✅ **Source synced, cache cleared, 313 tests ผ่านทั้งหมด, รายงาน verified เสร็จ** ||
+|| Production | v1.0.36 | ✅ running on uptime-host ||
 
-**Next Release:** v1.0.37 (หลัง feature cycle ถัดไป)
+**Next Release:** v1.0.37 (หลัง Test VM verification เสร็จ)

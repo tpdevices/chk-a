@@ -140,65 +140,102 @@ sns.set_palette("colorblind")  # Colorblind-safe categorical palette
 try:
     from importlib import resources
 
-    # Use bundled Loma fonts from package
-    thai_fonts = []
-    font_dir = None
+    # First, try system TLWG Loma TTF fonts (better matplotlib support)
+    system_thai_fonts = [
+        f
+        for f in fm.findSystemFonts()
+        if any(x in f.lower() for x in ["tlwg", "loma", "thai", "sarabun", "noto", "tahoma"])
+    ]
+    # Prefer Loma TTF specifically - load each variant separately for proper bold/italic support
+    loma_regular = [f for f in system_thai_fonts if "loma" in f.lower() and f.endswith(".ttf") and "bold" not in f.lower() and "oblique" not in f.lower()]
+    loma_bold = [f for f in system_thai_fonts if "loma" in f.lower() and f.endswith(".ttf") and "bold" in f.lower() and "oblique" not in f.lower()]
+    loma_oblique = [f for f in system_thai_fonts if "loma" in f.lower() and f.endswith(".ttf") and "oblique" in f.lower() and "bold" not in f.lower()]
+    loma_bold_oblique = [f for f in system_thai_fonts if "loma" in f.lower() and f.endswith(".ttf") and "bold" in f.lower() and "oblique" in f.lower()]
 
-    # Modern importlib.resources approach (Python 3.9+)
-    try:
-        font_dir = resources.files("chk_a.fonts")
-        thai_fonts = [f for f in font_dir.iterdir() if f.name.startswith("Loma") and f.name.endswith(".otf")]
-    except Exception:
-        pass
-
-    # Fallback for older Python / pkg_resources
-    if not thai_fonts:
+    if loma_regular and loma_bold:
+        # Use Loma variants for proper bold/italic support
+        # Register fonts with matplotlib font manager first
         try:
-            import pkg_resources
-            font_dir = Path(pkg_resources.resource_filename("chk_a", "fonts"))
-            thai_fonts = list(font_dir.glob("Loma*.otf"))
+            fm.fontManager.addfont(loma_regular[0])
+            fm.fontManager.addfont(loma_bold[0])
+        except Exception:
+            pass  # Font might already be registered
+        
+        THAI_FONT = fm.FontProperties(fname=loma_regular[0])
+        THAI_FONT_SMALL = fm.FontProperties(fname=loma_regular[0], size=8)
+        THAI_FONT_NORMAL = fm.FontProperties(fname=loma_regular[0], size=10)
+        THAI_FONT_LARGE = fm.FontProperties(fname=loma_regular[0], size=12)
+        # Use bold font file directly (no weight="bold" since file is already bold)
+        THAI_FONT_TITLE = fm.FontProperties(fname=loma_bold[0], size=14)
+        THAI_FONT_BOLD = fm.FontProperties(fname=loma_bold[0], size=11)
+        log.info(f"Using system Thai Loma TTF fonts: Regular={loma_regular[0]}, Bold={loma_bold[0]}")
+    elif loma_regular:
+        # Only regular available, use it for all
+        try:
+            fm.fontManager.addfont(loma_regular[0])
+        except Exception:
+            pass
+        THAI_FONT = fm.FontProperties(fname=loma_regular[0])
+        THAI_FONT_SMALL = fm.FontProperties(fname=loma_regular[0], size=8)
+        THAI_FONT_NORMAL = fm.FontProperties(fname=loma_regular[0], size=10)
+        THAI_FONT_LARGE = fm.FontProperties(fname=loma_regular[0], size=12)
+        THAI_FONT_TITLE = fm.FontProperties(fname=loma_regular[0], size=14, weight="bold")
+        THAI_FONT_BOLD = fm.FontProperties(fname=loma_regular[0], size=11, weight="bold")
+        log.info(f"Using system Thai Loma TTF font (regular only): {loma_regular[0]}")
+    elif system_thai_fonts:
+        # Fallback to any other system Thai font
+        THAI_FONT = fm.FontProperties(fname=system_thai_fonts[0])
+        THAI_FONT_SMALL = fm.FontProperties(fname=system_thai_fonts[0], size=8)
+        THAI_FONT_NORMAL = fm.FontProperties(fname=system_thai_fonts[0], size=10)
+        THAI_FONT_LARGE = fm.FontProperties(fname=system_thai_fonts[0], size=12)
+        THAI_FONT_TITLE = fm.FontProperties(fname=system_thai_fonts[0], size=14, weight="bold")
+        THAI_FONT_BOLD = fm.FontProperties(fname=system_thai_fonts[0], size=11, weight="bold")
+        log.info(f"Using system Thai font: {system_thai_fonts[0]}")
+    else:
+        # Last resort: bundled OTF fonts (may not work well with matplotlib)
+        thai_fonts = []
+        font_dir = None
+
+        # Modern importlib.resources approach (Python 3.9+)
+        try:
+            font_dir = resources.files("chk_a.fonts")
+            thai_fonts = [f for f in font_dir.iterdir() if f.name.startswith("Loma") and f.name.endswith(".otf")]
         except Exception:
             pass
 
-    if thai_fonts:
-        font_path = None
-        try:
-            font_path = str(Path(thai_fonts[0]))
-            if not Path(font_path).exists():
-                raise ValueError("Path does not exist")
-        except Exception:
-            with resources.as_file(thai_fonts[0]) as p:
-                font_path = str(p)
+        # Fallback for older Python / pkg_resources
+        if not thai_fonts:
+            try:
+                import pkg_resources
+                font_dir = Path(pkg_resources.resource_filename("chk_a", "fonts"))
+                thai_fonts = list(font_dir.glob("Loma*.otf"))
+            except Exception:
+                pass
+
+        if thai_fonts:
+            font_path = None
+            try:
+                font_path = str(Path(thai_fonts[0]))
+                if not Path(font_path).exists():
+                    raise ValueError("Path does not exist")
+            except Exception:
+                with resources.as_file(thai_fonts[0]) as p:
+                    font_path = str(p)
+                    THAI_FONT = fm.FontProperties(fname=font_path)
+                    THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=8)
+                    THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=10)
+                    THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=12)
+                    THAI_FONT_TITLE = fm.FontProperties(fname=font_path, size=14, weight="bold")
+                    THAI_FONT_BOLD = fm.FontProperties(fname=font_path, size=11, weight="bold")
+                    log.info(f"Using bundled Thai font (fallback): {thai_fonts[0].name}")
+            else:
                 THAI_FONT = fm.FontProperties(fname=font_path)
                 THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=8)
                 THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=10)
                 THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=12)
                 THAI_FONT_TITLE = fm.FontProperties(fname=font_path, size=14, weight="bold")
                 THAI_FONT_BOLD = fm.FontProperties(fname=font_path, size=11, weight="bold")
-                log.info(f"Using bundled Thai font: {thai_fonts[0].name}")
-        else:
-            THAI_FONT = fm.FontProperties(fname=font_path)
-            THAI_FONT_SMALL = fm.FontProperties(fname=font_path, size=8)
-            THAI_FONT_NORMAL = fm.FontProperties(fname=font_path, size=10)
-            THAI_FONT_LARGE = fm.FontProperties(fname=font_path, size=12)
-            THAI_FONT_TITLE = fm.FontProperties(fname=font_path, size=14, weight="bold")
-            THAI_FONT_BOLD = fm.FontProperties(fname=font_path, size=11, weight="bold")
-            log.info(f"Using bundled Thai font: {thai_fonts[0].name}")
-    else:
-        # Fallback to system fonts
-        system_thai_fonts = [
-            f
-            for f in fm.findSystemFonts()
-            if any(x in f.lower() for x in ["thai", "sarabun", "noto", "tahoma", "tlwg", "loma"])
-        ]
-        if system_thai_fonts:
-            THAI_FONT = fm.FontProperties(fname=system_thai_fonts[0])
-            THAI_FONT_SMALL = fm.FontProperties(fname=system_thai_fonts[0], size=8)
-            THAI_FONT_NORMAL = fm.FontProperties(fname=system_thai_fonts[0], size=10)
-            THAI_FONT_LARGE = fm.FontProperties(fname=system_thai_fonts[0], size=12)
-            THAI_FONT_TITLE = fm.FontProperties(fname=system_thai_fonts[0], size=14, weight="bold")
-            THAI_FONT_BOLD = fm.FontProperties(fname=system_thai_fonts[0], size=11, weight="bold")
-            log.info(f"Using system Thai font: {system_thai_fonts[0]}")
+                log.info(f"Using bundled Thai font (fallback): {thai_fonts[0].name}")
         else:
             THAI_FONT = None
             THAI_FONT_SMALL = None
@@ -240,28 +277,31 @@ def _add_header_footer(
     hostname: str | None = None,
     lang: str = "en",
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Add standardized header (title) and footer (hostname + last update) to figure.
 
     Footer language follows lang parameter: Thai for lang='th', English for lang='en'.
     Left: hostname, Center: version, Right: timestamp
-    Title supports newline (\\n) for multi-line headers.
+    Title supports newline (\n) for multi-line headers.
     """
     hostname = hostname or "unknown-host"
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Use generation_datetime for consistent timestamp across all graphs, fallback to now
+    gen_time = generation_datetime if generation_datetime else datetime.now()
+    timestamp = gen_time.strftime("%Y-%m-%d %H:%M:%S")
     version_str = f"v{version}" if version else ""
 
     # Footer language follows lang parameter - split left/center/right
     if lang == "th":
         left_text = f"ตรวจสอบจากเครื่อง : \"{hostname}\""
         center_text = version_str
-        right_text = f"อัปเดตล่าสุด : {timestamp}"
+        right_text = f"สร้างเมื่อ {timestamp}"
         font_props = THAI_FONT if THAI_FONT else None
         title_font = THAI_FONT_TITLE if THAI_FONT else None
     else:
         left_text = f"Checked from host : \"{hostname}\""
         center_text = version_str
-        right_text = f"Last Update : {timestamp}"
+        right_text = f"Generated at {timestamp}"
         font_props = None
         title_font = None
 
@@ -339,7 +379,7 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
         "Overall Avg": "ค่าเฉลี่ยรวม",
     }
 
-    # Axis labels and title - apply Thai font
+    # 1. Axis labels and title - apply Thai font
     if ax.get_xlabel():
         ax.set_xlabel(ax.get_xlabel(), fontproperties=THAI_FONT_NORMAL)
     if ax.get_ylabel():
@@ -347,7 +387,7 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
     if ax.get_title():
         ax.set_title(ax.get_title(), fontproperties=THAI_FONT_TITLE)
 
-    # Tick labels
+    # 2. Tick labels - apply Thai font and translate
     for label in ax.get_xticklabels():
         label.set_fontproperties(THAI_FONT_SMALL)
         text = label.get_text()
@@ -359,7 +399,7 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
         if text in thai_translations:
             label.set_text(thai_translations[text])
 
-    # Legend
+    # 3. Legend - apply Thai font and translate
     legend = ax.get_legend()
     if legend:
         for text in legend.get_texts():
@@ -368,7 +408,7 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
             if txt in thai_translations:
                 text.set_text(thai_translations[txt])
 
-    # Text annotations (value labels on bars, etc.)
+    # 4. Text annotations (value labels on bars, etc.) - apply Thai font and translate
     for text in ax.texts:
         text.set_fontproperties(THAI_FONT_SMALL)
         txt = text.get_text()
@@ -377,17 +417,43 @@ def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
                 txt = txt.replace(eng, thai)
         text.set_text(txt)
 
-    # Figure-level texts (header/footer already handled separately)
+    # 5. Figure-level texts (header, footer, and other fig.text elements)
+    # Apply Thai font to ALL fig.texts, then translate
     for text in fig.texts:
-        if text.get_position()[1] > 0.85 or text.get_position()[1] < 0.05:
-            # Skip header/footer (already set with Thai font)
-            continue
-        text.set_fontproperties(THAI_FONT_SMALL)
-        txt = text.get_text()
-        for eng, thai in thai_translations.items():
-            if eng in txt:
-                txt = txt.replace(eng, thai)
-        text.set_text(txt)
+        y_pos = text.get_position()[1]
+        
+        # Header (y > 0.85): already set with Thai font in _add_header_footer, but ensure font
+        if y_pos > 0.85:
+            try:
+                fs = float(text.get_fontsize())
+            except (TypeError, ValueError):
+                fs = 12
+            text.set_fontproperties(THAI_FONT_TITLE if fs > 12 else THAI_FONT_NORMAL)
+            txt = text.get_text()
+            for eng, thai in thai_translations.items():
+                if eng in txt:
+                    txt = txt.replace(eng, thai)
+            text.set_text(txt)
+        # Footer (y < 0.05): needs Thai font - was being skipped before
+        elif y_pos < 0.05:
+            text.set_fontproperties(THAI_FONT_SMALL)
+            txt = text.get_text()
+            for eng, thai in thai_translations.items():
+                if eng in txt:
+                    txt = txt.replace(eng, thai)
+            text.set_text(txt)
+        # Other figure texts (could include additional labels)
+        else:
+            text.set_fontproperties(THAI_FONT_SMALL)
+            txt = text.get_text()
+            for eng, thai in thai_translations.items():
+                if eng in txt:
+                    txt = txt.replace(eng, thai)
+            text.set_text(txt)
+
+    # 6. Also ensure axis offset text (scientific notation) gets Thai font
+    ax.xaxis.get_offset_text().set_fontproperties(THAI_FONT_SMALL)
+    ax.yaxis.get_offset_text().set_fontproperties(THAI_FONT_SMALL)
 
 
 def _save_figure(fig: plt.Figure, output_path: Path, dpi: int = 200) -> None:
@@ -405,6 +471,7 @@ def generate_availability_bar_chart(
     hostname: str | None = None,
     version: str | None = None,
     overall_availability_pct: float | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate horizontal bar chart of resolver availability."""
     if not availability_data:
@@ -459,7 +526,7 @@ def generate_availability_bar_chart(
     # Invert y-axis so best is at top
     ax.invert_yaxis()
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -471,6 +538,7 @@ def generate_availability_heatmap(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate heatmap of hourly availability per resolver."""
     if not availability_data:
@@ -514,7 +582,7 @@ def generate_availability_heatmap(
                 color = "white" if val < 50 else "black"
                 ax.text(h, i, f"{val:.0f}%", ha="center", va="center", fontsize=7, color=color)
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -526,6 +594,7 @@ def generate_availability_daily_heatmap(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate heatmap of daily availability per resolver (for monthly reports)."""
     if not availability_data:
@@ -580,7 +649,7 @@ def generate_availability_daily_heatmap(
                 color = "white" if val < 50 else "black"
                 ax.text(j, i, f"{val:.0f}%", ha="center", va="center", fontsize=7, color=color)
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -593,6 +662,7 @@ def generate_integrity_chart(
     hostname: str | None = None,
     version: str | None = None,
     overall_integrity_pct: float | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate horizontal bar chart of ML-based integrity scores."""
     if not integrity_data:
@@ -647,7 +717,7 @@ def generate_integrity_chart(
     ax.legend(loc="lower right")
     ax.invert_yaxis()
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -659,6 +729,7 @@ def generate_latency_boxplot(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate box plot of latency distributions per resolver.
 
@@ -729,7 +800,7 @@ def generate_latency_boxplot(
     if "median" not in title.lower():
         title = f"{title}\n(sorted by median latency, fastest first)"
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -741,6 +812,7 @@ def generate_ip_stability_chart(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate scatter plot of IP stability vs unique IP count."""
     if not integrity_data:
@@ -788,7 +860,7 @@ def generate_ip_stability_chart(
     )
     ax.legend(loc="lower right")
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -800,6 +872,7 @@ def generate_mtr_path_visualization(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate a visual representation of MTR network path with loss% and latency per hop.
 
@@ -888,7 +961,7 @@ def generate_mtr_path_visualization(
     ax.legend(loc="lower right")
 
     ax.invert_yaxis()
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -900,6 +973,7 @@ def generate_path_availability_chart(
     lang: str = "en",
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Generate horizontal bar chart of network path availability with ML health scores.
 
@@ -967,7 +1041,7 @@ def generate_path_availability_chart(
     # Invert y-axis so best is at top
     ax.invert_yaxis()
 
-    _add_header_footer(fig, ax, title, hostname, lang, version)
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
     _save_figure(fig, output_path)
 
@@ -979,11 +1053,14 @@ def generate_summary_dashboard(
     hostname: str | None = None,
     report_date_context: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> list[Path]:
     """Generate all graphs and return list of generated file paths."""
     output_dir.mkdir(parents=True, exist_ok=True)
     now = datetime.now()
-    timestamp = now.strftime("%Y%m%d-%H%M%S")
+    # Use generation_datetime for consistent timestamp across all graphs, fallback to now
+    gen_time = generation_datetime if generation_datetime else now
+    timestamp = gen_time.strftime("%Y%m%d-%H%M%S")
     generated = []
 
     # Add language suffix to filename for filtering (e.g., -th.png for Thai)
@@ -1023,32 +1100,41 @@ def generate_summary_dashboard(
     # 1. Availability bar chart
     path = output_dir / f"availability-bar{timestamp}{lang_suffix}.png"
     overall_availability_pct = ml_insights.get("summary", {}).get("overall_availability_pct")
-    generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname, version=version, overall_availability_pct=overall_availability_pct)
+    generate_availability_bar_chart(availability, path, title=base_titles["availability_bar"], lang=lang, hostname=hostname, version=version, overall_availability_pct=overall_availability_pct, generation_datetime=gen_time)
     generated.append(path)
 
     # 2. Availability heatmap (hourly)
     path = output_dir / f"availability-heatmap{timestamp}{lang_suffix}.png"
-    generate_availability_heatmap(availability, path, title=base_titles["availability_heatmap"], lang=lang, hostname=hostname, version=version)
+    generate_availability_heatmap(availability, path, title=base_titles["availability_heatmap"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
     generated.append(path)
 
     # 3. Availability daily heatmap (NEW - for monthly reports)
     path = output_dir / f"availability-daily-heatmap{timestamp}{lang_suffix}.png"
     # Check if daily_availability has month-range data (more than 1 day)
     has_month_data = False
+    max_day = 0
     for resolver_data in availability.values():
         daily = resolver_data.get("daily_availability", {})
         if len(daily) > 1:
             has_month_data = True
+            # Find the maximum day number in the data
+            for date_str in daily.keys():
+                try:
+                    day = int(date_str.split("-")[-1])  # MM-DD format
+                    max_day = max(max_day, day)
+                except (ValueError, IndexError):
+                    pass
             break
     
     if has_month_data:
-        # Use month-context title for daily heatmap
+        # Use month-context title for daily heatmap with actual last day from data
+        last_day = max_day if max_day > 0 else gen_time.day
         if lang == "th":
-            daily_heatmap_title = f"Heatmap ความพร้อมใช้งานรายวัน (วันที่ 1 ถึง {now.day})"
+            daily_heatmap_title = f"Heatmap ความพร้อมใช้งานรายวัน (วันที่ 1 ถึง {last_day})"
             if report_date_context:
                 daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
         else:
-            daily_heatmap_title = f"Daily Availability Heatmap (Days 1 to {now.day})"
+            daily_heatmap_title = f"Daily Availability Heatmap (Days 1 to {last_day})"
             if report_date_context:
                 daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
     else:
@@ -1056,37 +1142,37 @@ def generate_summary_dashboard(
         if report_date_context:
             daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
     
-    generate_availability_daily_heatmap(availability, path, title=daily_heatmap_title, lang=lang, hostname=hostname, version=version)
+    generate_availability_daily_heatmap(availability, path, title=daily_heatmap_title, lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
     generated.append(path)
 
     # 4. Integrity chart
     path = output_dir / f"integrity-score{timestamp}{lang_suffix}.png"
     overall_integrity_pct = ml_insights.get("summary", {}).get("overall_integrity_pct")
-    generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname, version=version, overall_integrity_pct=overall_integrity_pct)
+    generate_integrity_chart(integrity, path, title=base_titles["integrity"], lang=lang, hostname=hostname, version=version, overall_integrity_pct=overall_integrity_pct, generation_datetime=gen_time)
     generated.append(path)
 
     # 4. Latency boxplot
     path = output_dir / f"latency-boxplot{timestamp}{lang_suffix}.png"
-    generate_latency_boxplot(availability, path, title=base_titles["latency"], lang=lang, hostname=hostname, version=version)
+    generate_latency_boxplot(availability, path, title=base_titles["latency"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
     generated.append(path)
 
     # 5. IP stability chart
     path = output_dir / f"ip-stability{timestamp}{lang_suffix}.png"
-    generate_ip_stability_chart(integrity, path, title=base_titles["ip_stability"], lang=lang, hostname=hostname, version=version)
+    generate_ip_stability_chart(integrity, path, title=base_titles["ip_stability"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
     generated.append(path)
 
     # 6. MTR path visualization (if MTR data available)
     mtr_data = ml_insights.get("mtr", {})
     if mtr_data:
         path = output_dir / f"mtr-path{timestamp}{lang_suffix}.png"
-        generate_mtr_path_visualization(mtr_data, path, title=base_titles["mtr_path"], lang=lang, hostname=hostname, version=version)
+        generate_mtr_path_visualization(mtr_data, path, title=base_titles["mtr_path"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
         generated.append(path)
 
     # 7. Path availability chart (ML-based)
     path_availability = ml_insights.get("path_availability", {})
     if path_availability:
         path = output_dir / f"path-availability{timestamp}{lang_suffix}.png"
-        generate_path_availability_chart(path_availability, path, title=base_titles["path_availability"], lang=lang, hostname=hostname, version=version)
+        generate_path_availability_chart(path_availability, path, title=base_titles["path_availability"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
         generated.append(path)
 
     log.info("Generated %d graphs in %s", len(generated), output_dir)
@@ -1100,6 +1186,7 @@ def generate_availability_bar_chart_th(
     hostname: str | None = None,
     version: str | None = None,
     overall_availability_pct: float | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of availability bar chart."""
     generate_availability_bar_chart(
@@ -1110,6 +1197,7 @@ def generate_availability_bar_chart_th(
         hostname=hostname,
         version=version,
         overall_availability_pct=overall_availability_pct,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1118,6 +1206,7 @@ def generate_availability_heatmap_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of availability heatmap."""
     generate_availability_heatmap(
@@ -1127,6 +1216,7 @@ def generate_availability_heatmap_th(
         lang="th",
         hostname=hostname,
         version=version,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1135,6 +1225,7 @@ def generate_availability_daily_heatmap_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of daily availability heatmap."""
     generate_availability_daily_heatmap(
@@ -1144,6 +1235,7 @@ def generate_availability_daily_heatmap_th(
         lang="th",
         hostname=hostname,
         version=version,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1153,6 +1245,7 @@ def generate_integrity_chart_th(
     hostname: str | None = None,
     version: str | None = None,
     overall_integrity_pct: float | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of integrity chart."""
     generate_integrity_chart(
@@ -1163,6 +1256,7 @@ def generate_integrity_chart_th(
         hostname=hostname,
         version=version,
         overall_integrity_pct=overall_integrity_pct,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1171,6 +1265,7 @@ def generate_latency_boxplot_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of latency boxplot."""
     generate_latency_boxplot(
@@ -1180,6 +1275,7 @@ def generate_latency_boxplot_th(
         lang="th",
         hostname=hostname,
         version=version,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1188,6 +1284,7 @@ def generate_ip_stability_chart_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of IP stability chart."""
     generate_ip_stability_chart(
@@ -1197,6 +1294,7 @@ def generate_ip_stability_chart_th(
         lang="th",
         hostname=hostname,
         version=version,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1215,6 +1313,7 @@ def generate_mtr_path_visualization_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of MTR path visualization."""
     generate_mtr_path_visualization(
@@ -1224,6 +1323,7 @@ def generate_mtr_path_visualization_th(
         lang="th",
         hostname=hostname,
         version=version,
+        generation_datetime=generation_datetime,
     )
 
 
@@ -1232,6 +1332,7 @@ def generate_path_availability_chart_th(
     output_path: Path,
     hostname: str | None = None,
     version: str | None = None,
+    generation_datetime: datetime | None = None,
 ) -> None:
     """Thai version of path availability chart."""
     generate_path_availability_chart(
@@ -1241,4 +1342,5 @@ def generate_path_availability_chart_th(
         lang="th",
         hostname=hostname,
         version=version,
+        generation_datetime=generation_datetime,
     )
