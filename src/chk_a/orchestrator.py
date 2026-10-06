@@ -1331,6 +1331,11 @@ class Orchestrator:
                 missed_days.append(current)
                 current += timedelta(days=1)
 
+            if not missed_days:
+                self.logger.info("No missing daily reports to generate (last report: %s, yesterday: %s)",
+                                 last_report_date.strftime("%Y-%m-%d"), yesterday_str)
+                return
+
             self.logger.info(
                 "Found %d missing daily report(s) from %s to %s, generating on startup...",
                 len(missed_days), missed_days[0].strftime("%Y-%m-%d"), missed_days[-1].strftime("%Y-%m-%d")
