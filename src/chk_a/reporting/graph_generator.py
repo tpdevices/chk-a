@@ -1131,12 +1131,14 @@ def generate_summary_dashboard(
         last_day = max_day if max_day > 0 else gen_time.day
         if lang == "th":
             daily_heatmap_title = f"Heatmap ความพร้อมใช้งานรายวัน (วันที่ 1 ถึง {last_day})"
-            if report_date_context:
-                daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
+            # Month-specific context for daily heatmap (overrides generic report_date_context)
+            month_str = gen_time.strftime("%Y-%m")
+            daily_heatmap_title = f"{daily_heatmap_title}\nรายงานข้อมูลเดือนนี้ : {month_str} (วันที่ 1 ถึง {last_day})"
         else:
             daily_heatmap_title = f"Daily Availability Heatmap (Days 1 to {last_day})"
-            if report_date_context:
-                daily_heatmap_title = f"{daily_heatmap_title}\n{report_date_context}"
+            # Month-specific context for daily heatmap (overrides generic report_date_context)
+            month_str = gen_time.strftime("%Y-%m")
+            daily_heatmap_title = f"{daily_heatmap_title}\nMonthly Report: {month_str} (Days 1 to {last_day})"
     else:
         daily_heatmap_title = base_titles["availability_daily_heatmap"]
         if report_date_context:
