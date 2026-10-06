@@ -227,7 +227,7 @@ Create deployment artifacts:
 - install.sh: creates user chk-a, dirs (/opt/chk-a, /etc/chk-a, /var/log/chk-a, /var/lib/chk-a), venv, pip install -e ., copies config.yaml.example, enables service
 - /etc/chk-a/config.yaml.example (full example with comments)
 - /etc/chk-a/env.example (TELEGRAM_BOT_TOKEN= TELEGRAM_CHAT_ID=)
-- logrotate.d/chk-a (daily, rotate 14, compress, delaycompress, missingok)
+- logrotate.d/chk-a (daily, rotate 365, compress, delaycompress, missingok)
 - Makefile targets: install, uninstall, test, lint, build, dev-install
 - Validate: systemd-analyze verify /etc/systemd/system/chk-a.service
 - Run: sudo make install && sudo systemctl daemon-reload && sudo systemctl enable --now chk-a

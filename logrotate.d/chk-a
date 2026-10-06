@@ -1,6 +1,6 @@
 /var/log/chk-a/*.jsonl {
     daily
-    rotate 14
+    rotate 365
     compress
     delaycompress
     missingok
