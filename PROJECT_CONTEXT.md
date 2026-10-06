@@ -1,6 +1,6 @@
 # Project Context - chk-a
 
-**Last Updated:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-10-06 06:15:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -15,13 +15,14 @@
 ## Current Version & Release State
 
 || Component | Version | Status ||
-||-----------|---------|--------|
-|| **Source (dev)** | 1.0.37 | ✅ 313 tests pass ||
-|| **GitHub tag** | v1.0.36 | ✅ pushed ||
-|| **Test VM** | 1.0.37 | ✅ **Source synced, cache cleared, all 313 tests passing, report verification complete** ||
-|| **Production** | v1.0.36 | ✅ running on uptime-host ||
+|---|-----------|---------|--------|
+| **Source (dev)** | 1.0.40 | ✅ 313 tests pass ||
+| **GitHub tag** | v1.0.40 | ✅ pushed ||
+| **Test VM** | 1.0.37 | ✅ **Source synced, cache cleared, all 313 tests passing, report verification complete** ||
+| **Production** | v1.0.36 | ✅ running on uptime-host ||
+| **GitHub Release** | v1.0.40 | ✅ **Created** ||
 
-**Next release:** v1.0.37 (after Test VM verification complete)
+**Next release:** v1.0.41 (Dashboard Web UI)
 
 ---
 
@@ -73,6 +74,16 @@
 - ✅ **Daily Availability Heatmap uses actual last day from data** — Not current day
 - ✅ **Daily Heatmap: calendar-month window via start_date parameter** — Precise 1st to last day
 - ✅ **Cleared test data (r1, fake-resolver)** — Baseline, FQDN store, checks.jsonl
+- ✅ **Missing daily report detection for multi-day downtime** — Added `_find_last_daily_report_date()` and `_generate_daily_report_for_date()`
+- ✅ **Thai font rendering in PDF reports (TLWG Loma TTF)** — Use system fonts instead of bundled OTF
+- ✅ **Thai font loading for matplotlib graphs (TLWG Loma)** — Proper variant separation, bold font file direct
+- ✅ **_apply_thai_fonts() for all text elements** — Footer, y-axis labels, tick labels, legend, annotations
+- ✅ **PDF graph language separation (EN/TH graphs)** — English PDF uses EN graphs, Thai PDF uses TH graphs
+
+### Production Fixes (v1.0.38 - v1.0.40)
+- ✅ **v1.0.38: _send_missing_daily_report() IndexError fix** — Guard clause for empty `missed_days` list when `last_report_date >= yesterday`
+- ✅ **v1.0.39: Daily heatmap header month context** — Override generic report_date_context with month-specific header (TH: "รายงานข้อมูลเดือนนี้ : {YYYY-MM} (วันที่ 1 ถึง {last_day})", EN: "Monthly Report: {YYYY-MM} (Days 1 to {last_day})")
+- ✅ **v1.0.40: Logrotate retention** — Daily rotation with `rotate 365` (1 year) instead of 14 days
 
 ---
 
@@ -103,6 +114,7 @@ Dev (WSL Ubuntu)          Test VM (VirtualBox)        Production (uptime-host)
      │                          │                          ├───▶ /opt/chk-a/
      │                          │                          │      systemd service
      │                          │                          │
+
 Secrets:                     Secrets:                    Secrets:
 (none)                       /etc/chk-a/env              /etc/chk-a/env
                              TELEGRAM_BOT_TOKEN          TELEGRAM_BOT_TOKEN
@@ -120,7 +132,8 @@ Secrets:                     Secrets:                    Secrets:
 | `config/config.yaml.example` | Runtime config template (Thai comments, all options) |
 | `config/chk-a.env.example` | Systemd EnvironmentFile template (Telegram creds, paths) |
 | `systemd/chk-a.service` | Systemd unit with CAP_NET_RAW, Type=notify, WatchdogSec |
-| `pyproject.toml` | Project metadata, dependencies, version (1.0.37) |
+| `pyproject.toml` | Project metadata, dependencies, version (1.0.40) |
+| `logrotate.d/chk-a` | Logrotate config (daily, rotate 365, compress) |
 
 ---
 
@@ -157,8 +170,7 @@ Secrets:                     Secrets:                    Secrets:
 
 ## Next Steps (Priority)
 
-1. **Complete Test VM monthly report verification** — Verify daily/monthly reports on Test VM after v1.0.37 sync
-2. **Dashboard Web UI** (High) — FastAPI + HTMX + Chart.js, real-time status, FQDN table, graphs
-3. **Historical Data Compaction** (Medium) — Retention policy for checks.jsonl/alerts.jsonl
-4. **deploy.sh Enhancement** (Low) — Auto-copy install.sh, tests/, systemd/
-5. **GitHub Actions Optimization** (Low) — uv cache, parallel test matrix
+1. **Dashboard Web UI** (High) — FastAPI + HTMX + Chart.js, real-time status, FQDN table, graphs
+2. **Historical Data Compaction** (Medium) — Retention policy for checks.jsonl/alerts.jsonl
+3. **deploy.sh Enhancement** (Low) — Auto-copy install.sh, tests/, systemd/
+4. **GitHub Actions Optimization** (Low) — uv cache, parallel test matrix

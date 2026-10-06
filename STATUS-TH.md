@@ -1,6 +1,6 @@
 # สถานะโครงการ chk-a
 
-**อัปเดตล่าสุด:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
+**อัปเดตล่าสุด:** 2026-10-06 06:15:00 (Asia/Bangkok UTC+07)
 
 ---
 
@@ -49,9 +49,9 @@
 
 ---
 
-## 3. สิ่งที่ทำเสร็จแล้ว (Completed Work - 2026-10-02)
+## 3. สิ่งที่ทำเสร็จแล้ว (Completed Work - 2026-10-06)
 
-### ✅ ฟีเจอร์หลัก (v1.0.34-v1.0.37)
+### ✅ ฟีเจอร์หลัก (v1.0.34-v1.0.40)
 
 | ฟีเจอร์ | เวอร์ชัน | สถานะ |
 |---------|---------|--------|
@@ -77,7 +77,15 @@
 | **ส่วน Integrity ใน Telegram Monthly Summary** | **v1.0.37** | **✅ เสร็จ** |
 | **Dashboard title: ชื่อเดือนไทย** | **v1.0.37** | **✅ เสร็จ** |
 | **Footer timestamp: "สร้างเมื่อ" / "Generated at"** | **v1.0.37** | **✅ เสร็จ** |
-| **Daily Heatmap: calendar-month window ผ่าน start_date** | **v1.0.37** | **✅ เสร็จ (dev)** |
+| **Daily Heatmap: calendar-month window ผ่าน start_date** | **v1.0.37** | **✅ เสร็จ** |
+| **ตรวจจับรายงานรายวันที่หายไปหลายวันติดต่อกัน** | **v1.0.37** | **✅ เสร็จ** |
+| **การแสดงผลฟอนต์ไทยใน PDF (TLWG Loma TTF)** | **v1.0.37** | **✅ เสร็จ** |
+| **การโหลดฟอนต์ไทยสำหรับ matplotlib (TLWG Loma)** | **v1.0.37** | **✅ เสร็จ** |
+| **_apply_thai_fonts() สำหรับทุกข้อความในกราฟ** | **v1.0.37** | **✅ เสร็จ** |
+| **การแยกภาษากราฟใน PDF (EN/TH graphs)** | **v1.0.37** | **✅ เสร็จ** |
+| **แก้ IndexError ใน _send_missing_daily_report()** | **v1.0.38** | **✅ เสร็จ** |
+| **Daily heatmap header: month context (YYYY-MM)** | **v1.0.39** | **✅ เสร็จ** |
+| **logrotate: daily rotate 365 (เก็บ log 1 ปี)** | **v1.0.40** | **✅ เสร็จ** |
 
 ### ✅ การทดสอบ
 - **313/313 tests ผ่าน** (Zero regression) บน Dev และ Test VM ทั้งคู่
@@ -97,12 +105,12 @@
 
 ## 4. งานที่กำลังดำเนินการ (In Progress)
 
-|| งาน | สถานะ | หมายเหตุ ||
-||------|--------|---------||
-|| Test VM monthly report verification (v1.0.37) | ✅ **Complete** | Source synced, cache cleared, **313 tests ผ่านทั้งหมด**, รายงาน verified เสร็จ ||
-|| Dashboard Web UI | 📋 วางแผน | Low priority - FastAPI + HTMX + Chart.js ||
-|| Historical Data Compaction | 📋 วางแผน | Low priority - Retention policy สำหรับ checks.jsonl ||
-|| GitHub Actions CI Optimization | 📋 วางแผน | Release workflow ทำงานอยู่แล้ว ||
+| งาน | สถานะ | หมายเหตุ |
+|------|--------|---------|
+| Test VM monthly report verification (v1.0.37) | ✅ **Complete** | Source synced, cache cleared, **313 tests ผ่านทั้งหมด**, รายงาน verified เสร็จ |
+| Dashboard Web UI | 📋 วางแผน | High priority - FastAPI + HTMX + Chart.js |
+| Historical Data Compaction | 📋 วางแผน | Medium priority - Retention policy สำหรับ checks.jsonl |
+| GitHub Actions CI Optimization | 📋 วางแผน | Release workflow ทำงานอยู่แล้ว |
 
 ---
 
@@ -121,26 +129,33 @@
 | Config files ซ้ำ (settings.yaml, etc.) | ลบ, เก็บแค่ config.yaml.example | v1.0.36 |
 | **Daily Heatmap ใช้ rolling 30-day window** | **เพิ่ม `start_date` parameter สำหรับ calendar-month window** | **v1.0.37** |
 | **Test data (r1, fake-resolver) ค้างอยู่** | **ล้าง baseline, FQDN store, checks.jsonl** | **v1.0.37** |
+| **รายงานรายวันที่หายไปหลายวันติดต่อกัน** | **เพิ่ม `_find_last_daily_report_date()` และ `_generate_daily_report_for_date()`** | **v1.0.37** |
+| **การแสดงผลฟอนต์ไทยใน PDF (TLWG Loma TTF)** | **ใช้ system fonts แทน bundled OTF** | **v1.0.37** |
+| **การโหลดฟอนต์ไทยสำหรับ matplotlib (TLWG Loma)** | **แยก variant ให้ถูกต้อง, bold font file โดยตรง** | **v1.0.37** |
+| **_apply_thai_fonts() สำหรับทุกข้อความในกราฟ** | **Footer, y-axis labels, tick labels, legend, annotations** | **v1.0.37** |
+| **การแยกภาษากราฟใน PDF (EN/TH graphs)** | **English PDF ใช้ EN graphs, Thai PDF ใช้ TH graphs** | **v1.0.37** |
+| **_send_missing_daily_report() IndexError ตอน fresh install** | **เพิ่ม guard clause สำหรับ missed_days ว่างเปล่า** | **v1.0.38** |
+| **Daily heatmap header ใช้ generic report context** | **Override ด้วย month-specific header (YYYY-MM, Days 1 to N)** | **v1.0.39** |
+| **logrotate เก็บ log แค่ 14 วัน** | **เปลี่ยน rotate 14 → rotate 365 สำหรับเก็บ 1 ปี** | **v1.0.40** |
 
 ---
 
 ## 6. งานต่อไป (Priority Order)
 
 ### High Priority
-1. **Complete Test VM monthly report verification** — ตรวจสอบ daily/monthly reports บน Test VM หลัง v1.0.37 sync
-2. **Dashboard Web UI** — Real-time status, ตาราง FQDN, Graph viewer, Alert history
+1. **Dashboard Web UI** — Real-time status, ตาราง FQDN, Graph viewer, Alert history
    - FastAPI + HTMX + Chart.js + Jinja2
    - Endpoints: /api/status, /api/fqdns, /api/graphs, /api/alerts
    - MVP: 2-3 sessions
 
 ### Medium Priority
-3. **Historical Data Compaction** — Retention policy สำหรับ checks.jsonl / alerts.jsonl
+2. **Historical Data Compaction** — Retention policy สำหรับ checks.jsonl / alerts.jsonl
    - Compress ข้อมูลเก่า, เก็บ aggregated summaries
    - ป้องกัน disk เต็มใน production ที่รันนาน
 
 ### Low Priority
-4. **deploy.sh Enhancement** — Auto-copy install.sh, tests/, systemd/
-5. **GitHub Actions Optimization** — Cache uv, Parallel test matrix
+3. **deploy.sh Enhancement** — Auto-copy install.sh, tests/, systemd/
+4. **GitHub Actions Optimization** — Cache uv, Parallel test matrix
 
 ---
 
@@ -149,7 +164,7 @@
 ### Core Source (src/chk_a/)
 ```
 src/chk_a/
-├── __init__.py                    # version 1.0.37
+├── __init__.py                    # version 1.0.40
 ├── main.py                        # CLI entry, cmd_test_daily_image
 ├── orchestrator.py                # Main loop, systemd notify, daily tasks
 ├── agents/
@@ -184,6 +199,7 @@ scripts/deploy.sh                  # Deploy script (ต้อง enhance)
 scripts/systemd_wrapper.py         # Systemd notify wrapper
 install.sh                         # Production installer
 uninstall.sh                       # Clean uninstall
+logrotate.d/chk-a                  # Logrotate config (daily, rotate 365)
 ```
 
 ### Tests (313 tests)
@@ -220,11 +236,49 @@ md/loop_engineering_prompt.md      # Authoritative loop spec
 
 ## 8. สถานะเวอร์ชัน (Version Status)
 
-|| องค์ประกอบ | เวอร์ชัน | สถานะ ||
-||-----------|---------|--------|
-|| Source (dev) | 1.0.37 | ✅ 313 tests ผ่าน ||
-|| GitHub tag | v1.0.36 | ✅ pushed ||
-|| Test VM | 1.0.37 | ✅ **Source synced, cache cleared, 313 tests ผ่านทั้งหมด, รายงาน verified เสร็จ** ||
-|| Production | v1.0.36 | ✅ running on uptime-host ||
+||| องค์ประกอบ | เวอร์ชัน | สถานะ ||
+|||-----------|---------|--------|
+||| Source (dev) | 1.0.40 | ✅ 313 tests ผ่าน ||
+||| GitHub tag | v1.0.40 | ✅ pushed ||
+||| Test VM | 1.0.37 | ✅ **Source synced, cache cleared, 313 tests ผ่านทั้งหมด, รายงาน verified เสร็จ** ||
+||| Production | v1.0.36 | ✅ running on uptime-host ||
+||| GitHub Release | v1.0.40 | ✅ **Created** ||
 
-**Next Release:** v1.0.37 (หลัง Test VM verification เสร็จ)
+**Next Release:** v1.0.41 (Dashboard Web UI)
+
+---
+
+## 9. บันทึกการปรับปรุงทักษะ (Self-Improvement Notes)
+
+### ทักษะที่พัฒนาขึ้นใน Session นี้:
+1. **การจัดการฟอนต์ไทยสำหรับ PDF/Graphs** — เรียนรู้การใช้ system TLWG Loma TTF fonts พร้อมการลงทะเบียน variant ให้ถูกต้อง (Regular, Bold, Oblique, BoldOblique) แทน bundled OTF fonts ลงทะเบียนฟอนต์กับ matplotlib font manager เพื่อการแสดงผลที่ถูกต้อง
+
+2. **การใช้ฟอนต์ไทยใน Matplotlib** — ปรับปรุง `_apply_thai_fonts()` ให้ครอบคลุม **ทุก text elements**: axis labels, tick labels, legend, annotations, figure texts (header, footer), axis offset text แก้ไขปัญหา footer ถูก skip (y < 0.05 ถูก skip เดิม)
+
+3. **การสร้างกราฟหลายภาษา** — นำไปใช้การสร้างกราฟเฉพาะภาษา: English PDF ใช้ English graphs (`*.png`), Thai PDF ใช้ Thai graphs (`*-th.png`) เพิ่มการ filter พร้อม logging เพื่อการตรวจสอบ
+
+4. **การตรวจจับรายงานรายวันที่หายไปหลายวันติดต่อกัน** — นำ `_find_last_daily_report_date()` ไปใช้หาวันที่รายงานล่าสุดจากรายงานที่มีอยู่ และ `_generate_daily_report_for_date()` สร้างรายงานสำหรับแต่ละวันที่หายไป จัดการวันหายติดต่อกันได้ (เช่น weekend downtime)
+
+5. **การลงทะเบียนฟอนต์ไทยสำหรับ PDF (ReportLab)** — ลงทะเบียน 4 TLWG Loma TTF font variants (Regular, Bold, Oblique, BoldOblique) กับ pdfmetrics สำหรับการแสดงผลภาษาไทยที่ถูกต้องใน PDF reports ทุก paragraph/table styles ใช้ Thai fonts เมื่อ `lang="th"`
+
+6. **การทดสอบข้ามสภาพแวดล้อม** — ยืนยัน 313 tests ผ่านทั้ง Dev (WSL) และ Test VM (VirtualBox) ยืนยัน PDF graph language separation โดย extract embedded images และเปรียบเทียบขนาดไฟล์
+
+7. **แก้ Production Startup Crash** — แก้ IndexError ใน `_send_missing_daily_report()` เมื่อ `last_report_date >= yesterday` (missed_days ว่างเปล่า) เพิ่ม guard clause พร้อม early return และ logging ที่ให้ข้อมูล
+
+8. **การปรับแต่ง Graph Header Context** — Daily Availability Heatmap ใช้ month-specific header context (YYYY-MM, Days 1 to N) แทน generic report_date_context ทั้งเวอร์ชันไทยและอังกฤษ
+
+9. **Logrotate Retention Policy** — อัปเดต logrotate config จาก rotate 14 เป็น rotate 365 สำหรับเก็บ log 1 ปี พร้อม daily rotation
+
+### บทเรียนสำหรับงานอนาคต:
+- **ตรวจสอบการแสดงผลฟอนต์ไทยที่ระดับพิกเซล** — อย่าสมมติว่าการลงทะเบียนฟอนต์ทำงาน; ให้ extract และวิเคราะห์ embedded images
+- **ใช้ system fonts แทน bundled fonts** — System TLWG Loma TTF fonts ทำงานได้ดีกว่ากับ ReportLab และ matplotlib เทียบกับ bundled OTF fonts
+- **ลงทะเบียนฟอนต์กับ matplotlib font manager** — ใช้ `fm.fontManager.addfont()` สำหรับ font discovery ที่ถูกต้อง
+- **Log graph filtering ให้ชัดเจน** — เพิ่ม explicit logging สำหรับ graph language filtering เพื่อช่วย debugging
+- **ตรวจสอบความสอดคล้องของการทดสอบข้ามสภาพแวดล้อม** — รัน tests บน Dev และ Test VM ทั้งสองก่อน release
+- **Guard against empty collections before indexing** — ต้องเช็ค `if not list:` ก่อนเข้าถึง `list[0]` หรือ `list[-1]` เสมอ
+- **Override context สำหรับ chart type เฉพาะ** — Generic context อาจไม่เหมาะกับทุก chart; ควรให้ override context ต่อ chart ได้
+- **Document retention policies ใน config** — Logrotate และ application-level retention ควรสอดคล้องกัน
+
+---
+
+*"Self-improvement is the continuous refinement of tools and techniques based on real-world validation, not just theoretical understanding."*

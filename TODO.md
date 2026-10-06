@@ -1,10 +1,10 @@
 # TODO - chk-a Project
 
-**Last Updated:** 2026-10-02 15:30:00 (Asia/Bangkok UTC+07)
+**Last Updated:** 2026-10-06 06:15:00 (Asia/Bangkok UTC+07)
 
 ---
 
-## ✅ Completed (v1.0.37)
+## ✅ Completed (v1.0.40)
 
 ### Core Features
 - [x] Multi-resolver DNS monitoring (DoH/DoT/UDP)
@@ -56,18 +56,29 @@
 - [x] Daily Heatmap: calendar-month window via start_date parameter
 - [x] Cleared test data (r1, fake-resolver) — baseline, FQDN store, checks.jsonl
 
+### Additional Fixes (v1.0.37)
+- [x] Fix missing daily report detection for multi-day downtime — Service now detects and sends all missed daily reports on startup (not just yesterday)
+- [x] Fix Thai font rendering in PDF reports — PDF reports now use system TLWG Loma TTF fonts for proper Thai text display in both Thai and English reports
+- [x] Fix Thai font loading for matplotlib graphs — Use system TLWG Loma TTF fonts with proper variant separation
+- [x] Fix _apply_thai_fonts() for all text elements — Footer, y-axis labels, tick labels, legend, annotations, figure texts, axis offset text
+- [x] PDF graph language separation — English PDF uses English graphs, Thai PDF uses Thai graphs
+
+### Production Fixes (v1.0.38 - v1.0.40)
+- [x] **v1.0.38** — Fix missing daily report detection IndexError — Guard clause for empty missed_days list when last_report_date >= yesterday
+- [x] **v1.0.39** — Daily heatmap header month context override — TH: "รายงานข้อมูลเดือนนี้ : {YYYY-MM} (วันที่ 1 ถึง {last_day})", EN: "Monthly Report: {YYYY-MM} (Days 1 to {last_day})"
+- [x] **v1.0.40** — Logrotate retention policy — Daily rotation with rotate 365 (1 year) instead of 14 days
+
 ### Deployment
-- [x] Test VM source synced, cache cleared, awaiting report verification
+- [x] Test VM source synced, cache cleared, **all 313 tests passing**, report verification complete
 - [x] Production (uptime-host) v1.0.36 deployed and verified
+- [x] GitHub tag v1.0.40 pushed
+- [x] GitHub Release v1.0.40 created
 
 ---
 
 ## 📋 Planned (Priority Order)
 
 ### High Priority
-- [x] **Complete Test VM monthly report verification** — Verify daily/monthly reports on Test VM after v1.0.37 sync
-- [x] **Fix missing daily report detection for multi-day downtime** — Service now detects and sends all missed daily reports on startup (not just yesterday)
-- [x] **Fix Thai font rendering in PDF reports** — PDF reports now use system TLWG Loma TTF fonts for proper Thai text display in both Thai and English reports
 - [ ] **Dashboard Web UI** — Real-time monitoring interface
   - [ ] FastAPI backend with async endpoints
   - [ ] HTMX frontend for zero-JS complexity
