@@ -94,7 +94,8 @@ async def generate_current_month_report():
             lookback_days=days_diff,
             mtr_log_path=mtr_log_path,
             ml_agent=ml_agent,
-            reference_date=now
+            reference_date=now,
+            start_date=month_start,  # ensure we only get data from 1st of month
         )
         
         if not insights.get("summary", {}).get("total_resolvers", 0):
@@ -137,6 +138,26 @@ async def generate_current_month_report():
         )
         
         try:
+            # Generate graphs
+            print("Generating graphs...")
+            from chk_a.reporting.graph_generator import generate_summary_dashboard
+            
+            timestamp = now.strftime("%Y%m%d-%H%M%S")
+            output_dir = Path(config.reporting.output_dir) / f"manual-monthly-{timestamp}"
+            output_dir.mkdir(parents=True, exist_ok=True)
+            
+            month_str = now.strftime("%Y-%m")
+            
+            en_graphs = generate_summary_dashboard(
+                insights, output_dir, lang="en", hostname=hostname,
+                report_date_context=f"Manual monthly report for :{month_str} (1st-now)"
+            )
+            th_graphs = generate_summary_dashboard(
+                insights, output_dir, lang="th", hostname=hostname,
+                report_date_context=f"รายงานข้อมูลเดือน :{month_str} (1-ตอนนี้)"
+            )
+            print(f"Generated {len(en_graphs)} EN graphs, {len(th_graphs)} TH graphs")
+            
             # Create custom monthly summary for "current month from 1st to now"
             month_name_th = [
                 "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
@@ -222,35 +243,17 @@ async def generate_current_month_report():
             # Send summary message
             await reporter.send_message(summary_text)
             
-            # Generate and send graphs
-            timestamp = now.strftime("%Y%m%d-%H%M%S")
-            output_dir = Path(config.reporting.output_dir) / f"manual-monthly-{timestamp}"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            from chk_a.reporting.graph_generator import generate_summary_dashboard
-            
-            en_graphs = generate_summary_dashboard(
-                insights, output_dir, lang="en", hostname=hostname,
-                report_date_context=f"Manual monthly report for :{month_str_en} (1st-now)"
-            )
-            th_graphs = generate_summary_dashboard(
-                insights, output_dir, lang="th", hostname=hostname,
-                report_date_context=f"รายงานข้อมูลเดือน :{month_str_th} (1-ตอนนี้)"
-            )
-            all_graphs = en_graphs + th_graphs
-            
-            print(f"Generated {len(all_graphs)} graph files")
-            
-            # Send graphs concurrently
-            tasks = []
-            for graph_path in all_graphs:
+            # Send Thai-only graphs sequentially (consistent with scheduled reports and telegram_reporter)
+            th_graphs = [p for p in th_graphs if p.is_file()]
+            print(f"Sending {len(th_graphs)} Thai graphs sequentially...")
+            success_count = 0
+            for graph_path in th_graphs:
                 caption = graph_path.stem.replace("-", " ").title()
-                tasks.append(reporter.send_photo(graph_path, caption))
+                if await reporter.send_photo(graph_path, caption):
+                    success_count += 1
+                await asyncio.sleep(0.5)  # Small delay to avoid rate limiting
             
-            if tasks:
-                results = await asyncio.gather(*tasks, return_exceptions=True)
-                success_count = sum(1 for r in results if r is True)
-                print(f"Sent {success_count}/{len(tasks)} graphs to Telegram")
+            print(f"Sent {success_count}/{len(th_graphs)} Thai graphs to Telegram")
             
             await reporter.close()
             return True

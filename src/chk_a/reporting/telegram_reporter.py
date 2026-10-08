@@ -590,15 +590,20 @@ def create_daily_telegram_summary(
     integrity = ml_insights.get("integrity", {})
     path_availability = ml_insights.get("path_availability", {})
 
-    # Yesterday's date
+    # Yesterday's date (use lookback_days to determine which day)
     from datetime import timedelta
+    from zoneinfo import ZoneInfo
 
-    yesterday = (datetime.now() - timedelta(days=lookback_days)).strftime("%d/%m/%Y")
+    TZ = ZoneInfo("Asia/Bangkok")
+    report_date = (datetime.now(TZ) - timedelta(days=lookback_days))
+    yesterday_str = report_date.strftime("%Y-%m-%d")
+    yesterday_display = report_date.strftime("%d/%m/%Y")
     version_str = f"v{version}" if version else ""
 
     lines = [
-        f"📅 <b>chk-a รายงานรายวัน ({yesterday})</b>",
+        f"📅 <b>chk-a รายงานรายวัน ({yesterday_display})</b>",
         f"🖥️ โฮสต์: {_html_escape(hostname)}",
+        f"📊 ช่วงข้อมูล: {yesterday_str} (00:00-23:59)",
         "",
         "📈 <b>สรุป Availability / Path Availability / Integrity</b>",
         f"• Resolver ทั้งหมด: {summary.get('total_resolvers', 0)}",

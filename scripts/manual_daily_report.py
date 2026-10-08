@@ -92,7 +92,8 @@ async def generate_today_report():
             lookback_days=lookback_fraction,
             mtr_log_path=mtr_log_path,
             ml_agent=ml_agent,
-            reference_date=today_ref  # today 23:59:59 as reference
+            reference_date=today_ref,  # today 23:59:59 as reference
+            start_date=today_midnight,  # ensure we only get today's data from midnight
         )
 
         if not insights_today.get("summary", {}).get("total_resolvers", 0):

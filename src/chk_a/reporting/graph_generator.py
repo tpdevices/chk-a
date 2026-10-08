@@ -734,6 +734,7 @@ def generate_latency_boxplot(
     """Generate box plot of latency distributions per resolver.
 
     Resolvers are sorted by median latency ASC (fastest on top).
+    Shows mean as diamond marker and median as line.
     """
     if not availability_data:
         return
@@ -747,6 +748,7 @@ def generate_latency_boxplot(
             resolver_stats.append({
                 "resolver": resolver,
                 "median": data["median_latency_ms"],
+                "mean": data.get("avg_latency_ms", data["median_latency_ms"]),
                 "p25": data.get("p25_latency_ms", data["median_latency_ms"] * 0.7),
                 "p75": data.get("p75_latency_ms", data["median_latency_ms"] * 1.3),
                 "min": data.get("min_latency_ms", 0),
@@ -761,6 +763,7 @@ def generate_latency_boxplot(
 
     resolvers = [s["resolver"] for s in resolver_stats]
     medians = [s["median"] for s in resolver_stats]
+    means = [s["mean"] for s in resolver_stats]
     p25s = [s["p25"] for s in resolver_stats]
     p75s = [s["p75"] for s in resolver_stats]
     mins = [s["min"] for s in resolver_stats]
@@ -790,6 +793,11 @@ def generate_latency_boxplot(
         median.set_color(COLORS["dark"])
         median.set_linewidth(2)
 
+    # Add mean markers (diamond) for each resolver
+    y_positions = range(1, len(resolvers) + 1)
+    ax.scatter(means, y_positions, marker='D', s=80, color=COLORS["warning"], 
+               zorder=5, label='Mean', edgecolors='white', linewidth=1)
+
     ax.set_xlabel("Latency (ms)", fontsize=12)
     ax.set_xscale("log")  # Log scale often better for latency
 
@@ -798,7 +806,7 @@ def generate_latency_boxplot(
 
     # Add sort order indicator to title
     if "median" not in title.lower():
-        title = f"{title}\n(sorted by median latency, fastest first)"
+        title = f"{title}\n(sorted by median latency, fastest first; ◇ = mean)"
 
     _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
@@ -1046,6 +1054,84 @@ def generate_path_availability_chart(
     _save_figure(fig, output_path)
 
 
+def _generate_mtr_placeholder(
+    output_path: Path,
+    title: str = "MTR Network Path Visualization",
+    lang: str = "en",
+    hostname: str | None = None,
+    version: str | None = None,
+    generation_datetime: datetime | None = None,
+) -> None:
+    """Generate placeholder graph when MTR is not enabled or no data available."""
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    if lang == "th":
+        msg = "MTR ยังไม่ได้เปิดใช้งาน หรือไม่มีข้อมูล\n\n"
+        msg += "กรุณาเปิดใช้งาน MTR ใน config:\n"
+        msg += "  mtr:\n"
+        msg += "    enabled: true\n"
+        msg += "    interval_sec: 3600\n"
+        msg += "    mode: \"icmp\""
+    else:
+        msg = "MTR not enabled or no data available\n\n"
+        msg += "Please enable MTR in config:\n"
+        msg += "  mtr:\n"
+        msg += "    enabled: true\n"
+        msg += "    interval_sec: 3600\n"
+        msg += "    mode: \"icmp\""
+    
+    ax.text(0.5, 0.5, msg, transform=ax.transAxes,
+            ha="center", va="center", fontsize=12,
+            bbox=dict(boxstyle="round,pad=0.5", facecolor=COLORS["light"], 
+                      edgecolor=COLORS["border"], alpha=0.8))
+    
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
+    _apply_thai_fonts(fig, ax, lang)
+    _save_figure(fig, output_path)
+
+
+def _generate_path_availability_placeholder(
+    output_path: Path,
+    title: str = "Network Path Availability (ML-based)",
+    lang: str = "en",
+    hostname: str | None = None,
+    version: str | None = None,
+    generation_datetime: datetime | None = None,
+) -> None:
+    """Generate placeholder graph when path availability data is not available."""
+    fig, ax = plt.subplots(figsize=(10, 4))
+    
+    if lang == "th":
+        msg = "ไม่มีข้อมูล Path Availability\n\n"
+        msg += "ต้องเปิดใช้งาน MTR เพื่อคำนวณ Path Availability:\n"
+        msg += "  mtr:\n"
+        msg += "    enabled: true\n"
+        msg += "    interval_sec: 3600"
+    else:
+        msg = "No Path Availability data\n\n"
+        msg += "Enable MTR to compute Path Availability:\n"
+        msg += "  mtr:\n"
+        msg += "    enabled: true\n"
+        msg += "    interval_sec: 3600"
+    
+    ax.text(0.5, 0.5, msg, transform=ax.transAxes,
+            ha="center", va="center", fontsize=12,
+            bbox=dict(boxstyle="round,pad=0.5", facecolor=COLORS["light"],
+                      edgecolor=COLORS["border"], alpha=0.8))
+    
+    ax.set_xlim(0, 1)
+    ax.set_ylim(0, 1)
+    ax.axis("off")
+    
+    _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
+    _apply_thai_fonts(fig, ax, lang)
+    _save_figure(fig, output_path)
+
+
 def generate_summary_dashboard(
     ml_insights: dict[str, Any],
     output_dir: Path,
@@ -1169,12 +1255,22 @@ def generate_summary_dashboard(
         path = output_dir / f"mtr-path{timestamp}{lang_suffix}.png"
         generate_mtr_path_visualization(mtr_data, path, title=base_titles["mtr_path"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
         generated.append(path)
+    else:
+        # Generate placeholder graph indicating MTR not enabled/no data
+        path = output_dir / f"mtr-path{timestamp}{lang_suffix}.png"
+        _generate_mtr_placeholder(path, title=base_titles["mtr_path"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
+        generated.append(path)
 
     # 7. Path availability chart (ML-based)
     path_availability = ml_insights.get("path_availability", {})
     if path_availability:
         path = output_dir / f"path-availability{timestamp}{lang_suffix}.png"
         generate_path_availability_chart(path_availability, path, title=base_titles["path_availability"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
+        generated.append(path)
+    else:
+        # Generate placeholder graph indicating path availability not available
+        path = output_dir / f"path-availability{timestamp}{lang_suffix}.png"
+        _generate_path_availability_placeholder(path, title=base_titles["path_availability"], lang=lang, hostname=hostname, version=version, generation_datetime=gen_time)
         generated.append(path)
 
     log.info("Generated %d graphs in %s", len(generated), output_dir)

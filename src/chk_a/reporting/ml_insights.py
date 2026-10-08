@@ -261,6 +261,7 @@ def _load_recent_checks(
         log_path: Path to the JSONL log file.
         lookback_days: Number of days to look back from reference_date (can be fractional).
         reference_date: Reference datetime for the lookback window. Defaults to now (Asia/Bangkok).
+        start_date: Optional start date to filter records (inclusive). Records before this date are excluded.
     """
     if reference_date is None:
         reference_date = datetime.now()
@@ -273,8 +274,20 @@ def _load_recent_checks(
         reference_date = reference_date.replace(tzinfo=default_tz)
 
     cutoff = reference_date - timedelta(days=lookback_days)
-    log.debug("_load_recent_checks: reference_date=%s, lookback_days=%s, cutoff=%s",
-              reference_date.isoformat(), lookback_days, cutoff.isoformat())
+    
+    # Handle start_date timezone
+    if start_date is not None:
+        if start_date.tzinfo is None:
+            start_date = start_date.replace(tzinfo=default_tz)
+        elif start_date.tzinfo != default_tz:
+            start_date = start_date.astimezone(default_tz)
+        # Ensure cutoff is not earlier than start_date
+        if cutoff < start_date:
+            cutoff = start_date
+
+    log.debug("_load_recent_checks: reference_date=%s, lookback_days=%s, cutoff=%s, start_date=%s",
+              reference_date.isoformat(), lookback_days, cutoff.isoformat(), 
+              start_date.isoformat() if start_date else None)
     records: list[dict] = []
     path = Path(log_path)
 

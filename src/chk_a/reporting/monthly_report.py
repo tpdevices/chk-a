@@ -398,14 +398,17 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     month_start = yesterday.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
     # 1. Yesterday insights: full day (lookback_days from config)
-    log.info("Daily report (yesterday): yesterday=%s, yesterday_end=%s, lookback_days=%d",
-             yesterday.strftime("%Y-%m-%d"), yesterday_end.isoformat(), lookback)
+    # Use yesterday_midnight as start_date to ensure we only get yesterday's data (00:00-23:59)
+    yesterday_midnight = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
+    log.info("Daily report (yesterday): yesterday=%s, yesterday_midnight=%s, yesterday_end=%s, lookback_days=%d",
+             yesterday.strftime("%Y-%m-%d"), yesterday_midnight.isoformat(), yesterday_end.isoformat(), lookback)
     insights_yesterday = generate_ml_insights(
         log_path,
         lookback,
         mtr_log_path,
         ml_agent=ml_agent,
         reference_date=yesterday_end,
+        start_date=yesterday_midnight,
     )
 
     # 2. Month insights: 1st to yesterday_end (for daily heatmap)
@@ -449,12 +452,14 @@ async def generate_daily_report(config: AppConfig) -> dict[str, Any]:
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Calculate yesterday for title context
-    yesterday_str = (datetime.now(ZoneInfo("Asia/Bangkok")) - timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday_dt = datetime.now(ZoneInfo("Asia/Bangkok")) - timedelta(days=1)
+    yesterday_str = yesterday_dt.strftime("%Y-%m-%d")
+    yesterday_display = yesterday_dt.strftime("%d/%m/%Y")
 
     # THAI ONLY for Telegram (consistent with telegram_reporter)
     th_graphs = generate_summary_dashboard(
         insights, output_dir, lang="th", hostname=hostname,
-        report_date_context=f"รายงานข้อมูลของวัน :{yesterday_str}",
+        report_date_context=f"รายงานข้อมูลวันที่ {yesterday_str} ({yesterday_display})",
         version=chk_a_version,
         generation_datetime=generation_dt,
     )
