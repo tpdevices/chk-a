@@ -293,21 +293,28 @@ def _add_header_footer(
 
     # Footer language follows lang parameter - split left/center/right
     if lang == "th":
-        left_text = f"ตรวจสอบจากเครื่อง : \"{hostname}\""
+        left_text = f"ตรวจสอบจากเครื่อง : \\\"{hostname}\\\""
         center_text = version_str
         right_text = f"สร้างเมื่อ {timestamp}"
         font_props = THAI_FONT if THAI_FONT else None
         title_font = THAI_FONT_TITLE if THAI_FONT else None
     else:
-        left_text = f"Checked from host : \"{hostname}\""
+        left_text = f"Checked from host : \\\"{hostname}\\\""
         center_text = version_str
         right_text = f"Generated at {timestamp}"
         font_props = None
         title_font = None
 
+    # Calculate title lines and adjust layout dynamically
+    num_lines = title.count('\n') + 1
+    # Title position: start at 0.94, move down 0.02 per extra line
+    title_y = 0.94 - (num_lines - 1) * 0.02
+    # Top margin: start at 0.86, increase by 0.035 per extra line (min 0.70)
+    top_margin = max(0.86 - (num_lines - 1) * 0.035, 0.70)
+
     # Title (header) - centered at top, supports newline
     fig.text(
-        0.5, 0.94, title,
+        0.5, title_y, title,
         ha="center", va="top",
         fontsize=14, fontweight="600",
         color=COLORS["dark"],
@@ -343,7 +350,7 @@ def _add_header_footer(
     )
 
     # Adjust layout to make room for header and footer
-    fig.subplots_adjust(top=0.86, bottom=0.08)
+    fig.subplots_adjust(top=top_margin, bottom=0.08)
 
 
 def _apply_thai_fonts(fig: plt.Figure, ax: plt.Axes, lang: str = "en") -> None:
