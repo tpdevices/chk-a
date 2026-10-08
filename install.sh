@@ -300,9 +300,18 @@ if [[ ${NEED_PIP_INSTALL} -eq 1 ]]; then
     log "pip installed successfully: $(("${VENV_DIR}/bin/python" -m pip --version))"
 fi
 
-log "Installing wheel..."
+log "Installing wheel... \"${WHEEL_FILE}\""
 "${VENV_DIR}/bin/python" -m pip install --upgrade pip >/dev/null
 "${VENV_DIR}/bin/python" -m pip install "${WHEEL_FILE}"
+
+# Verify installed version
+INSTALLED_VERSION=$("${VENV_DIR}/bin/python" -m pip show chk-a 2>/dev/null | grep '^Version:' | cut -d' ' -f2)
+if [[ -n "${INSTALLED_VERSION}" ]]; then
+    log "Installed chk-a version: ${INSTALLED_VERSION}"
+else
+    INSTALLED_VERSION="unknown"
+    warn "Could not determine installed version"
+fi
 
 # 6. Deploy config templates
 log "Deploying config templates..."
@@ -441,7 +450,7 @@ fi
 # 10. Summary
 echo
 log "========================================="
-log "  chk-a ${VERSION} installed successfully!"
+log "  chk-a ${INSTALLED_VERSION} installed successfully!"
 log "========================================="
 echo
 log "Configuration:"
