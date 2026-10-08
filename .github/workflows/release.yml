@@ -24,6 +24,20 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
 
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          # Extract version from git tag (e.g., v1.0.44 -> 1.0.44)
+          VERSION=${GITHUB_REF_NAME#v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
       - name: Display Python version
         run: python --version && pip --version
 
@@ -31,6 +45,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip build
           pip list
+
+      - name: Update pyproject.toml with tag version
+        run: |
+          sed -i "s/^version = \".*\"/version = \"${{ steps.get_version.outputs.version }}\"/" pyproject.toml
+          echo "Updated pyproject.toml to version: ${{ steps.get_version.outputs.version }}"
+          grep '^version' pyproject.toml
 
       - name: Build wheel
         run: |
