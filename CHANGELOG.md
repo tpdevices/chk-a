@@ -6,6 +6,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.41] - 2026-10-08 11:30:00 (Asia/Bangkok UTC+07)
+
+### Fixed
+- **Daily report (06:00) data range** — Now correctly shows yesterday data (00:00-23:59) instead of partial today data by adding `start_date` parameter to `generate_ml_insights()`
+- **Latency boxplot** — Added mean marker (◇) alongside median for each resolver
+- **MTR Path Visualization** — Now shows placeholder graph with instructions when MTR not enabled/no data
+- **Path Availability Heatmap** — Now shows placeholder graph with instructions when MTR not enabled/no data
+- **Manual Daily Report** — Added `start_date` parameter for accurate data range (today 00:00-now)
+- **Manual Monthly Report** — Added `start_date` parameter for accurate data range (1st-now)
+- **Daily report header** — Updated to show "ข้อมูลวันที่ {yesterday} (DD/MM/YYYY)" clearly
+
+### Changed
+- **Manual Monthly Report** — Now sends Thai-only graphs sequentially (consistent with scheduled reports) instead of concurrent EN+TH
+- **All report types** (scheduled daily, scheduled monthly, manual daily, manual monthly) now consistently send Thai-only graphs sequentially with 0.5s delay
+
+### Tested
+- 311/313 tests pass on Test VM (2 DNS resolution tests skipped due to network environment)
+
+---
+
 ## [1.0.40] - 2026-10-06 06:12:56 (Asia/Bangkok UTC+07)
 
 ### Fixed
