@@ -776,7 +776,7 @@ def generate_latency_boxplot(
     mins = [s["min"] for s in resolver_stats]
     maxs = [s["max"] for s in resolver_stats]
 
-    fig, ax = plt.subplots(figsize=(12, max(6, len(resolvers) * 0.35)))
+    fig, ax = plt.subplots(figsize=(12, max(7, len(resolvers) * 0.35 + 1.5)))
 
     # Create box plot data structure
     box_data = []
@@ -803,7 +803,7 @@ def generate_latency_boxplot(
     # Add mean markers (diamond) for each resolver
     y_positions = range(1, len(resolvers) + 1)
     ax.scatter(means, y_positions, marker='D', s=80, color=COLORS["warning"], 
-               zorder=5, label='Mean', edgecolors='white', linewidth=1)
+               zorder=5, label='Mean (◇)', edgecolors='white', linewidth=1)
 
     ax.set_xlabel("Latency (ms)", fontsize=12)
     ax.set_xscale("log")  # Log scale often better for latency
@@ -813,7 +813,35 @@ def generate_latency_boxplot(
 
     # Add sort order indicator to title
     if "median" not in title.lower():
-        title = f"{title}\n(sorted by median latency, fastest first; ◇ = mean)"
+        title = f"{title}\n(sorted by median latency, fastest first)"
+
+    # Add legend with statistical summary
+    from matplotlib.patches import Patch
+    from matplotlib.lines import Line2D
+    
+    legend_elements = [
+        Line2D([0], [0], color=COLORS["dark"], linewidth=2, label='Median (—)'),
+        Line2D([0], [0], marker='D', color='w', markerfacecolor=COLORS["warning"], 
+               markersize=10, markeredgecolor='white', markeredgewidth=1, label='Mean (◇)'),
+        Patch(facecolor=COLORS["primary"], alpha=0.7, edgecolor='white', label='IQR (Q1–Q3)'),
+        Line2D([0], [0], color=COLORS["primary"], alpha=0.7, linewidth=10, label='Range (Min–Max)'),
+    ]
+    
+    # Add statistical summary for each resolver in legend
+    stats_text = []
+    for i, resolver in enumerate(resolvers):
+        stats_text.append(f"{resolver}: Med={medians[i]:.1f}ms, Mean={means[i]:.1f}ms, Q1={p25s[i]:.1f}, Q3={p75s[i]:.1f}")
+    
+    # Create two-column legend: symbols on left, stats on right
+    # First legend: symbols
+    leg1 = ax.legend(handles=legend_elements, loc='lower right', fontsize=9, framealpha=0.95, title='Legend')
+    
+    # Second legend: statistics (placed at upper right, outside plot area)
+    stats_str = '\n'.join(stats_text)
+    ax.text(1.02, 0.98, stats_str, transform=ax.transAxes, fontsize=8,
+            verticalalignment='top', fontfamily='monospace',
+            bbox=dict(boxstyle='round,pad=0.5', facecolor=COLORS["lighter"], 
+                      edgecolor=COLORS["border"], alpha=0.9))
 
     _add_header_footer(fig, ax, title, hostname, lang, version, generation_datetime)
     _apply_thai_fonts(fig, ax, lang)
